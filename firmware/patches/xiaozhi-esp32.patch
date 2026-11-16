@@ -63,7 +63,7 @@ index 80161a1..f92ccfb 100644
 +    depends on USE_GEMINI_LIVE
 +endmenu
 diff --git a/main/application.cc b/main/application.cc
-index 300a36c..4462407 100644
+index 300a36c..5993146 100644
 --- a/main/application.cc
 +++ b/main/application.cc
 @@ -1,3 +1,4 @@
@@ -217,7 +217,7 @@ index 300a36c..4462407 100644
 +                auto lyrics = std::move(job->lyrics);
 +                lyrics.insert(lyrics.begin(), {.start_ms = 0, .text = job->title});
 +                job->app->StartNotification(job->url, std::move(lyrics));
-+                Board::GetInstance().GetDisplay()->SetEmotion("listening");
++                Board::GetInstance().GetDisplay()->SetEmotion("relaxed");  // eyes closed, enjoying the music (cheap to draw)
 +                delete job;
 +            });
 +            vTaskDelete(nullptr);
