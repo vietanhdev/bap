@@ -137,7 +137,7 @@ void BuildOverlay() {
     lv_obj_align(g_counter, LV_ALIGN_TOP_MID, 0, h * 13 / 100 + 30);
     g_hint = Label(g_overlay, &font_chat_24, kDim, w * 68 / 100);
     lv_obj_set_height(g_hint, font_chat_24.line_height);  // one line, never wraps
-    lv_obj_align(g_hint, LV_ALIGN_BOTTOM_MID, 0, -h * 10 / 100);
+    lv_obj_align(g_hint, LV_ALIGN_BOTTOM_MID, 0, -h * 15 / 100);  // inside the arc's open end
 
     g_info = Label(g_overlay, &font_chat_24, kText, w * 70 / 100);
     lv_label_set_long_mode(g_info, LV_LABEL_LONG_MODE_WRAP);

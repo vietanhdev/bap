@@ -240,7 +240,8 @@
         "giữ thoát": "hold: exit",
         "Chào bạn!": "Hi there!",
         "Chào cả nhà!": "Hi everyone!",
-        "Nhận biết có người": "Notice people"
+        "Nhận biết có người": "Notice people",
+        "Đang phát nhạc": "Playing music"
       }
     },
     {
@@ -282,7 +283,8 @@
         "giữ thoát": "길게: 닫기",
         "Chào bạn!": "안녕하세요!",
         "Chào cả nhà!": "모두 안녕하세요!",
-        "Nhận biết có người": "사람 감지"
+        "Nhận biết có người": "사람 감지",
+        "Đang phát nhạc": "음악 재생 중"
       }
     },
     {
@@ -324,7 +326,8 @@
         "giữ thoát": "长按：退出",
         "Chào bạn!": "你好！",
         "Chào cả nhà!": "大家好！",
-        "Nhận biết có người": "感知有人"
+        "Nhận biết có người": "感知有人",
+        "Đang phát nhạc": "播放音乐"
       }
     }
   ]
