@@ -237,7 +237,10 @@
         "bấm xong": "click: done",
         "xoay chỉnh": "turn: adjust",
         "giữ quay lại": "hold: back",
-        "giữ thoát": "hold: exit"
+        "giữ thoát": "hold: exit",
+        "Chào bạn!": "Hi there!",
+        "Chào cả nhà!": "Hi everyone!",
+        "Nhận biết có người": "Notice people"
       }
     },
     {
@@ -276,7 +279,10 @@
         "bấm xong": "누르기: 완료",
         "xoay chỉnh": "돌리기: 조절",
         "giữ quay lại": "길게: 뒤로",
-        "giữ thoát": "길게: 닫기"
+        "giữ thoát": "길게: 닫기",
+        "Chào bạn!": "안녕하세요!",
+        "Chào cả nhà!": "모두 안녕하세요!",
+        "Nhận biết có người": "사람 감지"
       }
     },
     {
@@ -315,7 +321,10 @@
         "bấm xong": "按下：完成",
         "xoay chỉnh": "旋转：调节",
         "giữ quay lại": "长按：返回",
-        "giữ thoát": "长按：退出"
+        "giữ thoát": "长按：退出",
+        "Chào bạn!": "你好！",
+        "Chào cả nhà!": "大家好！",
+        "Nhận biết có người": "感知有人"
       }
     }
   ]

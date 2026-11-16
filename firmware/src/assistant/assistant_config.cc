@@ -1,5 +1,7 @@
 #include "assistant_config.h"
 
+#include "assistant.h"
+
 #include <cJSON.h>
 
 #include <cstdlib>
@@ -60,6 +62,7 @@ Config LoadConfig() {
     c.search = s.GetBool("search", false);
     c.greet = s.GetBool("greet", false);
     c.night_dim = s.GetBool("night_dim", true);
+    c.presence = s.GetBool("presence", false);
     c.language = s.GetString("language", "vi");
     return c;
 }
@@ -78,6 +81,7 @@ void SaveConfig(const Config& c) {
         s.SetBool("search", c.search);
         s.SetBool("greet", c.greet);
         s.SetBool("night_dim", c.night_dim);
+        s.SetBool("presence", c.presence);
         s.SetString("language", c.language);
         std::lock_guard<std::mutex> lock(g_language_mutex);
         g_language = c.language;
@@ -88,7 +92,8 @@ void SaveConfig(const Config& c) {
     }
     // The Watcher's on-chip person detector reads these at boot.
     Settings model("model", true);
-    model.SetInt("enable", c.greet ? 1 : 0);
+    model.SetInt("enable", (c.greet || c.presence) ? 1 : 0);
+    ApplyVision(c.greet || c.presence);
     if (c.greet && model.GetInt("interval", 8) < 60)
         model.SetInt("interval", 90);
 }

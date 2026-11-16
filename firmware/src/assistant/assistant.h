@@ -18,7 +18,14 @@ bool OnWheelClick();
 void OnWheelDoubleClick();
 void WheelTick();
 enum class TouchEvent { kDown, kMove, kUp };
-void OnTouch(TouchEvent event, int x, int y);  // screen pixels; called from the touch task
+void OnTouch(TouchEvent event, int x, int y);
+// Camera person detection (Himax, on device). Present: called for every frame with a person.
+// Arrived: once per visit; returns true when Gemini should also greet out loud.
+void OnPersonPresent();
+bool OnPersonArrived(int count);
+void SetWakeHandler(void (*handler)());  // board: wake the screen
+void SetVisionHandler(void (*handler)(bool enabled));  // board: start/stop on-camera detection
+void ApplyVision(bool enabled);  // screen pixels; called from the touch task
 void InstallFontFallback();  // Korean/Chinese glyphs from the assets partition
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none

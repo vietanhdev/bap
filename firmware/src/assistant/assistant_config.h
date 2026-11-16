@@ -34,6 +34,7 @@ struct Config {
     bool search;     // Google Search grounding (needs a billing-enabled key)
     bool greet;      // greet when the camera sees a person
     bool night_dim;  // dim the screen 22:00-06:00 while resting
+    bool presence;   // camera wakes the screen and the character reacts when someone comes
     std::string language;  // id from assistant.json "languages" (vi, en, ko, zh)
 };
 

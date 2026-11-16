@@ -10,6 +10,7 @@
 #include <esp_timer.h>
 
 #include <cstdlib>
+#include <ctime>
 
 #include <mutex>
 #include <string>
@@ -209,6 +210,55 @@ void OnTouch(TouchEvent event, int x, int y) {
         default:
             break;
     }
+}
+
+namespace {
+void (*g_wake_handler)() = nullptr;
+int64_t g_last_present_us = 0;
+}  // namespace
+
+void SetWakeHandler(void (*handler)()) { g_wake_handler = handler; }
+
+namespace {
+void (*g_vision_handler)(bool) = nullptr;
+}
+void SetVisionHandler(void (*handler)(bool)) { g_vision_handler = handler; }
+void ApplyVision(bool enabled) {
+    if (g_vision_handler != nullptr) g_vision_handler(enabled);
+}
+
+static bool NightNow() {
+    time_t now = time(nullptr);
+    if (now < 1700000000) return false;
+    struct tm t;
+    localtime_r(&now, &t);
+    return t.tm_hour >= 22 || t.tm_hour < 6;
+}
+
+void OnPersonPresent() {
+    int64_t now = esp_timer_get_time();
+    if (now - g_last_present_us < 2000000) return;  // at most every 2 s
+    g_last_present_us = now;
+    if (g_wake_handler != nullptr && !NightNow() && LoadConfig().presence) g_wake_handler();
+}
+
+bool OnPersonArrived(int count) {
+    auto c = LoadConfig();
+    if (NightNow()) return false;  // never wake anyone up at night
+    if (c.presence) {
+        if (g_wake_handler != nullptr) g_wake_handler();
+        Application::GetInstance().Schedule([count]() {
+            auto& app = Application::GetInstance();
+            if (app.GetDeviceState() != kDeviceStateIdle) return;
+            auto display = Board::GetInstance().GetDisplay();
+            display->SetEmotion("happy");
+            std::string hi = Localize("Chào bạn!");
+            if (count > 1) hi = Localize("Chào cả nhà!");
+            display->SetChatMessage("system", hi.c_str());
+        });
+        Giggle();  // back to the resting face after a moment
+    }
+    return c.greet;
 }
 
 }  // namespace assistant
