@@ -125,6 +125,13 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
         cJSON_AddStringToObject(o, "desc", app.desc.c_str());
         cJSON_AddItemToArray(apps, o);
     }
+    cJSON* stations = cJSON_AddArrayToObject(r, "stations");
+    for (auto& st : Stations()) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddStringToObject(o, "id", st.id.c_str());
+        cJSON_AddStringToObject(o, "name", st.name.c_str());
+        cJSON_AddItemToArray(stations, o);
+    }
     cJSON_AddStringToObject(r, "city", c.city.c_str());
     cJSON_AddNumberToObject(r, "lat", c.lat);
     cJSON_AddNumberToObject(r, "lon", c.lon);

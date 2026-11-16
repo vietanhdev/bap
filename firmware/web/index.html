@@ -94,6 +94,11 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
   <button type="button" id="talk">Bật / tắt nghe bằng micro</button>
 </section>
 <section>
+  <h2>Radio</h2>
+  <div class="chips" id="stations"></div>
+  <small>Bấm để phát trên máy. Hoặc nói: "Mở VOV3", "Bật FM Hà Nội".</small>
+</section>
+<section>
   <h2>Ứng dụng</h2>
   <div class="apps" id="apps"></div>
   <small>Cũng có thể mở bằng giọng nói, ví dụ: "Mở đố vui", "Kể chuyện cho bé đi".</small>
@@ -208,7 +213,7 @@ const $=id=>document.getElementById(id);
 const H={'Content-Type':'application/json','X-Bap':'1'};
 const VOICES=['Leda','Aoede','Kore','Zephyr','Callirrhoe','Autonoe','Despina','Erinome','Laomedeia','Sulafat','Puck','Charon','Fenrir','Orus','Achird'];
 const CITIES=[['Hà Nội',21.0285,105.8542],['TP. Hồ Chí Minh',10.7769,106.7009],['Đà Nẵng',16.0544,108.2022],['Hải Phòng',20.8449,106.6881],['Cần Thơ',10.0452,105.7469],['Huế',16.4637,107.5909],['Nha Trang',12.2388,109.1967],['Đà Lạt',11.9404,108.4583],['Vũng Tàu',10.346,107.0843],['Quy Nhơn',13.783,109.2197],['Vinh',18.6796,105.6813],['Hạ Long',20.9712,107.0448]];
-const CHIPS=['Hôm nay âm lịch ngày bao nhiêu?','Thời tiết hôm nay thế nào?','Đọc tin mới nhất','Giá vàng hôm nay','Tỷ giá đô la','Xổ số miền Bắc','Hẹn giờ 5 phút','Kể chuyện cười đi'];
+const CHIPS=['Hôm nay âm lịch ngày bao nhiêu?','Thời tiết hôm nay thế nào?','Đọc tin mới nhất','Giá vàng hôm nay','Tỷ giá đô la','Chứng khoán hôm nay','Tối nay có trận bóng nào?','Xổ số miền Bắc','Hẹn giờ 5 phút','Kể chuyện cười đi'];
 const STATES={idle:'Đang nghỉ',connecting:'Đang thức dậy…',listening:'Đang nghe',speaking:'Đang nói',starting:'Đang khởi động',activating:'Đang khởi động',wifi_configuring:'Đang cài Wi-Fi',upgrading:'Đang cập nhật',notifying:'Đang phát nhạc'};
 let cfg={},chars=[],editing='',lists={notes:[],memory:[]},hooks=[],dirty=false,logKey='';
 
@@ -234,6 +239,7 @@ function showChar(){const c=cur();if(!c)return;$('editTitle').textContent='Tùy 
 function renderChars(){const box=$('chars');box.textContent='';chars.forEach(c=>{const b=el('button');b.type='button';b.setAttribute('aria-pressed',c.id===cfg.character);
   const img=el('img');img.src='/face?c='+c.id+'&e='+(c.id===cfg.character?'happy':'relaxed');img.alt='';img.loading='lazy';
   b.append(img,el('span',c.name),el('small',c.tagline));b.onclick=()=>{stash();cfg.character=c.id;editing=c.id;renderChars();showChar();msg('Bấm Lưu để đổi sang '+c.name+'.')};box.append(b)})}
+function renderStations(){const box=$('stations');box.textContent='';(cfg.stations||[]).forEach(s=>{const b=el('button','📻 '+s.name);b.type='button';b.onclick=()=>post('/api/tool',{name:'radio.mo',arguments:{kenh:s.id}}).then(()=>{msg('Đang mở '+s.name,'ok');setTimeout(status,2500)}).catch(()=>msg('Không mở được kênh này.','bad'));box.append(b)})}
 function renderApps(){const box=$('apps');box.textContent='';(cfg.apps||[]).forEach(a=>{const b=el('button');b.type='button';b.append(el('span',a.title),el('small',a.desc));
   b.onclick=()=>post('/api/app',{id:a.id}).then(()=>msg('Đã mở '+a.title+'.','ok')).catch(()=>msg('Không mở được.','bad'));box.append(b)})}
 async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e){msg('Không tải được cấu hình.','bad');return}
@@ -248,7 +254,7 @@ async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e)
   $('title').textContent=a.name;document.title=a.name;$('avatar').src='/face?c='+cfg.character+'&e=happy';
   $('volV').textContent=$('volume').value;$('briV').textContent=$('brightness').value;
   lists.notes=cfg.notes||[];lists.memory=cfg.memory||[];hooks=cfg.hooks||[];dirty=false;
-  renderList('notes','Chưa có ghi chú. Thử nói: "Ghi chú mua sữa".');renderList('memory','Chưa nhớ gì. Thử nói: "Nhớ giúp mình là mình thích trà sữa".');renderHooks();renderChars();showChar();renderApps()}
+  renderList('notes','Chưa có ghi chú. Thử nói: "Ghi chú mua sữa".');renderList('memory','Chưa nhớ gì. Thử nói: "Nhớ giúp mình là mình thích trà sữa".');renderHooks();renderChars();showChar();renderApps();renderStations()}
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());return r.json()}
 async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,presence:$('presence').checked,morning:$('morning').checked,quiet:$('quiet').checked,language:$('language').value,volume:+$('volume').value,brightness:+$('brightness').value};
   if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
