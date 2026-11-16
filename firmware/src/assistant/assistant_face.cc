@@ -232,6 +232,14 @@ void SetOpa(void* obj, int32_t v) {
     if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v)
         lv_obj_set_style_opa(o, (lv_opa_t)v, 0);
 }
+// Three-level pulse for the listening waves: big anti-aliased arcs over the face are the most
+// expensive thing to redraw, so they step instead of fading smoothly.
+void SetOpaPulse(void* obj, int32_t v) {
+    v = v < 110 ? 60 : (v < 200 ? 150 : 255);
+    auto* o = (lv_obj_t*)obj;
+    if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v)
+        lv_obj_set_style_opa(o, (lv_opa_t)v, 0);
+}
 // Resize around the center; user data holds the resting size.
 void SetSizeCentered(void* obj, int32_t s) {
     auto* o = (lv_obj_t*)obj;
@@ -941,7 +949,7 @@ void BuildExtras(lv_obj_t* p, const Expression& e) {
                 int rad = i == 0 ? gap * 45 / 100 : gap * 88 / 100;
                 lv_obj_t* a = side < 0 ? Arc(p, edge, fy, 2 * rad, 140, 220, 8, c)
                                        : Arc(p, edge, fy, 2 * rad, 320, 40, 8, c);
-                Animate(a, SetOpa, 50, 255, 500, i * 250);
+                Animate(a, SetOpaPulse, 50, 255, 600, i * 300);
             }
         }
     }
