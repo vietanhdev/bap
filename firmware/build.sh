@@ -38,49 +38,9 @@ if mode == "gemini":
     app += ["CONFIG_USE_GEMINI_LIVE=y", f'CONFIG_GEMINI_API_KEY="{key}"',
             f'CONFIG_GEMINI_MODEL="{os.environ.get("GEMINI_MODEL", "gemini-3.8-live")}"',
             f'CONFIG_GEMINI_VOICE="{os.environ.get("GEMINI_VOICE", "Leda")}"',
-            "CONFIG_SEND_WAKE_WORD_DATA=n",
-            # Hardware AES stays on: software AES cost ~70% of one core while Gemini speaks. Its DMA
-            # bounce buffers need internal RAM, which is why cJSON and small mallocs go to PSRAM.
-            # Internal RAM is the scarce resource (~20 KB free): put Wi-Fi/lwIP buffers in PSRAM
-            # and use the room for a larger TCP receive window so Gemini audio arrives smoothly.
-            "CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y",
-            "CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16",
-            "CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4",
-            "CONFIG_ESP_WIFI_RX_BA_WIN=8",
-            "CONFIG_LWIP_TCP_WND_DEFAULT=16384",
-            "CONFIG_LWIP_TCP_SND_BUF_DEFAULT=11520",
-            "CONFIG_LWIP_TCP_RECVMBOX_SIZE=16",
-            # 25 fps is smooth for the faces and leaves more CPU for audio and TLS.
-            "CONFIG_LV_DEF_REFR_PERIOD=40",
-            "CONFIG_FATFS_API_ENCODING_UTF_8=y",  # Vietnamese file names on the SD card
-            "CONFIG_LWIP_MAX_SOCKETS=16",  # web UI + Gemini + music + mDNS ran out at 10
-            "CONFIG_MBEDTLS_ECP_FIXED_POINT_OPTIM=y",  # faster ECDHE/ECDSA in TLS handshakes
-            "CONFIG_ESP_TLS_CLIENT_SESSION_TICKETS=y",  # TicketSsl: resume Gemini TLS sessions
-            # Only MP3/AAC/TS (music, radio) and Opus/OGG (sounds) are used: the rest cost ~300 KB
-            # of a 4 MB OTA slot.
-            "CONFIG_AUDIO_DECODER_G711_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_AMRNB_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_AMRWB_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_FLAC_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_VORBIS_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_ADPCM_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_ALAC_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_SBC_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_LC3_SUPPORT=n",
-            "CONFIG_AUDIO_DECODER_G722_SUPPORT=n",
-            "CONFIG_AUDIO_SIMPLE_DEC_WAV_SUPPORT=n",
-            "CONFIG_AUDIO_SIMPLE_DEC_M4A_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_AAC_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_G711_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_AMRNB_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_AMRWB_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_ADPCM_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_ALAC_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_SBC_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_LC3_SUPPORT=n",
-            "CONFIG_AUDIO_ENCODER_G722_SUPPORT=n",
-            # Requests up to this size always use internal RAM; 1 KB sent every small string there.
-            "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256"]
+            "CONFIG_SEND_WAKE_WORD_DATA=n"]
+    extra = os.path.join(os.path.dirname(src), "sdkconfig.gemini")
+    app += [l.strip() for l in open(extra) if l.strip() and not l.lstrip().startswith("#")]
 else:
     ip = os.environ.get("SERVER_IP", "192.168.0.58")
     app = [l.replace("__OTA_URL__", f"http://{ip}:8003/xiaozhi/ota/") for l in app]
