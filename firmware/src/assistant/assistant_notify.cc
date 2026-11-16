@@ -3,9 +3,9 @@
 // "speak" (optional) is announced by the active character.
 #include <esp_http_server.h>
 
-#include "assistant_auth.h"
 #include <esp_timer.h>
 #include <cJSON.h>
+#include "assistant_auth.h"
 
 #include <mutex>
 #include <string>

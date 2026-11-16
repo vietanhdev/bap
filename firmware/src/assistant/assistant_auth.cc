@@ -52,14 +52,17 @@ std::string Derive(const std::string& salt, const std::string& password) {
 }
 
 bool SameString(const std::string& a, const std::string& b) {  // constant time
-    if (a.size() != b.size()) return false;
+    if (a.size() != b.size())
+        return false;
     unsigned char diff = 0;
-    for (size_t i = 0; i < a.size(); ++i) diff |= a[i] ^ b[i];
+    for (size_t i = 0; i < a.size(); ++i)
+        diff |= a[i] ^ b[i];
     return diff == 0;
 }
 
 void LoadLocked() {
-    if (g_loaded) return;
+    if (g_loaded)
+        return;
     Settings s("assistant", false);
     g_salt = s.GetString("web_salt");
     g_hash = s.GetString("web_hash");
@@ -71,21 +74,26 @@ bool Authorized(httpd_req_t* req) {
     {
         std::lock_guard<std::mutex> lock(g_mutex);
         LoadLocked();
-        if (g_hash.empty()) return true;
+        if (g_hash.empty())
+            return true;
         salt = g_salt;
         hash = g_hash;
     }
     char header[160];
-    if (httpd_req_get_hdr_value_str(req, "Authorization", header, sizeof(header)) != ESP_OK) return false;
-    if (strncmp(header, "Basic ", 6) != 0) return false;
+    if (httpd_req_get_hdr_value_str(req, "Authorization", header, sizeof(header)) != ESP_OK)
+        return false;
+    if (strncmp(header, "Basic ", 6) != 0)
+        return false;
     unsigned char decoded[120];
     size_t len = 0;
-    if (mbedtls_base64_decode(decoded, sizeof(decoded) - 1, &len, reinterpret_cast<unsigned char*>(header + 6),
+    if (mbedtls_base64_decode(decoded, sizeof(decoded) - 1, &len,
+                              reinterpret_cast<unsigned char*>(header + 6),
                               strlen(header + 6)) != 0)
         return false;
     std::string pair(reinterpret_cast<char*>(decoded), len);
     auto colon = pair.find(':');
-    if (colon == std::string::npos) return false;
+    if (colon == std::string::npos)
+        return false;
     return SameString(Derive(salt, pair.substr(colon + 1)), hash);
 }
 

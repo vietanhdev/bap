@@ -1,39 +1,39 @@
 // Settings UI served by the device itself on port 80 (LAN only, no cloud).
-#include <cJSON.h>
+#include <esp_app_desc.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
+#include <esp_mac.h>
 #include <esp_netif.h>
+#include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
-#include <esp_mac.h>
+#include <cJSON.h>
 #include <mdns.h>
-#include <esp_ota_ops.h>
-#include <esp_app_desc.h>
 #include <cstring>
 
 #include <string>
 
-#include "application.h"
-#include "board.h"
-#include "assistant.h"
-#include "assistant_auth.h"
-#include "assistant_config.h"
-#include "assistant_menu.h"
-#include "assistant_face.h"
-#include "web_page.h"
-#include "boards/common/backlight.h"
-#include "audio/audio_codec.h"
-#include "settings.h"
-#include "assets.h"
-#include "protocols/gemini_live_protocol.h"
-#include "ssid_manager.h"
-#include "wifi_manager.h"
-#include "boards/common/wifi_board.h"
-#include "display/display.h"
-#include "mcp_server.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <memory>
+#include "application.h"
+#include "assets.h"
+#include "assistant.h"
+#include "assistant_auth.h"
+#include "assistant_config.h"
+#include "assistant_face.h"
+#include "assistant_menu.h"
+#include "audio/audio_codec.h"
+#include "board.h"
+#include "boards/common/backlight.h"
+#include "boards/common/wifi_board.h"
+#include "display/display.h"
+#include "mcp_server.h"
+#include "protocols/gemini_live_protocol.h"
+#include "settings.h"
+#include "ssid_manager.h"
+#include "web_page.h"
+#include "wifi_manager.h"
 
 #define TAG "AssistantWeb"
 
@@ -50,12 +50,14 @@ esp_err_t SendJson(httpd_req_t* req, cJSON* root) {
 }
 
 cJSON* ReadJson(httpd_req_t* req) {
-    if (req->content_len == 0 || req->content_len > 8192) return nullptr;
+    if (req->content_len == 0 || req->content_len > 8192)
+        return nullptr;
     std::string body(req->content_len, '\0');
     size_t got = 0;
     while (got < body.size()) {
         int n = httpd_req_recv(req, body.data() + got, body.size() - got);
-        if (n <= 0) return nullptr;
+        if (n <= 0)
+            return nullptr;
         got += n;
     }
     return cJSON_Parse(body.c_str());
@@ -73,7 +75,8 @@ esp_err_t Reject(httpd_req_t* req, const char* msg) {
 }
 
 std::string MaskKey(const std::string& key) {
-    if (key.size() < 10) return key.empty() ? "" : "••••";
+    if (key.size() < 10)
+        return key.empty() ? "" : "••••";
     return key.substr(0, 4) + "••••••••" + key.substr(key.size() - 4);
 }
 
@@ -140,49 +143,60 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
     }
     cJSON_AddItemToObject(r, "hooks", cJSON_Parse(LoadList("hooks").c_str()));
     cJSON_AddNumberToObject(r, "volume", board.GetAudioCodec()->output_volume());
-    if (auto bl = board.GetBacklight()) cJSON_AddNumberToObject(r, "brightness", bl->brightness());
+    if (auto bl = board.GetBacklight())
+        cJSON_AddNumberToObject(r, "brightness", bl->brightness());
     cJSON_AddItemToObject(r, "notes", cJSON_Parse(LoadList("notes").c_str()));
     cJSON_AddItemToObject(r, "memory", cJSON_Parse(LoadList("memory").c_str()));
     return SendJson(req, r);
 }
 
 esp_err_t HandlePostConfig(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
-    if (in == nullptr) return Reject(req, "bad json");
+    if (in == nullptr)
+        return Reject(req, "bad json");
     auto c = LoadConfig();
     auto str = [in](const char* k, std::string& dst, size_t max) {
         auto v = cJSON_GetObjectItem(in, k);
-        if (cJSON_IsString(v) && strlen(v->valuestring) <= max) dst = v->valuestring;
+        if (cJSON_IsString(v) && strlen(v->valuestring) <= max)
+            dst = v->valuestring;
     };
     std::string new_key;
     str("api_key", new_key, 100);
-    if (!new_key.empty()) c.api_key = new_key;  // empty = keep the current key
-    if (auto pw = cJSON_GetObjectItem(in, "web_password"); cJSON_IsString(pw) && strlen(pw->valuestring) <= 64) {
+    if (!new_key.empty())
+        c.api_key = new_key;  // empty = keep the current key
+    if (auto pw = cJSON_GetObjectItem(in, "web_password");
+        cJSON_IsString(pw) && strlen(pw->valuestring) <= 64) {
         SetWebPassword(pw->valuestring);  // "" removes it
     }
     std::string new_paid;
     str("api_key_paid", new_paid, 100);
-    if (new_paid == "-") c.api_key_paid.clear();  // "-" = remove the paid key
-    else if (!new_paid.empty()) c.api_key_paid = new_paid;
+    if (new_paid == "-")
+        c.api_key_paid.clear();  // "-" = remove the paid key
+    else if (!new_paid.empty())
+        c.api_key_paid = new_paid;
     str("model", c.model, 80);
     std::string want_character;
     str("character", want_character, 20);
     for (auto& ch : Characters()) {
-        if (ch.id == want_character) c.character = ch.id;
+        if (ch.id == want_character)
+            c.character = ch.id;
     }
     // Per-character overrides: [{"id","name","voice","persona"}]; a value equal to the built-in
     // one (or empty) clears the override.
     cJSON* item = nullptr;
-    cJSON_ArrayForEach(item, cJSON_GetObjectItem(in, "characters")) {
+    cJSON_ArrayForEach (item, cJSON_GetObjectItem(in, "characters")) {
         auto get = [item](const char* k) {
             auto v = cJSON_GetObjectItem(item, k);
             return std::string(cJSON_IsString(v) ? v->valuestring : "");
         };
         for (auto& ch : Characters()) {
-            if (ch.id != get("id")) continue;
+            if (ch.id != get("id"))
+                continue;
             std::string name = get("name"), voice = get("voice"), persona = get("persona");
-            if (name.size() > 40 || voice.size() > 40 || persona.size() > 3000) continue;
+            if (name.size() > 40 || voice.size() > 40 || persona.size() > 3000)
+                continue;
             SaveCharacterOverride(ch.id, name == ch.default_name ? "" : name,
                                   voice == ch.default_voice ? "" : voice,
                                   persona == ch.default_persona ? "" : persona);
@@ -190,20 +204,29 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
     }
     str("city", c.city, 60);
     auto num = [in](const char* k) { return cJSON_GetObjectItem(in, k); };
-    if (cJSON_IsNumber(num("lat"))) c.lat = num("lat")->valuedouble;
-    if (cJSON_IsNumber(num("lon"))) c.lon = num("lon")->valuedouble;
-    if (cJSON_IsNumber(num("idle_s"))) c.idle_s = std::max(10, std::min(300, num("idle_s")->valueint));
-    if (cJSON_IsBool(num("search"))) c.search = cJSON_IsTrue(num("search"));
-    if (cJSON_IsBool(num("greet"))) c.greet = cJSON_IsTrue(num("greet"));
-    if (cJSON_IsBool(num("night_dim"))) c.night_dim = cJSON_IsTrue(num("night_dim"));
-    if (cJSON_IsBool(num("presence"))) c.presence = cJSON_IsTrue(num("presence"));
+    if (cJSON_IsNumber(num("lat")))
+        c.lat = num("lat")->valuedouble;
+    if (cJSON_IsNumber(num("lon")))
+        c.lon = num("lon")->valuedouble;
+    if (cJSON_IsNumber(num("idle_s")))
+        c.idle_s = std::max(10, std::min(300, num("idle_s")->valueint));
+    if (cJSON_IsBool(num("search")))
+        c.search = cJSON_IsTrue(num("search"));
+    if (cJSON_IsBool(num("greet")))
+        c.greet = cJSON_IsTrue(num("greet"));
+    if (cJSON_IsBool(num("night_dim")))
+        c.night_dim = cJSON_IsTrue(num("night_dim"));
+    if (cJSON_IsBool(num("presence")))
+        c.presence = cJSON_IsTrue(num("presence"));
     if (auto l = cJSON_GetObjectItem(in, "language"); cJSON_IsString(l)) {
         for (auto& lang : Languages())
-            if (lang.id == l->valuestring) c.language = lang.id;
+            if (lang.id == l->valuestring)
+                c.language = lang.id;
     }
     if (cJSON_IsArray(num("hooks")) && cJSON_GetArraySize(num("hooks")) <= 8) {
         char* t = cJSON_PrintUnformatted(num("hooks"));
-        if (strlen(t) < 3000) SaveList("hooks", t);
+        if (strlen(t) < 3000)
+            SaveList("hooks", t);
         cJSON_free(t);
     }
     SaveConfig(c);
@@ -213,7 +236,8 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
         board.GetAudioCodec()->SetOutputVolume(std::max(0, std::min(100, num("volume")->valueint)));
     }
     if (cJSON_IsNumber(num("brightness"))) {
-        if (auto bl = board.GetBacklight()) bl->SetBrightness(std::max(5, std::min(100, num("brightness")->valueint)), true);
+        if (auto bl = board.GetBacklight())
+            bl->SetBrightness(std::max(5, std::min(100, num("brightness")->valueint)), true);
     }
     if (cJSON_IsArray(num("notes"))) {
         char* t = cJSON_PrintUnformatted(num("notes"));
@@ -233,8 +257,9 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
 
 esp_err_t HandleStatus(httpd_req_t* req) {
     auto& board = Board::GetInstance();
-    static const char* states[] = {"unknown", "starting", "wifi_configuring", "idle", "connecting", "listening",
-                                   "speaking", "notifying", "upgrading", "activating", "audio_testing", "fatal_error"};
+    static const char* states[] = {"unknown",    "starting",   "wifi_configuring", "idle",
+                                   "connecting", "listening",  "speaking",         "notifying",
+                                   "upgrading",  "activating", "audio_testing",    "fatal_error"};
     int st = Application::GetInstance().GetDeviceState();
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "state", st >= 0 && st < 12 ? states[st] : "unknown");
@@ -248,7 +273,8 @@ esp_err_t HandleStatus(httpd_req_t* req) {
 }
 
 esp_err_t HandleSay(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
     auto text = cJSON_GetObjectItem(in, "text");
     if (!cJSON_IsString(text) || text->valuestring[0] == '\0') {
@@ -263,7 +289,8 @@ esp_err_t HandleSay(httpd_req_t* req) {
 }
 
 esp_err_t HandleAction(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
     auto name = cJSON_GetObjectItem(in, "action");
     std::string action = cJSON_IsString(name) ? name->valuestring : "";
@@ -293,7 +320,8 @@ esp_err_t HandleAction(httpd_req_t* req) {
 
 // Call a device tool directly (same tools the assistant uses). Handy for testing and automation.
 esp_err_t HandleTool(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
     auto name = cJSON_GetObjectItem(in, "name");
     if (!cJSON_IsString(name)) {
@@ -307,14 +335,20 @@ esp_err_t HandleTool(httpd_req_t* req) {
     cJSON* params = cJSON_AddObjectToObject(rpc, "params");
     cJSON_AddStringToObject(params, "name", name->valuestring);
     auto args = cJSON_GetObjectItem(in, "arguments");
-    cJSON_AddItemToObject(params, "arguments", cJSON_IsObject(args) ? cJSON_Duplicate(args, true) : cJSON_CreateObject());
+    cJSON_AddItemToObject(
+        params, "arguments",
+        cJSON_IsObject(args) ? cJSON_Duplicate(args, true) : cJSON_CreateObject());
     char* txt = cJSON_PrintUnformatted(rpc);
     std::string request(txt);
     cJSON_free(txt);
     cJSON_Delete(rpc);
     cJSON_Delete(in);
 
-    struct Pending { SemaphoreHandle_t done = xSemaphoreCreateBinary(); std::string reply; ~Pending() { vSemaphoreDelete(done); } };
+    struct Pending {
+        SemaphoreHandle_t done = xSemaphoreCreateBinary();
+        std::string reply;
+        ~Pending() { vSemaphoreDelete(done); }
+    };
     auto pending = std::make_shared<Pending>();
     McpServer::GetInstance().ParseMessage(request, [pending](const std::string& payload) {
         pending->reply = payload;
@@ -329,7 +363,8 @@ esp_err_t HandleTool(httpd_req_t* req) {
 
 // Firmware update: the browser uploads xiaozhi.bin as the raw request body.
 esp_err_t HandleOta(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     const esp_partition_t* part = esp_ota_get_next_update_partition(nullptr);
     if (part == nullptr || req->content_len < 100000 || req->content_len > part->size) {
         return Reject(req, "File không hợp lệ");
@@ -337,9 +372,11 @@ esp_err_t HandleOta(httpd_req_t* req) {
     esp_ota_handle_t handle = 0;
     // Erase exactly the image size up front (in yielding chunks) instead of sector-by-sector
     // between network reads: roughly halves the upload time.
-    if (esp_ota_begin(part, req->content_len, &handle) != ESP_OK) return Reject(req, "Không bắt đầu được");
+    if (esp_ota_begin(part, req->content_len, &handle) != ESP_OK)
+        return Reject(req, "Không bắt đầu được");
     ESP_LOGI(TAG, "OTA upload: %u bytes", (unsigned)req->content_len);
-    Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);  // modem sleep drops big uploads
+    Board::GetInstance().SetPowerSaveLevel(
+        PowerSaveLevel::PERFORMANCE);  // modem sleep drops big uploads
     // Flash writes stall the other core; the wake-word engine then backs up and starves Wi-Fi.
     // Pause it for the upload (the device reboots afterwards anyway).
     auto& audio = Application::GetInstance().GetAudioService();
@@ -350,7 +387,8 @@ esp_err_t HandleOta(httpd_req_t* req) {
     size_t remaining = req->content_len;
     while (remaining > 0) {
         int n = httpd_req_recv(req, buf.data(), std::min(buf.size(), remaining));
-        if (n == HTTPD_SOCK_ERR_TIMEOUT) continue;
+        if (n == HTTPD_SOCK_ERR_TIMEOUT)
+            continue;
         if (n <= 0 || esp_ota_write(handle, buf.data(), n) != ESP_OK) {
             esp_ota_abort(handle);
             Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
@@ -398,9 +436,11 @@ esp_err_t HandleFace(httpd_req_t* req) {
 // The answer carries the LVGL heap usage measured after the previous request.
 esp_err_t HandleFacePreview(httpd_req_t* req) {
     static volatile uint32_t lv_used = 0, lv_free = 0;
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
-    if (in == nullptr) return Reject(req, "bad json");
+    if (in == nullptr)
+        return Reject(req, "bad json");
     auto em = cJSON_GetObjectItem(in, "emotion");
     auto talk = cJSON_GetObjectItem(in, "talking");
     std::string emotion = cJSON_IsString(em) && strlen(em->valuestring) < 24 ? em->valuestring : "";
@@ -408,9 +448,11 @@ esp_err_t HandleFacePreview(httpd_req_t* req) {
     cJSON_Delete(in);
     Application::GetInstance().Schedule([emotion, talking]() {
         auto display = Board::GetInstance().GetDisplay();
-        if (!emotion.empty()) display->SetEmotion(emotion.c_str());
+        if (!emotion.empty())
+            display->SetEmotion(emotion.c_str());
         DisplayLockGuard lock(display);
-        if (talking >= 0) FaceSetTalking(talking == 1);
+        if (talking >= 0)
+            FaceSetTalking(talking == 1);
         lv_mem_monitor_t mon;
         lv_mem_monitor(&mon);
         lv_used = mon.total_size - mon.free_size;
@@ -437,14 +479,17 @@ esp_err_t HandleScreen(httpd_req_t* req) {
 }
 
 esp_err_t HandleApp(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
     auto id = cJSON_GetObjectItem(in, "id");
     std::string want = cJSON_IsString(id) ? id->valuestring : "";
     cJSON_Delete(in);
     for (auto& app : Apps()) {
-        if (app.id != want) continue;
-        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + app.title + "\". " + app.prompt + "</hệ thống>");
+        if (app.id != want)
+            continue;
+        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + app.title + "\". " + app.prompt +
+            "</hệ thống>");
         return httpd_resp_sendstr(req, "{\"ok\":true}");
     }
     return Reject(req, "unknown app");
@@ -459,13 +504,15 @@ esp_err_t HandleGetWifi(httpd_req_t* req) {
     cJSON_AddStringToObject(r, "ip", wifi.GetIpAddress().c_str());
     cJSON* list = cJSON_AddArrayToObject(r, "saved");
     for (auto& item : SsidManager::GetInstance().GetSsidList()) {
-        cJSON_AddItemToArray(list, cJSON_CreateString(item.ssid.c_str()));  // never return passwords
+        cJSON_AddItemToArray(list,
+                             cJSON_CreateString(item.ssid.c_str()));  // never return passwords
     }
     return SendJson(req, r);
 }
 
 esp_err_t HandlePostWifi(httpd_req_t* req) {
-    if (!SameOrigin(req)) return Reject(req, "missing header");
+    if (!SameOrigin(req))
+        return Reject(req, "missing header");
     cJSON* in = ReadJson(req);
     auto action = cJSON_GetObjectItem(in, "action");
     auto ssid = cJSON_GetObjectItem(in, "ssid");
@@ -474,7 +521,8 @@ esp_err_t HandlePostWifi(httpd_req_t* req) {
     std::string act = cJSON_IsString(action) ? action->valuestring : "";
     auto& ssids = SsidManager::GetInstance();
     esp_err_t result;
-    if (act == "add" && cJSON_IsString(ssid) && strlen(ssid->valuestring) > 0 && strlen(ssid->valuestring) <= 32) {
+    if (act == "add" && cJSON_IsString(ssid) && strlen(ssid->valuestring) > 0 &&
+        strlen(ssid->valuestring) <= 32) {
         std::string pass = cJSON_IsString(password) ? password->valuestring : "";
         if (pass.size() > 64 || (!pass.empty() && pass.size() < 8)) {
             cJSON_Delete(in);
@@ -505,7 +553,8 @@ esp_err_t HandlePostWifi(httpd_req_t* req) {
 
 void StartWebServer() {
     static httpd_handle_t server = nullptr;
-    if (server != nullptr) return;
+    if (server != nullptr)
+        return;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;
     config.max_uri_handlers = 24;
@@ -520,7 +569,10 @@ void StartWebServer() {
     static const httpd_uri_t routes[] = {
         {.uri = "/", .method = HTTP_GET, .handler = HandleIndex, .user_ctx = nullptr},
         {.uri = "/api/config", .method = HTTP_GET, .handler = HandleGetConfig, .user_ctx = nullptr},
-        {.uri = "/api/config", .method = HTTP_POST, .handler = HandlePostConfig, .user_ctx = nullptr},
+        {.uri = "/api/config",
+         .method = HTTP_POST,
+         .handler = HandlePostConfig,
+         .user_ctx = nullptr},
         {.uri = "/api/status", .method = HTTP_GET, .handler = HandleStatus, .user_ctx = nullptr},
         {.uri = "/api/say", .method = HTTP_POST, .handler = HandleSay, .user_ctx = nullptr},
         {.uri = "/api/action", .method = HTTP_POST, .handler = HandleAction, .user_ctx = nullptr},
@@ -529,11 +581,15 @@ void StartWebServer() {
         {.uri = "/api/app", .method = HTTP_POST, .handler = HandleApp, .user_ctx = nullptr},
         {.uri = "/face", .method = HTTP_GET, .handler = HandleFace, .user_ctx = nullptr},
         {.uri = "/screen.jpg", .method = HTTP_GET, .handler = HandleScreen, .user_ctx = nullptr},
-        {.uri = "/api/face", .method = HTTP_POST, .handler = HandleFacePreview, .user_ctx = nullptr},
+        {.uri = "/api/face",
+         .method = HTTP_POST,
+         .handler = HandleFacePreview,
+         .user_ctx = nullptr},
         {.uri = "/api/wifi", .method = HTTP_GET, .handler = HandleGetWifi, .user_ctx = nullptr},
         {.uri = "/api/wifi", .method = HTTP_POST, .handler = HandlePostWifi, .user_ctx = nullptr},
     };
-    for (auto& r : routes) RegisterGuarded(server, r);
+    for (auto& r : routes)
+        RegisterGuarded(server, r);
     RegisterNotifyRoutes(server);
     RegisterPerfRoutes(server);
     // http://bap.local on networks and devices that support mDNS

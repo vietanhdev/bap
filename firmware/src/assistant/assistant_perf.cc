@@ -1,14 +1,14 @@
 // GET /api/perf: per-task CPU share over one second, plus heap figures. Used to find what starves
 // the audio pipeline (choppy voice, mic ring buffer overflows).
-#include <cJSON.h>
 #include <esp_heap_caps.h>
 #include <esp_http_server.h>
 #include <esp_timer.h>
 #include <esp_wifi.h>
+#include <cJSON.h>
 
-#include "assistant_auth.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "assistant_auth.h"
 
 #include <algorithm>
 #include <map>
@@ -23,7 +23,8 @@ std::map<std::string, uint32_t> Snapshot(uint32_t* total) {
     UBaseType_t n = uxTaskGetNumberOfTasks() + 4;
     std::vector<TaskStatus_t> tasks(n);
     n = uxTaskGetSystemState(tasks.data(), n, total);
-    for (UBaseType_t i = 0; i < n; ++i) out[tasks[i].pcTaskName] += tasks[i].ulRunTimeCounter;
+    for (UBaseType_t i = 0; i < n; ++i)
+        out[tasks[i].pcTaskName] += tasks[i].ulRunTimeCounter;
     return out;
 }
 
@@ -37,22 +38,27 @@ esp_err_t HandlePerf(httpd_req_t* req) {
     for (auto& [name, run] : b) {
         auto it = a.find(name);
         uint32_t delta = run - (it == a.end() ? 0 : it->second);
-        if (window > 0) rows.emplace_back(100.0 * delta / window, name);
+        if (window > 0)
+            rows.emplace_back(100.0 * delta / window, name);
     }
     std::sort(rows.rbegin(), rows.rend());
     cJSON* r = cJSON_CreateObject();
     cJSON* cpu = cJSON_AddObjectToObject(r, "cpu_percent");
     for (auto& [pct, name] : rows) {
-        if (pct < 0.2) break;
+        if (pct < 0.2)
+            break;
         cJSON_AddNumberToObject(cpu, name.c_str(), (int)(pct * 10) / 10.0);
     }
     cJSON_AddNumberToObject(r, "free_internal", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-    cJSON_AddNumberToObject(r, "min_free_internal", heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
-    cJSON_AddNumberToObject(r, "largest_internal", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    cJSON_AddNumberToObject(r, "min_free_internal",
+                            heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+    cJSON_AddNumberToObject(r, "largest_internal",
+                            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "free_psram", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
     wifi_ap_record_t ap = {};
-    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) cJSON_AddNumberToObject(r, "rssi", ap.rssi);
+    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK)
+        cJSON_AddNumberToObject(r, "rssi", ap.rssi);
     char* txt = cJSON_PrintUnformatted(r);
     httpd_resp_set_type(req, "application/json");
     esp_err_t err = httpd_resp_sendstr(req, txt);

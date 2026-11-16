@@ -89,10 +89,12 @@ lv_obj_t* Label(lv_obj_t* parent, const lv_font_t* font, uint32_t color, int wid
 }
 
 void BuildOverlay() {
-    if (g_overlay != nullptr) return;
+    if (g_overlay != nullptr)
+        return;
     const int w = LV_HOR_RES, h = LV_VER_RES;
     const lv_font_t* big = lv_obj_get_style_text_font(lv_screen_active(), LV_PART_MAIN);
-    g_overlay = lv_obj_create(lv_screen_active());  // on the screen (not layer_top) so /screen.jpg sees it
+    g_overlay =
+        lv_obj_create(lv_screen_active());  // on the screen (not layer_top) so /screen.jpg sees it
     lv_obj_remove_style_all(g_overlay);
     lv_obj_set_size(g_overlay, w, h);
     lv_obj_set_style_bg_color(g_overlay, lv_color_hex(kBg), LV_PART_MAIN);
@@ -136,7 +138,7 @@ void BuildOverlay() {
     g_counter = Label(g_overlay, &font_chat_24, kDim, w * 30 / 100);
     lv_obj_align(g_counter, LV_ALIGN_TOP_MID, 0, h * 13 / 100 + 30);
     g_hint = Label(g_overlay, &font_chat_24, kDim, w * 68 / 100);
-    lv_obj_set_height(g_hint, font_chat_24.line_height);  // one line, never wraps
+    lv_obj_set_height(g_hint, font_chat_24.line_height);          // one line, never wraps
     lv_obj_align(g_hint, LV_ALIGN_BOTTOM_MID, 0, -h * 15 / 100);  // inside the arc's open end
 
     g_info = Label(g_overlay, &font_chat_24, kText, w * 70 / 100);
@@ -207,7 +209,8 @@ void Render() {
     lv_label_set_text(g_next, n > 1 ? at(level.index + 1).c_str() : "");
     lv_label_set_text_fmt(g_counter, "%d / %d", level.index + 1, n);
     uint32_t accent = item.danger ? kDanger : kAccent;
-    lv_obj_set_style_text_color(g_current, lv_color_hex(item.danger ? kDanger : kText), LV_PART_MAIN);
+    lv_obj_set_style_text_color(g_current, lv_color_hex(item.danger ? kDanger : kText),
+                                LV_PART_MAIN);
     lv_obj_set_style_border_color(g_pill, lv_color_hex(accent), LV_PART_MAIN);
     // One segment of the rim per item; the lit one is the selection.
     int seg = kArcSweep / n;
@@ -268,8 +271,9 @@ std::string DeviceInfo() {
     bool charging = false, discharging = false;
     Board::GetInstance().GetBatteryLevel(battery, charging, discharging);
     char buf[300];
-    snprintf(buf, sizeof(buf), "bap-%02x%02x.local\n%s\nWi-Fi: %s\nPin %d%%%s · bản %s", mac[4], mac[5],
-             wifi.GetIpAddress().c_str(), wifi.IsConnected() ? wifi.GetSsid().c_str() : "chưa nối", battery,
+    snprintf(buf, sizeof(buf), "bap-%02x%02x.local\n%s\nWi-Fi: %s\nPin %d%%%s · bản %s", mac[4],
+             mac[5], wifi.GetIpAddress().c_str(),
+             wifi.IsConnected() ? wifi.GetSsid().c_str() : "chưa nối", battery,
              charging ? " (đang sạc)" : "", esp_app_get_description()->version);
     return buf;
 }
@@ -283,11 +287,12 @@ Level Slider(const std::string& title, std::function<int()> get, std::function<v
 
 Level SettingsMenu() {
     Level m{.title = "Thiết lập"};
-    m.items.push_back({"Âm lượng", []() {
-                           Push(Slider(
-                               "Âm lượng", []() { return Board::GetInstance().GetAudioCodec()->output_volume(); },
-                               [](int v) { Board::GetInstance().GetAudioCodec()->SetOutputVolume(v); }));
-                       }});
+    m.items.push_back(
+        {"Âm lượng", []() {
+             Push(Slider(
+                 "Âm lượng", []() { return Board::GetInstance().GetAudioCodec()->output_volume(); },
+                 [](int v) { Board::GetInstance().GetAudioCodec()->SetOutputVolume(v); }));
+         }});
     m.items.push_back({"Độ sáng", []() {
                            Push(Slider(
                                "Độ sáng",
@@ -296,7 +301,8 @@ Level SettingsMenu() {
                                    return bl ? (int)bl->brightness() : 0;
                                },
                                [](int v) {
-                                   if (auto bl = Board::GetInstance().GetBacklight()) bl->SetBrightness(v, true);
+                                   if (auto bl = Board::GetInstance().GetBacklight())
+                                       bl->SetBrightness(v, true);
                                }));
                        }});
     m.items.push_back({"Ngôn ngữ", []() {
@@ -304,13 +310,15 @@ Level SettingsMenu() {
                            std::string active = LoadConfig().language;
                            int i = 0;
                            for (auto& lang : Languages()) {
-                               if (lang.id == active) l.index = i;
+                               if (lang.id == active)
+                                   l.index = i;
                                ++i;
                                l.items.push_back({lang.name, Then([id = lang.id]() {
                                                       auto c = LoadConfig();
                                                       c.language = id;
                                                       SaveConfig(c);
-                                                      Board::GetInstance().GetDisplay()->SetEmotion("happy");
+                                                      Board::GetInstance().GetDisplay()->SetEmotion(
+                                                          "happy");
                                                   })});
                            }
                            Push(std::move(l));
@@ -328,9 +336,9 @@ Level SettingsMenu() {
                                static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode();
                            }));
                        }});
-    m.items.push_back({"Khởi động lại", []() {
-                           Push(Confirm("Khởi động lại?", []() { Application::GetInstance().Reboot(); }));
-                       }});
+    m.items.push_back(
+        {"Khởi động lại",
+         []() { Push(Confirm("Khởi động lại?", []() { Application::GetInstance().Reboot(); })); }});
     return m;
 }
 
@@ -342,36 +350,44 @@ Level MainMenu() {
                            std::string active = LoadConfig().character;
                            int i = 0;
                            for (auto& c : Characters()) {
-                               if (c.id == active) l.index = i;
+                               if (c.id == active)
+                                   l.index = i;
                                ++i;
                                l.items.push_back({c.name, Then([id = c.id]() {
                                                       SetActiveCharacter(id);
-                                                      Board::GetInstance().GetDisplay()->SetEmotion("happy");
+                                                      Board::GetInstance().GetDisplay()->SetEmotion(
+                                                          "happy");
                                                   })});
                            }
-                           if (!l.items.empty()) Push(std::move(l));
+                           if (!l.items.empty())
+                               Push(std::move(l));
                        }});
     m.items.push_back({"Ứng dụng", []() {
                            Level l{.title = "Ứng dụng"};
                            for (auto& a : Apps()) {
-                               l.items.push_back({a.title, Then([title = a.title, prompt = a.prompt]() {
-                                                      Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + title +
-                                                          "\". " + prompt + "</hệ thống>");
-                                                  })});
+                               l.items.push_back(
+                                   {a.title, Then([title = a.title, prompt = a.prompt]() {
+                                        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + title +
+                                            "\". " + prompt + "</hệ thống>");
+                                    })});
                            }
-                           if (!l.items.empty()) Push(std::move(l));
+                           if (!l.items.empty())
+                               Push(std::move(l));
                        }});
     m.items.push_back({"Radio", []() {
                            Level l{.title = "Radio"};
                            for (auto& st : Stations()) {
                                l.items.push_back({st.name, Then([url = st.url, name = st.name]() {
-                                                      Application::GetInstance().PlayStream("radio:" + url, name);
+                                                      Application::GetInstance().PlayStream(
+                                                          "radio:" + url, name);
                                                   })});
                            }
-                           if (!l.items.empty()) Push(std::move(l));
+                           if (!l.items.empty())
+                               Push(std::move(l));
                        }});
     m.items.push_back({"Thiết lập", []() { Push(SettingsMenu()); }});
-    m.items.push_back({"Tắt máy", []() {
+    m.items.push_back({"Tắt máy",
+                       []() {
                            Push(Confirm("Tắt máy?", []() {
                                if (!g_power_off || !g_power_off()) {
                                    Board::GetInstance().GetDisplay()->ShowNotification(
@@ -391,14 +407,16 @@ bool MenuIsOpen() {
 }
 
 void MenuOpen() {
-    if (MenuIsOpen()) return;
+    if (MenuIsOpen())
+        return;
     Push(MainMenu());
 }
 
 void MenuBack() {
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
-        if (!g_stack.empty()) g_stack.pop_back();
+        if (!g_stack.empty())
+            g_stack.pop_back();
         g_last_us = esp_timer_get_time();
     }
     Render();
@@ -407,7 +425,8 @@ void MenuBack() {
 void MenuRotate(bool forward) {
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
-        if (g_stack.empty()) return;
+        if (g_stack.empty())
+            return;
         g_last_us = esp_timer_get_time();
         Level& level = g_stack.back();
         if (level.get_value) {
@@ -426,7 +445,8 @@ void MenuClick() {
     std::function<void()> action;
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
-        if (g_stack.empty()) return;
+        if (g_stack.empty())
+            return;
         g_last_us = esp_timer_get_time();
         Level& level = g_stack.back();
         if (level.get_value || !level.info.empty()) {
@@ -435,7 +455,8 @@ void MenuClick() {
             action = level.items[level.index].on_click;
         }
     }
-    if (action) action();
+    if (action)
+        action();
 }
 
 void MenuTick() {
@@ -444,7 +465,8 @@ void MenuTick() {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
         expired = !g_stack.empty() && esp_timer_get_time() - g_last_us > kIdleCloseUs;
     }
-    if (expired) CloseAll();
+    if (expired)
+        CloseAll();
 }
 
 void SetPowerOffHandler(std::function<bool()> handler) { g_power_off = std::move(handler); }

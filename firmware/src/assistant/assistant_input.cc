@@ -176,16 +176,22 @@ void OnTouch(TouchEvent event, int x, int y) {
         return;
     }
     // kUp
-    if (t.held) return;
+    if (t.held)
+        return;
     ESP_LOGI("Touch", "up at %d,%d (moved %d,%d)", x, y, dx, dy);
     const bool vertical = abs(dy) > kSwipe && abs(dy) > abs(dx);
     const bool sideways = abs(dx) > kSwipe && abs(dx) > abs(dy);
     if (MenuIsOpen()) {
-        if (vertical) MenuRotate(dy < 0);
-        else if (sideways) MenuRotate(dx < 0);
-        else if (still && y < 150) MenuRotate(false);  // tap the faded item above: select it
-        else if (still && y > 262) MenuRotate(true);   // ... or the one below
-        else if (still) MenuClick();                    // tap the highlighted pill: open
+        if (vertical)
+            MenuRotate(dy < 0);
+        else if (sideways)
+            MenuRotate(dx < 0);
+        else if (still && y < 150)
+            MenuRotate(false);  // tap the faded item above: select it
+        else if (still && y > 262)
+            MenuRotate(true);  // ... or the one below
+        else if (still)
+            MenuClick();  // tap the highlighted pill: open
         return;
     }
     switch (app.GetDeviceState()) {
@@ -204,18 +210,21 @@ void OnTouch(TouchEvent event, int x, int y) {
             break;
         case kDeviceStateListening:
         case kDeviceStateSpeaking:
-            if (still) app.Schedule([]() { Application::GetInstance().ToggleChatState(); });
+            if (still)
+                app.Schedule([]() { Application::GetInstance().ToggleChatState(); });
             break;
         case kDeviceStateNotifying:
             // Music: a stray touch should not stop it; double tap does.
-            if (!still) break;
+            if (!still)
+                break;
             if (now - t.last_tap_us < kDoubleTapUs) {
                 t.last_tap_us = 0;
                 app.StopAll();
             } else {
                 t.last_tap_us = now;
                 app.Schedule([]() {
-                    Board::GetInstance().GetDisplay()->ShowNotification(Localize("Chạm 2 lần để dừng nhạc"), 2000);
+                    Board::GetInstance().GetDisplay()->ShowNotification(
+                        Localize("Chạm 2 lần để dừng nhạc"), 2000);
                 });
             }
             break;
@@ -236,12 +245,14 @@ void (*g_vision_handler)(bool) = nullptr;
 }
 void SetVisionHandler(void (*handler)(bool)) { g_vision_handler = handler; }
 void ApplyVision(bool enabled) {
-    if (g_vision_handler != nullptr) g_vision_handler(enabled);
+    if (g_vision_handler != nullptr)
+        g_vision_handler(enabled);
 }
 
 static bool NightNow() {
     time_t now = time(nullptr);
-    if (now < 1700000000) return false;
+    if (now < 1700000000)
+        return false;
     struct tm t;
     localtime_r(&now, &t);
     return t.tm_hour >= 22 || t.tm_hour < 6;
@@ -249,23 +260,29 @@ static bool NightNow() {
 
 void OnPersonPresent() {
     int64_t now = esp_timer_get_time();
-    if (now - g_last_present_us < 2000000) return;  // at most every 2 s
+    if (now - g_last_present_us < 2000000)
+        return;  // at most every 2 s
     g_last_present_us = now;
-    if (g_wake_handler != nullptr && !NightNow() && LoadConfig().presence) g_wake_handler();
+    if (g_wake_handler != nullptr && !NightNow() && LoadConfig().presence)
+        g_wake_handler();
 }
 
 bool OnPersonArrived(int count) {
     auto c = LoadConfig();
-    if (NightNow()) return false;  // never wake anyone up at night
+    if (NightNow())
+        return false;  // never wake anyone up at night
     if (c.presence) {
-        if (g_wake_handler != nullptr) g_wake_handler();
+        if (g_wake_handler != nullptr)
+            g_wake_handler();
         Application::GetInstance().Schedule([count]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() != kDeviceStateIdle) return;
+            if (app.GetDeviceState() != kDeviceStateIdle)
+                return;
             auto display = Board::GetInstance().GetDisplay();
             display->SetEmotion("happy");
             std::string hi = Localize("Chào bạn!");
-            if (count > 1) hi = Localize("Chào cả nhà!");
+            if (count > 1)
+                hi = Localize("Chào cả nhà!");
             display->SetChatMessage("system", hi.c_str());
         });
         Giggle();  // back to the resting face after a moment

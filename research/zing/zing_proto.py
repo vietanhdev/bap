@@ -29,8 +29,8 @@ import urllib.request
 
 BASE = "https://zingmp3.vn"
 VERSION = "1.22.4"
-API_KEY = "X5BM3w8N7MKozC0B85o4KMlzLZKhV00y"
-SECRET = "acOrvUS15XRW2o9JksiK1KgQ6Vbds8ZW"
+API_KEY = "X5BM3w8N7MKozC0B85o4KMlzLZKhV00y"  # gitleaks:allow (public constant shipped in the zingmp3.vn web client JS)
+SECRET = "acOrvUS15XRW2o9JksiK1KgQ6Vbds8ZW"  # gitleaks:allow (public constant shipped in the zingmp3.vn web client JS)
 SIG_KEYS = ("ctime", "id", "type", "page", "count", "version")
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")

@@ -2,9 +2,9 @@
 // timers/alarms, notes and long-term memory. Everything runs on the device; data sources are
 // public endpoints that need no API key.
 #include <esp_log.h>
-#include <freertos/idf_additions.h>
 #include <cJSON.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/idf_additions.h>
 #include <freertos/task.h>
 
 #include <sys/time.h>
@@ -20,13 +20,13 @@
 #include "assistant.h"
 #include "assistant_config.h"
 #include "assistant_sd.h"
+#include "assistant_zing.h"
 #include "board.h"
 #include "boards/common/backlight.h"
 #include "boards/common/wifi_board.h"
 #include "display/display.h"
 #include "mcp_server.h"
 #include "protocols/gemini_live_protocol.h"
-#include "assistant_zing.h"
 #include "vn_lunar.h"
 
 #define TAG "AssistantTools"
@@ -42,7 +42,8 @@ std::expected<std::string, std::string> HttpGet(const std::string& url) {
     http->SetHeader("User-Agent", "Mozilla/5.0 (Bap assistant)");
     if (!http->Open("GET", url)) {
         vTaskDelay(pdMS_TO_TICKS(500));  // one retry: DNS or Wi-Fi may still be settling
-        if (!http->Open("GET", url)) return std::unexpected("Không kết nối được máy chủ");
+        if (!http->Open("GET", url))
+            return std::unexpected("Không kết nối được máy chủ");
     }
     auto status = http->GetStatusCode();
     if (!status || *status != 200) {
@@ -300,8 +301,8 @@ void SchedulerTask(void*) {
                     Application::GetInstance().Schedule([level]() {
                         auto display = Board::GetInstance().GetDisplay();
                         display->SetEmotion("sad");
-                        std::string msg = Localize("Pin còn") + " " + std::to_string(level) + "%. " +
-                                          Localize("Cắm sạc giúp mình nhé!");
+                        std::string msg = Localize("Pin còn") + " " + std::to_string(level) +
+                                          "%. " + Localize("Cắm sạc giúp mình nhé!");
                         display->SetChatMessage("system", msg.c_str());
                     });
                 }
@@ -311,7 +312,8 @@ void SchedulerTask(void*) {
             auto codec = Board::GetInstance().GetAudioCodec();
             if (LoadConfig().night_dim && night) {
                 if (codec->output_volume() > kNightVolume) {
-                    if (saved_volume < 0) saved_volume = codec->output_volume();
+                    if (saved_volume < 0)
+                        saved_volume = codec->output_volume();
                     codec->SetOutputVolume(kNightVolume);
                 }
             } else if (saved_volume >= 0) {
@@ -716,69 +718,82 @@ void RegisterTools() {
                     return out;
                 });
 
-    mcp.AddTool("vn.gia_vang_hai_hong",
-                "Tra bảng giá vàng, bạc hiện tại của tiệm vàng Hải Hồng (Hải Hồng Jewelry, 32A-48 Trần Hưng "
-                "Đạo, Hải Dương): nhẫn tròn Hải Hồng 9999, trang sức 9999/999/995/980, bạc. Dùng khi người "
-                "dùng hỏi \"giá vàng Hải Hồng\", \"vàng Hải Hồng\", \"giá vàng ở Hải Dương\" (có thể bị nghe "
-                "thành \"hải hùng\", \"hai hồng\"). Giá tính theo một chỉ.",
-                PropertyList(), [](const PropertyList&) -> ToolResult {
-                    // Product names come from the public board page, prices from its JSON feed.
-                    auto page = HttpGet("http://hhj.adp-p.com/tygia/banggia");
-                    if (!page) return std::unexpected(page.error());
-                    std::vector<std::pair<std::string, std::string>> names;  // id, name
-                    size_t pos = 0;
-                    while ((pos = page->find("class=\"l1", pos)) != std::string::npos) {
-                        size_t a = page->find('>', pos), b = page->find("</div>", pos);
-                        size_t id_at = page->find("GiaMua_", pos);
-                        if (a == std::string::npos || b == std::string::npos || id_at == std::string::npos) break;
-                        size_t id_end = page->find('"', id_at);
-                        std::string name = page->substr(a + 1, b - a - 1);
-                        while (!name.empty() && isspace((unsigned char)name.back())) name.pop_back();
-                        while (!name.empty() && isspace((unsigned char)name.front())) name.erase(0, 1);
-                        names.emplace_back(page->substr(id_at + 7, id_end - id_at - 7), name);
-                        pos = b;
-                    }
-                    page->clear();
-                    page->shrink_to_fit();
-                    auto feed = HttpGet("http://hhj.adp-p.com/Public/get_TyGia?p=");
-                    if (!feed) return std::unexpected(feed.error());
-                    cJSON* root = cJSON_Parse(feed->c_str());
-                    if (!cJSON_IsArray(root)) {
-                        cJSON_Delete(root);
-                        return std::unexpected("Không đọc được bảng giá Hải Hồng");
-                    }
-                    auto money = [](const char* text) {  // "12,550,000" -> "12,55 triệu"
-                        long v = 0;
-                        for (const char* c = text; *c; ++c)
-                            if (isdigit((unsigned char)*c)) v = v * 10 + (*c - '0');
-                        char buf[32];
-                        if (v >= 1000000)
-                            snprintf(buf, sizeof(buf), "%ld,%02ld triệu", v / 1000000, (v % 1000000) / 10000);
-                        else
-                            snprintf(buf, sizeof(buf), "%ld nghìn", v / 1000);
-                        return std::string(buf);
-                    };
-                    std::string out = "Giá Hải Hồng (một chỉ, mua vào / bán ra):\n";
-                    int n = 0;
-                    for (auto& [id, name] : names) {
-                        cJSON* it = nullptr;
-                        cJSON_ArrayForEach (it, root) {
-                            auto mid = cJSON_GetObjectItem(it, "matygia");
-                            auto buy = cJSON_GetObjectItem(it, "giamua");
-                            auto sell = cJSON_GetObjectItem(it, "giaban");
-                            if (!cJSON_IsString(mid) || id != mid->valuestring || !cJSON_IsString(buy) ||
-                                !cJSON_IsString(sell))
-                                continue;
-                            if (strcmp(buy->valuestring, "0") == 0) break;  // not quoted now
-                            out += "- " + name + ": " + money(buy->valuestring) + " / " + money(sell->valuestring) + "\n";
-                            ++n;
-                            break;
-                        }
-                    }
-                    cJSON_Delete(root);
-                    if (n == 0) return std::unexpected("Hải Hồng chưa niêm yết giá lúc này");
-                    return out;
-                });
+    mcp.AddTool(
+        "vn.gia_vang_hai_hong",
+        "Tra bảng giá vàng, bạc hiện tại của tiệm vàng Hải Hồng (Hải Hồng Jewelry, 32A-48 Trần "
+        "Hưng "
+        "Đạo, Hải Dương): nhẫn tròn Hải Hồng 9999, trang sức 9999/999/995/980, bạc. Dùng khi người "
+        "dùng hỏi \"giá vàng Hải Hồng\", \"vàng Hải Hồng\", \"giá vàng ở Hải Dương\" (có thể bị "
+        "nghe "
+        "thành \"hải hùng\", \"hai hồng\"). Giá tính theo một chỉ.",
+        PropertyList(), [](const PropertyList&) -> ToolResult {
+            // Product names come from the public board page, prices from its JSON feed.
+            auto page = HttpGet("http://hhj.adp-p.com/tygia/banggia");
+            if (!page)
+                return std::unexpected(page.error());
+            std::vector<std::pair<std::string, std::string>> names;  // id, name
+            size_t pos = 0;
+            while ((pos = page->find("class=\"l1", pos)) != std::string::npos) {
+                size_t a = page->find('>', pos), b = page->find("</div>", pos);
+                size_t id_at = page->find("GiaMua_", pos);
+                if (a == std::string::npos || b == std::string::npos || id_at == std::string::npos)
+                    break;
+                size_t id_end = page->find('"', id_at);
+                std::string name = page->substr(a + 1, b - a - 1);
+                while (!name.empty() && isspace((unsigned char)name.back()))
+                    name.pop_back();
+                while (!name.empty() && isspace((unsigned char)name.front()))
+                    name.erase(0, 1);
+                names.emplace_back(page->substr(id_at + 7, id_end - id_at - 7), name);
+                pos = b;
+            }
+            page->clear();
+            page->shrink_to_fit();
+            auto feed = HttpGet("http://hhj.adp-p.com/Public/get_TyGia?p=");
+            if (!feed)
+                return std::unexpected(feed.error());
+            cJSON* root = cJSON_Parse(feed->c_str());
+            if (!cJSON_IsArray(root)) {
+                cJSON_Delete(root);
+                return std::unexpected("Không đọc được bảng giá Hải Hồng");
+            }
+            auto money = [](const char* text) {  // "12,550,000" -> "12,55 triệu"
+                long v = 0;
+                for (const char* c = text; *c; ++c)
+                    if (isdigit((unsigned char)*c))
+                        v = v * 10 + (*c - '0');
+                char buf[32];
+                if (v >= 1000000)
+                    snprintf(buf, sizeof(buf), "%ld,%02ld triệu", v / 1000000,
+                             (v % 1000000) / 10000);
+                else
+                    snprintf(buf, sizeof(buf), "%ld nghìn", v / 1000);
+                return std::string(buf);
+            };
+            std::string out = "Giá Hải Hồng (một chỉ, mua vào / bán ra):\n";
+            int n = 0;
+            for (auto& [id, name] : names) {
+                cJSON* it = nullptr;
+                cJSON_ArrayForEach (it, root) {
+                    auto mid = cJSON_GetObjectItem(it, "matygia");
+                    auto buy = cJSON_GetObjectItem(it, "giamua");
+                    auto sell = cJSON_GetObjectItem(it, "giaban");
+                    if (!cJSON_IsString(mid) || id != mid->valuestring || !cJSON_IsString(buy) ||
+                        !cJSON_IsString(sell))
+                        continue;
+                    if (strcmp(buy->valuestring, "0") == 0)
+                        break;  // not quoted now
+                    out += "- " + name + ": " + money(buy->valuestring) + " / " +
+                           money(sell->valuestring) + "\n";
+                    ++n;
+                    break;
+                }
+            }
+            cJSON_Delete(root);
+            if (n == 0)
+                return std::unexpected("Hải Hồng chưa niêm yết giá lúc này");
+            return out;
+        });
 
     mcp.AddTool(
         "vn.chat_luong_khong_khi",
@@ -968,32 +983,38 @@ void RegisterTools() {
         for (auto& st : Stations())
             list += (list.empty() ? "" : ", ") + st.id + " (" + st.name + ")";
         mcp.AddTool("nhac.the_nho",
-                "Phát nhạc có sẵn trong thẻ nhớ SD của máy (không cần mạng). tu_khoa: tên bài, ca sĩ hoặc "
-                "thư mục cần tìm; để trống để phát ngẫu nhiên tất cả. Dùng khi người dùng nói \"mở nhạc trong "
-                "thẻ nhớ\", \"nhạc offline\", \"nhạc trong máy\".",
-                PropertyList({Property("tu_khoa", kPropertyTypeString, "")}),
-                [](const PropertyList& props) -> ReturnValue {
-                    if (!SdMounted()) return std::string("Máy chưa có thẻ nhớ SD (hoặc thẻ không đọc được).");
-                    std::string kw = props["tu_khoa"].value<std::string>();
-                    auto songs = SdSongs(kw);
-                    if (songs.empty())
-                        return std::string(kw.empty() ? "Thẻ nhớ chưa có bài .mp3 nào."
-                                                      : "Không thấy bài nào khớp \"" + kw + "\" trong thẻ nhớ.");
-                    std::string title = songs.size() == 1 ? SongTitle(songs[0])
-                                                          : std::to_string(songs.size()) + " bài trong thẻ nhớ";
-                    Application::GetInstance().PlayStream("radio:sd:" + kw, title);
-                    return "Đang phát " + title + (songs.size() > 1 ? " (ngẫu nhiên)." : ".");
-                });
+                    "Phát nhạc có sẵn trong thẻ nhớ SD của máy (không cần mạng). tu_khoa: tên bài, "
+                    "ca sĩ hoặc "
+                    "thư mục cần tìm; để trống để phát ngẫu nhiên tất cả. Dùng khi người dùng nói "
+                    "\"mở nhạc trong "
+                    "thẻ nhớ\", \"nhạc offline\", \"nhạc trong máy\".",
+                    PropertyList({Property("tu_khoa", kPropertyTypeString, "")}),
+                    [](const PropertyList& props) -> ReturnValue {
+                        if (!SdMounted())
+                            return std::string("Máy chưa có thẻ nhớ SD (hoặc thẻ không đọc được).");
+                        std::string kw = props["tu_khoa"].value<std::string>();
+                        auto songs = SdSongs(kw);
+                        if (songs.empty())
+                            return std::string(kw.empty() ? "Thẻ nhớ chưa có bài .mp3 nào."
+                                                          : "Không thấy bài nào khớp \"" + kw +
+                                                                "\" trong thẻ nhớ.");
+                        std::string title =
+                            songs.size() == 1 ? SongTitle(songs[0])
+                                              : std::to_string(songs.size()) + " bài trong thẻ nhớ";
+                        Application::GetInstance().PlayStream("radio:sd:" + kw, title);
+                        return "Đang phát " + title + (songs.size() > 1 ? " (ngẫu nhiên)." : ".");
+                    });
 
-    mcp.AddTool("nhac.dung",
-                "Tắt nhạc hoặc radio đang phát. Dùng khi người dùng nói \"tắt nhạc\", \"dừng radio\", "
-                "\"thôi không nghe nữa\".",
-                PropertyList(), [](const PropertyList&) -> ReturnValue {
-                    Application::GetInstance().StopAll();
-                    return std::string("Đã tắt.");
-                });
+        mcp.AddTool(
+            "nhac.dung",
+            "Tắt nhạc hoặc radio đang phát. Dùng khi người dùng nói \"tắt nhạc\", \"dừng radio\", "
+            "\"thôi không nghe nữa\".",
+            PropertyList(), [](const PropertyList&) -> ReturnValue {
+                Application::GetInstance().StopAll();
+                return std::string("Đã tắt.");
+            });
 
-    mcp.AddTool(
+        mcp.AddTool(
             "radio.mo",
             "Mở radio trực tuyến. Các kênh: " + list +
                 ". Người dùng hay nói \"mở đài\", \"nghe radio\", \"VOV một\" (có thể bị nghe "
@@ -1014,48 +1035,58 @@ void RegisterTools() {
             });
     }
 
-    mcp.AddTool("he_thong.cai_wifi",
-                "Đưa máy vào chế độ cài Wi-Fi: máy phát mạng Wi-Fi tên Bap-xxxx, người dùng dùng điện thoại "
-                "kết nối rồi mở 192.168.4.1 để chọn mạng mới. Chỉ dùng khi người dùng yêu cầu rõ ràng như "
-                "\"cài lại Wi-Fi\", \"đổi mạng Wi-Fi\". Báo trước cho người dùng rồi mới gọi.",
-                PropertyList(), [](const PropertyList&) -> ReturnValue {
-                    xTaskCreate(
-                        [](void*) {
-                            vTaskDelay(pdMS_TO_TICKS(4000));  // let the spoken confirmation finish
-                            static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode();
-                            vTaskDelete(nullptr);
-                        },
-                        "wifi_setup", 3072, nullptr, 2, nullptr);
-                    return std::string("Sắp vào chế độ cài Wi-Fi.");
+    mcp.AddTool(
+        "he_thong.cai_wifi",
+        "Đưa máy vào chế độ cài Wi-Fi: máy phát mạng Wi-Fi tên Bap-xxxx, người dùng dùng điện "
+        "thoại "
+        "kết nối rồi mở 192.168.4.1 để chọn mạng mới. Chỉ dùng khi người dùng yêu cầu rõ ràng như "
+        "\"cài lại Wi-Fi\", \"đổi mạng Wi-Fi\". Báo trước cho người dùng rồi mới gọi.",
+        PropertyList(), [](const PropertyList&) -> ReturnValue {
+            xTaskCreate(
+                [](void*) {
+                    vTaskDelay(pdMS_TO_TICKS(4000));  // let the spoken confirmation finish
+                    static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode();
+                    vTaskDelete(nullptr);
+                },
+                "wifi_setup", 3072, nullptr, 2, nullptr);
+            return std::string("Sắp vào chế độ cài Wi-Fi.");
+        });
+
+    mcp.AddTool("nhac.tim",
+                "Tìm bài hát trên Zing MP3 và trả về danh sách để người dùng chọn (tên bài, ca sĩ, "
+                "độ dài, mã bài). "
+                "Dùng khi người dùng muốn tìm bài, hỏi có bài nào của ca sĩ nào, hoặc chưa rõ muốn "
+                "nghe bài nào. "
+                "Đọc ngắn gọn 3 đến 5 bài đầu kèm số thứ tự; khi người dùng chọn thì gọi nhac.mo "
+                "với ma_bai.",
+                PropertyList({Property("tu_khoa", kPropertyTypeString)}),
+                [](const PropertyList& p) -> ToolResult {
+                    auto songs = ZingSearch(p["tu_khoa"].value<std::string>(), 8);
+                    if (!songs)
+                        return std::unexpected(songs.error());
+                    if (songs->empty())
+                        return std::string("Không tìm thấy bài nào.");
+                    std::string out;
+                    int n = 0;
+                    for (auto& s : *songs) {
+                        char dur[16];
+                        snprintf(dur, sizeof(dur), "%d:%02d", s.duration_s / 60, s.duration_s % 60);
+                        out += std::to_string(++n) + ". " + s.title + " - " + s.artists + " (" +
+                               dur + ", mã " + s.id + (s.vip ? ", chỉ VIP, không phát được" : "") +
+                               ")\n";
+                    }
+                    return out;
                 });
 
     mcp.AddTool(
-        "nhac.tim",
-        "Tìm bài hát trên Zing MP3 và trả về danh sách để người dùng chọn (tên bài, ca sĩ, độ dài, mã bài). "
-        "Dùng khi người dùng muốn tìm bài, hỏi có bài nào của ca sĩ nào, hoặc chưa rõ muốn nghe bài nào. "
-        "Đọc ngắn gọn 3 đến 5 bài đầu kèm số thứ tự; khi người dùng chọn thì gọi nhac.mo với ma_bai.",
-        PropertyList({Property("tu_khoa", kPropertyTypeString)}),
-        [](const PropertyList& p) -> ToolResult {
-            auto songs = ZingSearch(p["tu_khoa"].value<std::string>(), 8);
-            if (!songs) return std::unexpected(songs.error());
-            if (songs->empty()) return std::string("Không tìm thấy bài nào.");
-            std::string out;
-            int n = 0;
-            for (auto& s : *songs) {
-                char dur[16];
-                snprintf(dur, sizeof(dur), "%d:%02d", s.duration_s / 60, s.duration_s % 60);
-                out += std::to_string(++n) + ". " + s.title + " - " + s.artists + " (" + dur + ", mã " + s.id +
-                       (s.vip ? ", chỉ VIP, không phát được" : "") + ")\n";
-            }
-            return out;
-        });
-
-    mcp.AddTool(
         "nhac.mo",
-        "Phát một bài hát từ Zing MP3: theo tu_khoa (tên bài và/hoặc ca sĩ, ví dụ \"Hà Nội mùa thu\", "
-        "\"nhạc Sơn Tùng\") hoặc theo ma_bai lấy từ nhac.tim (khi đó tu_khoa là tên bài để hiển thị). "
+        "Phát một bài hát từ Zing MP3: theo tu_khoa (tên bài và/hoặc ca sĩ, ví dụ \"Hà Nội mùa "
+        "thu\", "
+        "\"nhạc Sơn Tùng\") hoặc theo ma_bai lấy từ nhac.tim (khi đó tu_khoa là tên bài để hiển "
+        "thị). "
         "Dùng khi người dùng muốn nghe nhạc, mở bài hát. "
-        "Sau khi gọi công cụ, nói một câu thật ngắn giới thiệu bài rồi thôi; nhạc phát ngay. Người dùng "
+        "Sau khi gọi công cụ, nói một câu thật ngắn giới thiệu bài rồi thôi; nhạc phát ngay. Người "
+        "dùng "
         "gọi từ đánh thức để dừng nhạc. Bài chỉ dành cho tài khoản VIP sẽ được bỏ qua.",
         PropertyList({Property("tu_khoa", kPropertyTypeString, std::string("")),
                       Property("ma_bai", kPropertyTypeString, std::string(""))}),
@@ -1064,15 +1095,19 @@ void RegisterTools() {
             auto picked = p["ma_bai"].value<std::string>();
             std::expected<std::vector<ZingSong>, std::string> songs;
             if (!picked.empty()) {
-                songs = std::vector<ZingSong>{ZingSong{.id = picked, .title = query.empty() ? "bài hát" : query}};
+                songs = std::vector<ZingSong>{
+                    ZingSong{.id = picked, .title = query.empty() ? "bài hát" : query}};
             } else {
                 songs = ZingSearch(query, 8);
             }
-            if (!songs) return std::unexpected(songs.error());
+            if (!songs)
+                return std::unexpected(songs.error());
             for (auto& song : *songs) {
-                if (song.vip) continue;
+                if (song.vip)
+                    continue;
                 auto url = ZingStreamUrl(song.id);
-                if (!url) continue;
+                if (!url)
+                    continue;
                 std::string title = song.title + (song.artists.empty() ? "" : " - " + song.artists);
                 // Let the short spoken intro finish first, then start the song.
                 xTaskCreateWithCaps(
@@ -1083,8 +1118,10 @@ void RegisterTools() {
                         std::string id = job->first.substr(0, job->first.find('\n'));
                         std::string url = job->first.substr(job->first.find('\n') + 1);
                         std::vector<NotifySubtitle> lyrics;
-                        for (auto& [ms, text] : ZingLyrics(id)) lyrics.push_back({.start_ms = ms, .text = text});
-                        for (int i = 0; i < 100 && app.GetDeviceState() == kDeviceStateSpeaking; ++i) {
+                        for (auto& [ms, text] : ZingLyrics(id))
+                            lyrics.push_back({.start_ms = ms, .text = text});
+                        for (int i = 0; i < 100 && app.GetDeviceState() == kDeviceStateSpeaking;
+                             ++i) {
                             vTaskDelay(pdMS_TO_TICKS(100));
                         }
                         vTaskDelay(pdMS_TO_TICKS(1500));
@@ -1092,11 +1129,14 @@ void RegisterTools() {
                         delete job;
                         vTaskDeleteWithCaps(nullptr);
                     },
-                    "zing_play", 8192, new std::pair<std::string, std::string>(song.id + "\n" + *url, title), 2, nullptr,
+                    "zing_play", 8192,
+                    new std::pair<std::string, std::string>(song.id + "\n" + *url, title), 2,
+                    nullptr,
                     MALLOC_CAP_SPIRAM);  // network only: stack can live in PSRAM
                 return "Đang mở bài " + title + " (Zing MP3).";
             }
-            return std::string("Không tìm thấy bài miễn phí nào cho \"" + query + "\" trên Zing MP3.");
+            return std::string("Không tìm thấy bài miễn phí nào cho \"" + query +
+                               "\" trên Zing MP3.");
         });
 
     mcp.AddTool(

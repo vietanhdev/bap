@@ -2,8 +2,8 @@
 // normally land in the ~300 KB of internal SRAM, and cJSON makes thousands of them: parsing a
 // 40 KB Gemini audio message or the character data used to starve TLS of internal memory
 // ("esp-aes: Failed to allocate memory") and drop the conversation mid-reply.
-#include <cJSON.h>
 #include <esp_heap_caps.h>
+#include <cJSON.h>
 
 namespace {
 

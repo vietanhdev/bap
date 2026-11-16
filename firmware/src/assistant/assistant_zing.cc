@@ -6,7 +6,8 @@
 //   s   = concatenation, sorted by key, of "<key>=<value>" for SIG_KEYS present with a non-empty
 //         value; key and value encodeURIComponent()'d; NO separator between pairs
 //   sig = hex(HMAC-SHA512(key = kSecret, msg = path + hex(SHA-256(s))))
-//   GET https://zingmp3.vn<path>?<params>&ctime=<unix>&version=<kVersion>&sig=<sig>&apiKey=<kApiKey>
+//   GET
+//   https://zingmp3.vn<path>?<params>&ctime=<unix>&version=<kVersion>&sig=<sig>&apiKey=<kApiKey>
 //   with path like "/api/v2/song/get/streaming". The request needs the zmp3_rqid cookie, which the
 //   site sets on any first request (GET https://zingmp3.vn/). Responses are always gzip encoded,
 //   even with "Accept-Encoding: identity", so they are inflated here with the ROM miniz.
@@ -29,10 +30,10 @@
 #ifndef ZING_SIG_HOST_TEST
 #include "assistant_zing.h"
 
-#include <cJSON.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
+#include <cJSON.h>
 #include <mbedtls/md.h>
 
 #if __has_include("miniz.h")
@@ -168,7 +169,7 @@ constexpr char kUserAgent[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 "
     "Safari/537.36";
 
-std::mutex g_mutex;  // guards the cookie
+std::mutex g_mutex;    // guards the cookie
 std::string g_cookie;  // "zmp3_rqid=..."
 int64_t g_cookie_at_us = 0;
 
@@ -188,9 +189,11 @@ bool Gunzip(std::string* body) {
         pos += 2 + (in[pos] | (in[pos + 1] << 8));
     }
     if (flg & 8)  // FNAME
-        while (pos < n && in[pos++] != 0) {}
+        while (pos < n && in[pos++] != 0) {
+        }
     if (flg & 16)  // FCOMMENT
-        while (pos < n && in[pos++] != 0) {}
+        while (pos < n && in[pos++] != 0) {
+        }
     if (flg & 2)  // FHCRC
         pos += 2;
     if (pos + 8 > n)
@@ -322,7 +325,8 @@ std::expected<Json, std::string> Api(const std::string& path, Params params) {
             return std::unexpected("Bài hát chỉ dành cho tài khoản VIP");
         if (err == -104)
             return std::unexpected("Sai chữ ký Zing MP3 (cần cập nhật khóa API)");
-        return std::unexpected(std::string("Zing MP3 báo lỗi: ") + (msg ? msg : std::to_string(err)));
+        return std::unexpected(std::string("Zing MP3 báo lỗi: ") +
+                               (msg ? msg : std::to_string(err)));
     }
     return std::unexpected("Zing MP3 từ chối yêu cầu");
 }
@@ -334,22 +338,20 @@ std::string Str(const cJSON* obj, const char* key) {
 
 }  // namespace zing_internal
 
-std::expected<std::vector<ZingSong>, std::string> ZingSearch(const std::string& query,
-                                                             int limit) {
+std::expected<std::vector<ZingSong>, std::string> ZingSearch(const std::string& query, int limit) {
     using namespace zing_internal;
     if (query.empty())
         return std::unexpected("Thiếu từ khóa tìm kiếm");
     limit = std::clamp(limit, 1, 20);
-    auto root = Api("/api/v2/search", {{"q", query},
-                                       {"type", "song"},
-                                       {"page", "1"},
-                                       {"count", std::to_string(limit)}});
+    auto root =
+        Api("/api/v2/search",
+            {{"q", query}, {"type", "song"}, {"page", "1"}, {"count", std::to_string(limit)}});
     if (!root)
         return std::unexpected(root.error());
     const cJSON* items = cJSON_GetObjectItem(cJSON_GetObjectItem(root->get(), "data"), "items");
     std::vector<ZingSong> songs;
     const cJSON* it;
-    cJSON_ArrayForEach(it, items) {
+    cJSON_ArrayForEach (it, items) {
         ZingSong s;
         s.id = Str(it, "encodeId");
         if (s.id.empty())

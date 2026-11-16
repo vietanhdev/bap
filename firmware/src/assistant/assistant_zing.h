@@ -4,18 +4,18 @@
 // signing scheme and how to refresh the keys when the site changes them.
 #include <cstdint>
 #include <expected>
-#include <utility>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace assistant {
 
 struct ZingSong {
-    std::string id;       // "encodeId", e.g. "d7qtCrRV89zn"
+    std::string id;  // "encodeId", e.g. "d7qtCrRV89zn"
     std::string title;
     std::string artists;  // "artistsNames", comma separated
     int duration_s = 0;
-    bool vip = false;     // streamingStatus != 1: VIP/Premium only, ZingStreamUrl() will fail
+    bool vip = false;  // streamingStatus != 1: VIP/Premium only, ZingStreamUrl() will fail
 };
 
 // Searches songs. limit is clamped to 1..20. Blocks (network); call from a worker task.

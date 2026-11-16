@@ -22,9 +22,9 @@
 namespace assistant {
 namespace {
 
-constexpr int kDesign = 320;   // all coordinates below are in a 320x320 design space
-int g_size = 264;              // actual pixel size of the face area
-lv_obj_t* g_root = nullptr;    // body + features container (bobs while breathing)
+constexpr int kDesign = 320;  // all coordinates below are in a 320x320 design space
+int g_size = 264;             // actual pixel size of the face area
+lv_obj_t* g_root = nullptr;   // body + features container (bobs while breathing)
 lv_obj_t* g_body = nullptr;
 lv_obj_t* g_features = nullptr;
 lv_obj_t* g_mouth = nullptr;   // mouth layer inside g_features (rebuilt when talking toggles)
@@ -38,16 +38,18 @@ struct Palette {
 Palette g_pal;
 std::string g_shape;
 
-struct Pt { int x, y; };
+struct Pt {
+    int x, y;
+};
 struct Rig {
-    Pt face{160, 190};       // face center
-    int eye_dx = 46;         // half distance between the eyes
-    int scale = 100;         // feature size in percent
+    Pt face{160, 190};  // face center
+    int eye_dx = 46;    // half distance between the eyes
+    int scale = 100;    // feature size in percent
     int cheek_dx = 80, cheek_dy = 26;
     int mouth_dy = 34;
     int left = 40, right = 280;  // body extent at face height (listening waves sit outside)
-    Pt slot{266, 54};        // free spot at the top right of the head for accents
-    Pt slot2{54, 54};        // free spot at the top left
+    Pt slot{266, 54};            // free spot at the top right of the head for accents
+    Pt slot2{54, 54};            // free spot at the top left
 };
 Rig g_rig;
 
@@ -60,7 +62,8 @@ int Px(int v) { return v * g_size / kDesign; }
 int S(int v) { return v * g_rig.scale / 100; }  // feature size scaled for the character
 
 lv_color_t Hex(const std::string& s, lv_color_t fallback) {
-    if (s.size() == 7 && s[0] == '#') return lv_color_hex(strtoul(s.c_str() + 1, nullptr, 16));
+    if (s.size() == 7 && s[0] == '#')
+        return lv_color_hex(strtoul(s.c_str() + 1, nullptr, 16));
     return fallback;
 }
 
@@ -94,7 +97,8 @@ lv_obj_t* ShapePx(lv_obj_t* parent, int x, int y, int w, int h, lv_color_t color
 // Filled rounded shape centered at (cx, cy) in design units. radius < 0 = fully round.
 lv_obj_t* Shape(lv_obj_t* parent, int cx, int cy, int w, int h, lv_color_t color, int radius = -1) {
     int pw = Px(w), ph = Px(h);
-    return ShapePx(parent, Px(cx) - pw / 2, Px(cy) - ph / 2, pw, ph, color, radius < 0 ? -1 : Px(radius));
+    return ShapePx(parent, Px(cx) - pw / 2, Px(cy) - ph / 2, pw, ph, color,
+                   radius < 0 ? -1 : Px(radius));
 }
 
 void Grad(lv_obj_t* o, lv_color_t bottom, int main_stop = 0, int grad_stop = 255) {
@@ -107,7 +111,8 @@ void Grad(lv_obj_t* o, lv_color_t bottom, int main_stop = 0, int grad_stop = 255
 void Opa(lv_obj_t* o, lv_opa_t opa) { lv_obj_set_style_bg_opa(o, opa, 0); }
 
 // Stroke-only arc centered at (cx, cy): 0 deg = 3 o'clock, clockwise.
-lv_obj_t* Arc(lv_obj_t* parent, int cx, int cy, int diameter, int start, int end, int width, lv_color_t color) {
+lv_obj_t* Arc(lv_obj_t* parent, int cx, int cy, int diameter, int start, int end, int width,
+              lv_color_t color) {
     lv_obj_t* a = lv_arc_create(parent);
     lv_obj_remove_style_all(a);
     lv_obj_remove_flag(a, LV_OBJ_FLAG_CLICKABLE);
@@ -133,8 +138,10 @@ lv_obj_t* Line(lv_obj_t* parent, std::initializer_list<int> xy, int width, lv_co
         int x = Px(*it), y = Px(*(it + 1));
         pts[i].x = x;
         pts[i].y = y;
-        minx = LV_MIN(minx, x); miny = LV_MIN(miny, y);
-        maxx = LV_MAX(maxx, x); maxy = LV_MAX(maxy, y);
+        minx = LV_MIN(minx, x);
+        miny = LV_MIN(miny, y);
+        maxx = LV_MAX(maxx, x);
+        maxy = LV_MAX(maxy, y);
     }
     for (i = 0; i < n; ++i) {
         pts[i].x -= minx - pad;
@@ -150,7 +157,8 @@ lv_obj_t* Line(lv_obj_t* parent, std::initializer_list<int> xy, int width, lv_co
     lv_obj_set_style_line_color(l, color, 0);
     lv_obj_set_style_line_opa(l, LV_OPA_COVER, 0);
     lv_obj_set_style_line_rounded(l, true, 0);
-    lv_obj_add_event_cb(l, [](lv_event_t* e) { lv_free(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, pts);
+    lv_obj_add_event_cb(
+        l, [](lv_event_t* e) { lv_free(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, pts);
     return l;
 }
 
@@ -181,7 +189,8 @@ lv_obj_t* Heart(lv_obj_t* parent, int cx, int cy, int s, lv_color_t color) {
     ShapePx(h, P * 28 / 100 - d / 2, P * 33 / 100 - d / 2, d, d, color);
     ShapePx(h, P * 72 / 100 - d / 2, P * 33 / 100 - d / 2, d, d, color);
     Diamond(h, P / 2, P * 54 / 100, P * 56 / 100, color);
-    lv_obj_t* hl = ShapePx(h, P * 18 / 100, P * 20 / 100, LV_MAX(2, P / 5), LV_MAX(2, P / 7), lv_color_white());
+    lv_obj_t* hl = ShapePx(h, P * 18 / 100, P * 20 / 100, LV_MAX(2, P / 5), LV_MAX(2, P / 7),
+                           lv_color_white());
     Opa(hl, LV_OPA_70);
     return h;
 }
@@ -194,7 +203,8 @@ lv_obj_t* Drop(lv_obj_t* parent, int cx, int cy, int s, lv_color_t color) {
     int d = P * 66 / 100;
     ShapePx(h, P / 2 - d / 2, P * 64 / 100 - d / 2, d, d, color);
     Diamond(h, P / 2, P * 44 / 100, P * 42 / 100, color);
-    lv_obj_t* hl = ShapePx(h, P * 34 / 100, P * 52 / 100, LV_MAX(2, P / 6), LV_MAX(2, P / 5), lv_color_white());
+    lv_obj_t* hl = ShapePx(h, P * 34 / 100, P * 52 / 100, LV_MAX(2, P / 6), LV_MAX(2, P / 5),
+                           lv_color_white());
     Opa(hl, LV_OPA_70);
     return h;
 }
@@ -205,24 +215,28 @@ lv_obj_t* Drop(lv_obj_t* parent, int cx, int cy, int s, lv_color_t color) {
 // animations cause a handful of redraws instead of one per frame.
 void SetY(void* obj, int32_t v) {
     auto* o = (lv_obj_t*)obj;
-    if (lv_obj_get_style_translate_y(o, LV_PART_MAIN) != v) lv_obj_set_style_translate_y(o, v, 0);
+    if (lv_obj_get_style_translate_y(o, LV_PART_MAIN) != v)
+        lv_obj_set_style_translate_y(o, v, 0);
 }
 void SetX(void* obj, int32_t v) {
     auto* o = (lv_obj_t*)obj;
-    if (lv_obj_get_style_translate_x(o, LV_PART_MAIN) != v) lv_obj_set_style_translate_x(o, v, 0);
+    if (lv_obj_get_style_translate_x(o, LV_PART_MAIN) != v)
+        lv_obj_set_style_translate_x(o, v, 0);
 }
 void SetOpa(void* obj, int32_t v) {
     // ~11 opacity levels: fades still look smooth on this panel, but redraw a few times a second
     // instead of on every frame (glows, zzz and sparkles overlap gradient-filled shapes).
     v = v >= 250 ? 255 : (v / 24) * 24;
     auto* o = (lv_obj_t*)obj;
-    if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v) lv_obj_set_style_opa(o, (lv_opa_t)v, 0);
+    if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v)
+        lv_obj_set_style_opa(o, (lv_opa_t)v, 0);
 }
 // Resize around the center; user data holds the resting size.
 void SetSizeCentered(void* obj, int32_t s) {
     auto* o = (lv_obj_t*)obj;
     int32_t base = (int32_t)(intptr_t)lv_obj_get_user_data(o);
-    if (lv_obj_get_width(o) == s) return;
+    if (lv_obj_get_width(o) == s)
+        return;
     lv_obj_set_size(o, s, s);
     lv_obj_set_style_translate_x(o, (base - s) / 2, 0);
     lv_obj_set_style_translate_y(o, (base - s) / 2, 0);
@@ -234,18 +248,21 @@ void SetBlink(void* obj, int32_t h) {
     lv_obj_set_height(o, h);
     lv_obj_set_style_translate_y(o, (base - h) / 2, 0);
     lv_opa_t opa = h * 10 < base * 6 ? LV_OPA_TRANSP : LV_OPA_COVER;
-    for (uint32_t i = 0; i < lv_obj_get_child_count(o); ++i) lv_obj_set_style_opa(lv_obj_get_child(o, i), opa, 0);
+    for (uint32_t i = 0; i < lv_obj_get_child_count(o); ++i)
+        lv_obj_set_style_opa(lv_obj_get_child(o, i), opa, 0);
 }
 
 void Animate(lv_obj_t* obj, lv_anim_exec_xcb_t cb, int from, int to, int ms, int delay = 0,
-             int repeat_delay = 0, bool reverse = true, lv_anim_path_cb_t path = lv_anim_path_ease_in_out) {
+             int repeat_delay = 0, bool reverse = true,
+             lv_anim_path_cb_t path = lv_anim_path_ease_in_out) {
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, obj);
     lv_anim_set_exec_cb(&a, cb);
     lv_anim_set_values(&a, from, to);
     lv_anim_set_duration(&a, ms);
-    if (reverse) lv_anim_set_reverse_duration(&a, ms);
+    if (reverse)
+        lv_anim_set_reverse_duration(&a, ms);
     lv_anim_set_delay(&a, delay);
     lv_anim_set_repeat_delay(&a, repeat_delay);
     lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
@@ -305,7 +322,8 @@ void LifeTick(lv_timer_t* t) {
             Glance();
         } else {
             Blink(0);
-            if (r > 84) Blink(240);  // double blink now and then
+            if (r > 84)
+                Blink(240);  // double blink now and then
         }
     }
     lv_timer_set_period(t, lv_rand(1800, 5200));
@@ -320,13 +338,15 @@ void LoadPalette(const Look& look, const std::string& id) {
     static const char* kExtra[5] = {"shade", "outline", "sheen", "detail", "iris"};
     if (cJSON* root = cJSON_Parse(kAssistantJson)) {
         const cJSON* item = nullptr;
-        cJSON_ArrayForEach(item, cJSON_GetObjectItem(root, "characters")) {
+        cJSON_ArrayForEach (item, cJSON_GetObjectItem(root, "characters")) {
             auto cid = cJSON_GetObjectItem(item, "id");
-            if (!cJSON_IsString(cid) || id != cid->valuestring) continue;
+            if (!cJSON_IsString(cid) || id != cid->valuestring)
+                continue;
             auto lk = cJSON_GetObjectItem(item, "look");
             for (int i = 0; i < 5; ++i) {
                 auto v = cJSON_GetObjectItem(lk, kExtra[i]);
-                if (cJSON_IsString(v)) extra[i] = v->valuestring;
+                if (cJSON_IsString(v))
+                    extra[i] = v->valuestring;
             }
         }
         cJSON_Delete(root);
@@ -345,19 +365,24 @@ void LoadPalette(const Look& look, const std::string& id) {
 
 // ---------- bodies ----------
 
-struct Blob { int16_t x, y, w, h, r; };  // r < 0: fully round
+struct Blob {
+    int16_t x, y, w, h, r;
+};  // r < 0: fully round
 
 // Sticker-style body: outline, darker underside (the body pass is lifted so a crescent of the
 // shade color shows at the bottom), then the body itself.
 void LayeredBody(lv_obj_t* p, const Blob* b, int n, int grow, int lift, bool gradient) {
     for (int i = 0; i < n; ++i) {
-        Shape(p, b[i].x, b[i].y, b[i].w + 2 * grow, b[i].h + 2 * grow, g_pal.outline, b[i].r < 0 ? -1 : b[i].r + grow);
+        Shape(p, b[i].x, b[i].y, b[i].w + 2 * grow, b[i].h + 2 * grow, g_pal.outline,
+              b[i].r < 0 ? -1 : b[i].r + grow);
     }
     // Only blobs forming the bottom of the silhouette get the underside crescent; on the others
     // it would show as a seam in the middle of the body.
     int bottom = 0;
-    for (int i = 0; i < n; ++i) bottom = LV_MAX(bottom, b[i].y + b[i].h / 2);
-    for (int i = 0; i < n; ++i) Shape(p, b[i].x, b[i].y, b[i].w, b[i].h, g_pal.shade, b[i].r);
+    for (int i = 0; i < n; ++i)
+        bottom = LV_MAX(bottom, b[i].y + b[i].h / 2);
+    for (int i = 0; i < n; ++i)
+        Shape(p, b[i].x, b[i].y, b[i].w, b[i].h, g_pal.shade, b[i].r);
     for (int i = 0; i < n; ++i) {
         int l = b[i].y + b[i].h / 2 >= bottom - 34 ? lift : 0;
         lv_obj_t* o = Shape(p, b[i].x, b[i].y - l / 2, b[i].w, b[i].h - l, g_pal.body, b[i].r);
@@ -389,9 +414,9 @@ Rig BuildBody(lv_obj_t* p) {
         LayeredBody(p, cob, 1, 5, 12, true);
         // kernels: rows on top of the head and a few peeking between the front leaves
         lv_color_t kernel = lv_color_mix(c.sheen, c.body, 120);
-        static const Pt kernels[] = {{136, 44}, {160, 42}, {184, 44}, {124, 64}, {148, 63}, {172, 63}, {196, 64},
-                                     {112, 86}, {136, 84}, {160, 84}, {184, 84}, {208, 86}, {148, 232},
-                                     {172, 232}, {160, 252}};
+        static const Pt kernels[] = {{136, 44}, {160, 42}, {184, 44},  {124, 64},  {148, 63},
+                                     {172, 63}, {196, 64}, {112, 86},  {136, 84},  {160, 84},
+                                     {184, 84}, {208, 86}, {148, 232}, {172, 232}, {160, 252}};
         for (auto& k : kernels) {
             Shape(p, k.x, k.y + 3, 19, 16, c.shade, 7);
             Shape(p, k.x, k.y, 19, 15, kernel, 7);
@@ -448,8 +473,10 @@ Rig BuildBody(lv_obj_t* p) {
         // sakura blossom resting on the head
         int fx = 124, fy = 94;
         static const int dx[] = {0, 13, 8, -8, -13}, dy[] = {-14, -4, 11, 11, -4};
-        for (int k = 0; k < 5; ++k) Shape(p, fx + dx[k], fy + dy[k], 20, 20, lv_color_darken(c.accent, 30));
-        for (int k = 0; k < 5; ++k) Shape(p, fx + dx[k], fy + dy[k] - 1, 17, 17, c.accent);
+        for (int k = 0; k < 5; ++k)
+            Shape(p, fx + dx[k], fy + dy[k], 20, 20, lv_color_darken(c.accent, 30));
+        for (int k = 0; k < 5; ++k)
+            Shape(p, fx + dx[k], fy + dy[k] - 1, 17, 17, c.accent);
         Shape(p, fx, fy, 11, 11, c.detail);
         rig.face = {160, 204};
         rig.eye_dx = 48;
@@ -503,8 +530,9 @@ Rig BuildBody(lv_obj_t* p) {
         return rig;
     }
     // cloud (default)
-    static const Blob cloud[] = {{160, 240, 232, 96, 48},  {94, 212, 100, 100, -1}, {226, 212, 100, 100, -1},
-                                 {112, 152, 116, 116, -1}, {176, 122, 144, 144, -1}, {234, 168, 84, 84, -1}};
+    static const Blob cloud[] = {{160, 240, 232, 96, 48},  {94, 212, 100, 100, -1},
+                                 {226, 212, 100, 100, -1}, {112, 152, 116, 116, -1},
+                                 {176, 122, 144, 144, -1}, {234, 168, 84, 84, -1}};
     LayeredBody(p, cloud, 6, 4, 14, false);
     Sheen(p, 150, 78, 44, 16, LV_OPA_COVER);
     rig.face = {160, 206};
@@ -524,11 +552,13 @@ Rig BuildBody(lv_obj_t* p) {
 
 struct Expression {
     const char* name;
-    const char* eyes;   // open large happy closed sleepy squeeze wide heart aside up crossed uneven half shades wink
+    const char* eyes;   // open large happy closed sleepy squeeze wide heart aside up crossed uneven
+                        // half shades wink
     const char* brows;  // "" angry sad raised determined one
-    const char* mouth;  // smile big open wail frown o tall flat side wavy cat smirk tongue lick kiss yawn
-    const char* extra;  // space separated: sparkle joy burst tear tears hearts heart1 anger sweat question
-                        // exclaim dots zzz bubble waves note gloom hatch
+    const char*
+        mouth;  // smile big open wail frown o tall flat side wavy cat smirk tongue lick kiss yawn
+    const char* extra;  // space separated: sparkle joy burst tear tears hearts heart1 anger sweat
+                        // question exclaim dots zzz bubble waves note gloom hatch
     uint8_t blush;      // 0 none, 1 soft, 2 strong
 };
 
@@ -560,7 +590,8 @@ const Expression kExpressions[] = {
 
 const Expression& Find(const char* name) {
     for (auto& e : kExpressions) {
-        if (strcmp(e.name, name) == 0) return e;
+        if (strcmp(e.name, name) == 0)
+            return e;
     }
     return kExpressions[0];
 }
@@ -570,7 +601,8 @@ bool Has(const char* list, const char* token) {
     for (const char* p = list; (p = strstr(p, token)) != nullptr; p += n) {
         bool start = p == list || p[-1] == ' ';
         bool end = p[n] == '\0' || p[n] == ' ';
-        if (start && end) return true;
+        if (start && end)
+            return true;
     }
     return false;
 }
@@ -606,10 +638,13 @@ void BuildEye(lv_obj_t* p, const char* kind, int x, int y, int side) {
     std::string k = kind;
     const lv_color_t ink = g_pal.ink;
     int w = S(36), h = S(46);
-    if (k == "wink") k = side < 0 ? "open" : "happy";
+    if (k == "wink")
+        k = side < 0 ? "open" : "happy";
     if (k == "uneven") {
-        if (side < 0) GlossyEye(p, x, y - S(2), S(40), S(50), true);
-        else GlossyEye(p, x, y + S(2), S(30), S(36), true);
+        if (side < 0)
+            GlossyEye(p, x, y - S(2), S(40), S(50), true);
+        else
+            GlossyEye(p, x, y + S(2), S(30), S(36), true);
     } else if (k == "open") {
         GlossyEye(p, x, y, w, h, true);
     } else if (k == "large") {
@@ -648,13 +683,15 @@ void BuildEye(lv_obj_t* p, const char* kind, int x, int y, int side) {
         lv_obj_set_style_border_color(lens, ink, 0);
         lv_obj_set_style_border_width(lens, LV_MAX(2, Px(S(4))), 0);
         Line(p, {x - S(16), y - S(4), x - S(6), y - S(13)}, S(5), lv_color_white());
-        if (side < 0) Line(p, {x + S(30), y - S(10), x + 2 * g_rig.eye_dx - S(30), y - S(10)}, S(6), ink);
+        if (side < 0)
+            Line(p, {x + S(30), y - S(10), x + 2 * g_rig.eye_dx - S(30), y - S(10)}, S(6), ink);
     }
 }
 
 void BuildBrow(lv_obj_t* p, const char* kind, int x, int y, int side) {
     std::string k = kind;
-    if (k.empty()) return;
+    if (k.empty())
+        return;
     const lv_color_t ink = g_pal.ink;
     int by = y - S(36), half = S(14);
     int in_x = x - side * half, out_x = x + side * half;  // inner end points to the face center
@@ -680,7 +717,8 @@ lv_obj_t* OpenMouth(lv_obj_t* p, int x, int y, int w, int h, bool upper) {
     lv_obj_t* m = ShapePx(clip, 0, upper ? 0 : -ph, pw, 2 * ph, g_pal.ink);
     lv_obj_set_style_clip_corner(m, true, 0);
     int tw = pw * 62 / 100, th = ph * 80 / 100;
-    ShapePx(m, (pw - tw) / 2, upper ? ph - th * 6 / 10 : 2 * ph - th * 7 / 10, tw, th, lv_color_hex(0xFF7E96));
+    ShapePx(m, (pw - tw) / 2, upper ? ph - th * 6 / 10 : 2 * ph - th * 7 / 10, tw, th,
+            lv_color_hex(0xFF7E96));
     return clip;
 }
 
@@ -688,7 +726,8 @@ void SetMouthHeight(void* obj, int32_t h) {
     auto* m = (lv_obj_t*)obj;
     lv_obj_set_height(m, h);
     lv_obj_t* tongue = lv_obj_get_child(m, 0);
-    if (tongue != nullptr) lv_obj_set_y(tongue, h - lv_obj_get_height(tongue) * 6 / 10);
+    if (tongue != nullptr)
+        lv_obj_set_y(tongue, h - lv_obj_get_height(tongue) * 6 / 10);
 }
 
 void TalkStep(lv_anim_t* done);
@@ -766,10 +805,13 @@ void BuildMouth(lv_obj_t* p, const char* kind, int x, int y) {
 }
 
 void Blush(lv_obj_t* p, int x, int y, int strength) {
-    if (strength == 0) return;
+    if (strength == 0)
+        return;
     int g = strength > 1 ? 8 : 0;
-    Opa(Shape(p, x, y, S(42 + g), S(24 + g / 2), g_pal.cheek), strength > 1 ? LV_OPA_50 : LV_OPA_30);
-    Opa(Shape(p, x, y, S(28 + g), S(15 + g / 2), g_pal.cheek), strength > 1 ? LV_OPA_80 : LV_OPA_50);
+    Opa(Shape(p, x, y, S(42 + g), S(24 + g / 2), g_pal.cheek),
+        strength > 1 ? LV_OPA_50 : LV_OPA_30);
+    Opa(Shape(p, x, y, S(28 + g), S(15 + g / 2), g_pal.cheek),
+        strength > 1 ? LV_OPA_80 : LV_OPA_50);
 }
 
 lv_obj_t* Sparkle(lv_obj_t* p, int x, int y, int s, lv_color_t color) {
@@ -823,7 +865,8 @@ void BuildExtras(lv_obj_t* p, const Expression& e) {
     }
     if (Has(x, "hearts")) {
         for (int i = 0; i < 3; ++i) {
-            lv_obj_t* h = Heart(p, t.x + (i == 1 ? 16 : -10), t.y + 34 - (i == 2 ? 8 : 0), 30 + i * 3, kPink);
+            lv_obj_t* h =
+                Heart(p, t.x + (i == 1 ? 16 : -10), t.y + 34 - (i == 2 ? 8 : 0), 30 + i * 3, kPink);
             FloatAway(h, -36, 1800, i * 600);
         }
     }
@@ -868,15 +911,18 @@ void BuildExtras(lv_obj_t* p, const Expression& e) {
         static const int sz[] = {15, 21, 28};
         for (int i = 0; i < 3; ++i) {
             int zx = t.x - 26 + i * 20, zy = t.y + 36 - i * 22, s = sz[i];
-            lv_obj_t* z = Line(p, {zx - s / 2, zy - s / 2, zx + s / 2, zy - s / 2, zx - s / 2, zy + s / 2,
-                                   zx + s / 2, zy + s / 2}, 6, lv_color_hex(0xB9B0FF));
+            lv_obj_t* z = Line(p,
+                               {zx - s / 2, zy - s / 2, zx + s / 2, zy - s / 2, zx - s / 2,
+                                zy + s / 2, zx + s / 2, zy + s / 2},
+                               6, lv_color_hex(0xB9B0FF));
             Animate(z, SetOpa, 50, 255, 800, i * 400);
             Animate(z, SetY, 0, -Px(6), 1600, i * 400);
         }
     }
     if (Has(x, "bubble")) {
         int d = Px(S(20));
-        lv_obj_t* b = ShapePx(p, Px(fx + S(26)) - d / 2, Px(my - S(2)) - d / 2, d, d, lv_color_hex(0xBFE6FF));
+        lv_obj_t* b =
+            ShapePx(p, Px(fx + S(26)) - d / 2, Px(my - S(2)) - d / 2, d, d, lv_color_hex(0xBFE6FF));
         Opa(b, LV_OPA_50);
         lv_obj_set_style_border_color(b, lv_color_hex(0xE8F7FF), 0);
         lv_obj_set_style_border_width(b, 2, 0);
@@ -917,14 +963,17 @@ void BuildExtras(lv_obj_t* p, const Expression& e) {
         lv_color_t c = lv_color_darken(g_pal.cheek, 50);
         for (int side = -1; side <= 1; side += 2) {
             int cx = fx + side * r.cheek_dx, cy = fy + r.cheek_dy;
-            for (int i = -1; i <= 1; ++i) Line(p, {cx + i * S(9) - S(3), cy + S(6), cx + i * S(9) + S(3), cy - S(6)}, 3, c);
+            for (int i = -1; i <= 1; ++i)
+                Line(p, {cx + i * S(9) - S(3), cy + S(6), cx + i * S(9) + S(3), cy - S(6)}, 3, c);
         }
     }
 }
 
 void RebuildMouth() {
-    if (g_features == nullptr) return;
-    if (g_mouth != nullptr) lv_obj_delete(g_mouth);
+    if (g_features == nullptr)
+        return;
+    if (g_mouth != nullptr)
+        lv_obj_delete(g_mouth);
     g_mouth = Layer(g_features);
     const Expression& e = Find(g_emotion.c_str());
     BuildMouth(g_mouth, g_talking ? "talk" : e.mouth, g_rig.face.x, g_rig.face.y + g_rig.mouth_dy);
@@ -933,7 +982,8 @@ void RebuildMouth() {
 void RebuildFeatures() {
     g_eye_count = 0;
     g_eyes[0] = g_eyes[1] = nullptr;
-    if (g_features != nullptr) lv_obj_delete(g_features);
+    if (g_features != nullptr)
+        lv_obj_delete(g_features);
     g_mouth = nullptr;
     g_features = Layer(g_root);
     const Expression& e = Find(g_emotion.c_str());
@@ -963,25 +1013,28 @@ void RebuildFeatures() {
 }  // namespace
 
 void FaceShow(lv_obj_t* parent, const lv_font_t* font, const char* emotion) {
-
     (void)font;
     auto character = ActiveCharacter();
     if (g_root == nullptr || g_character != character.id) {
         g_eye_count = 0;
-        if (g_root != nullptr) lv_obj_delete(g_root);
+        if (g_root != nullptr)
+            lv_obj_delete(g_root);
         g_features = nullptr;
         g_mouth = nullptr;
         g_character = character.id;
         g_shape = character.look.shape;
         LoadPalette(character.look, character.id);
-        g_size = LV_MIN(lv_display_get_horizontal_resolution(nullptr), lv_display_get_vertical_resolution(nullptr)) * 44 / 100;
+        g_size = LV_MIN(lv_display_get_horizontal_resolution(nullptr),
+                        lv_display_get_vertical_resolution(nullptr)) *
+                 44 / 100;
         g_root = Plain(parent);
         lv_obj_set_size(g_root, g_size, g_size);
         lv_obj_align(parent, LV_ALIGN_CENTER, 0, -g_size / 9);  // leave room for subtitles below
         g_body = Layer(g_root);
         g_rig = BuildBody(g_body);
         Animate(g_root, SetY, 0, -LV_MAX(2, Px(5)), 1900);  // gentle breathing
-        if (g_life == nullptr) g_life = lv_timer_create(LifeTick, 2500, nullptr);
+        if (g_life == nullptr)
+            g_life = lv_timer_create(LifeTick, 2500, nullptr);
         g_emotion.clear();
     }
     if (g_emotion != emotion) {

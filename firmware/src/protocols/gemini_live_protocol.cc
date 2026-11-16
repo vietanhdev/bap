@@ -1,17 +1,17 @@
 #include "gemini_live_protocol.h"
 
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_netif_sntp.h>
-#include <esp_heap_caps.h>
 #include <esp_ota_ops.h>
 #include <esp_timer.h>
 #include <cJSON.h>
 #include <mbedtls/base64.h>
 
 #include <algorithm>
-#include <functional>
 #include <cstring>
 #include <ctime>
+#include <functional>
 #include <vector>
 
 #include "application.h"
@@ -43,9 +43,7 @@ static constexpr int kFreeRestMaxS = 900;
 
 namespace {
 
-int64_t NowMs() {
-    return esp_timer_get_time() / 1000;
-}
+int64_t NowMs() { return esp_timer_get_time() / 1000; }
 
 std::string Base64Encode(const uint8_t* data, size_t len) {
     size_t out_len = 0;
@@ -139,9 +137,7 @@ bool GeminiLiveProtocol::Start() {
     return true;
 }
 
-bool GeminiLiveProtocol::FreeKeyResting() const {
-    return NowMs() < free_retry_ms_.load();
-}
+bool GeminiLiveProtocol::FreeKeyResting() const { return NowMs() < free_retry_ms_.load(); }
 
 void GeminiLiveProtocol::RestFreeKey() {
     int rest = free_rest_s_ == 0 ? kFreeRestMinS : std::min(free_rest_s_ * 2, kFreeRestMaxS);
@@ -311,12 +307,14 @@ bool GeminiLiveProtocol::SendAudio(std::unique_ptr<AudioStreamPacket> packet) {
     }
     // Batch two 60 ms frames per message: half the JSON/TLS overhead, still low latency.
     pending_audio_.insert(pending_audio_.end(), packet->payload.begin(), packet->payload.end());
-    if (pending_audio_.size() < kUplinkBatchBytes) return true;
+    if (pending_audio_.size() < kUplinkBatchBytes)
+        return true;
     return FlushAudio();
 }
 
 bool GeminiLiveProtocol::FlushAudio() {
-    if (pending_audio_.empty()) return true;
+    if (pending_audio_.empty())
+        return true;
     std::string b64 = Base64Encode(pending_audio_.data(), pending_audio_.size());
     pending_audio_.clear();
     std::string msg;

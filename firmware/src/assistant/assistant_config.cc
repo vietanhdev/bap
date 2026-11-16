@@ -106,7 +106,8 @@ bool g_characters_valid = false;
 
 std::vector<Character> Characters() {
     std::lock_guard<std::mutex> cache_lock(g_characters_mutex);
-    if (g_characters_valid) return g_characters;
+    if (g_characters_valid)
+        return g_characters;
     std::vector<Character> out;
     Settings s("assistant", false);
     const cJSON* item = nullptr;
@@ -182,15 +183,19 @@ std::string Localize(const char* text) {
     std::string lang;
     {
         std::lock_guard<std::mutex> lock(g_language_mutex);
-        if (g_language.empty()) g_language = LoadConfig().language;
+        if (g_language.empty())
+            g_language = LoadConfig().language;
         lang = g_language;
     }
-    if (lang == "vi" || text == nullptr) return text ? text : "";
+    if (lang == "vi" || text == nullptr)
+        return text ? text : "";
     const cJSON* item = nullptr;
     cJSON_ArrayForEach (item, cJSON_GetObjectItem(Builtin(), "languages")) {
-        if (Str(item, "id") != lang) continue;
+        if (Str(item, "id") != lang)
+            continue;
         auto t = cJSON_GetObjectItem(cJSON_GetObjectItem(item, "ui"), text);
-        if (cJSON_IsString(t)) return t->valuestring;
+        if (cJSON_IsString(t))
+            return t->valuestring;
     }
     return text;
 }
@@ -223,7 +228,8 @@ std::string SystemPrompt() {
     prompt += "\nCác ứng dụng có thể mở: " + apps + ".";
     auto lang = LoadConfig().language;
     for (auto& l : Languages()) {
-        if (l.id == lang && !l.prompt.empty()) prompt += "\n" + l.prompt;
+        if (l.id == lang && !l.prompt.empty())
+            prompt += "\n" + l.prompt;
     }
     return prompt;
 }
