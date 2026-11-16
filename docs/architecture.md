@@ -19,10 +19,22 @@ code is generic.
 | `firmware/src/assistant/assistant_tools.cc` | `RegisterTools()`: Vietnamese tools on the MCP server. Scheduler (timers, alarms), clock sync, conversation log, `Say()` |
 | `firmware/src/assistant/assistant_web.cc` | `StartWebServer()`: settings UI and JSON API on port 80, mDNS `bap-xxxx.local` (last 4 hex digits of the MAC) |
 | `firmware/src/assistant/assistant_face.{h,cc}` | `FaceShow()`, `FaceSetTalking()`: characters drawn natively with LVGL |
-| `firmware/src/assistant/assistant_input.cc` | `OnWheelRotate()`, `OnWheelClick()`, `OnWheelDoubleClick()`, `WheelTick()` |
+| `firmware/src/protocols/ticket_ssl.{h,cc}` | `TicketSsl`/`TicketNetwork`/`FastNetwork()`: TLS with session-ticket resumption for every outgoing connection (derived from esp-ml307's `EspSsl`, Apache-2.0) |
+| `firmware/src/assistant/assistant_input.cc` | Wheel and touch gestures (`OnWheel*`, `OnTouch`), presence reactions (`OnPersonPresent/Arrived`), morning briefing, do-not-disturb (`QuietHours`) |
+| `firmware/src/assistant/assistant_menu.{h,cc}` | Round-screen menu (hold the wheel or the screen): characters, apps, radio, settings, power |
+| `firmware/src/assistant/assistant_auth.{h,cc}` | Optional settings password (HTTP Basic, salted SHA-256 in NVS), `RegisterGuarded()` for every route |
+| `firmware/src/assistant/assistant_radio.{h,cc}` | `PlayRadio()`: MP3/AAC streams, HLS playlists, SD-card files, through the notification player |
+| `firmware/src/assistant/assistant_zing.{h,cc}` | Zing MP3 search, stream URL and synced lyrics (signed web API) |
+| `firmware/src/assistant/assistant_sd.{h,cc}` | SD-card song index and matching (`SdSongs()`) |
+| `firmware/src/assistant/assistant_fonts.cc` | Korean/Chinese fallback font from the assets partition |
+| `firmware/src/assistant/assistant_notify.cc` | `POST /api/notify` status cards (desktop companion) |
+| `firmware/src/assistant/assistant_perf.cc` | `GET /api/perf`: per-task CPU, stack headroom, heap, uptime, RSSI |
+| `firmware/src/assistant/assistant_memory.cc` | cJSON allocations in PSRAM (internal RAM is the scarce resource) |
+| `firmware/src/assistant/text_fold.h`, `lrc.h` | Header-only helpers with host tests: accent folding, LRC lyrics parser |
 | `firmware/src/assistant/vn_lunar.h` | Header-only Vietnamese lunar calendar (`FromSolar`, `ToSolar`, `YearName`, `DayName`, `Festival`) |
 | `firmware/src/assistant/assistant.h` | Public `assistant::` entry points used by the upstream code |
-| `firmware/data/assistant.json` | Characters, shared rules, apps |
+| `firmware/data/assistant.json` | Characters, shared rules, apps, radio stations, languages (prompt + UI strings) |
+| `firmware/sdkconfig.gemini` | Extra sdkconfig for the Gemini build (memory, TLS, codecs), shared by `build.sh` and CI |
 | `firmware/web/index.html` | Single-page settings UI served by the device |
 | `firmware/patches/xiaozhi-esp32.patch` | Small hooks into upstream (see below) |
 
@@ -33,7 +45,7 @@ code is generic.
 - `data/assistant.json` as `kAssistantJson` in `main/assistant/builtin_data.h`
 
 It writes `main/boards/sensecap-watcher/config.home.json` with `CONFIG_USE_GEMINI_LIVE=y`, the API
-key, model and voice, and runs upstream `scripts/build.py` in the `espressif/idf:release-v6.1`
+key, model and voice plus every line of `firmware/sdkconfig.gemini`, and runs upstream `scripts/build.py` in the `espressif/idf:release-v6.1`
 container.
 
 ### What the upstream patch changes
