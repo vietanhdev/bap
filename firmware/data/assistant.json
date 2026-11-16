@@ -194,5 +194,27 @@
       "name": "RFI Tiếng Việt",
       "url": "https://rfienvietnamien64k.ice.infomaniak.ch/rfienvietnamien-64.mp3"
     }
+  ],
+  "languages": [
+    {
+      "id": "vi",
+      "name": "Tiếng Việt",
+      "prompt": ""
+    },
+    {
+      "id": "en",
+      "name": "English",
+      "prompt": "LANGUAGE: Always speak and write in natural, simple English, even though these instructions are in Vietnamese. Translate your persona, names of apps and tool results into English when you speak. If the user speaks another language, answer in English unless they ask you to switch."
+    },
+    {
+      "id": "ko",
+      "name": "한국어",
+      "prompt": "LANGUAGE: 항상 자연스럽고 쉬운 한국어로 말하세요. 이 지시문이 베트남어로 되어 있어도 답변은 한국어로 하고, 도구 결과와 앱 이름도 한국어로 바꿔서 말하세요. 사용자가 다른 언어로 바꾸자고 하기 전에는 한국어를 유지하세요."
+    },
+    {
+      "id": "zh",
+      "name": "中文",
+      "prompt": "LANGUAGE: 请始终用自然、简单的普通话（简体中文）说话。即使这些指令是越南语，也要用中文回答，并把工具结果和应用名称翻译成中文。除非用户要求换语言，否则一直使用中文。"
+    }
   ]
 }

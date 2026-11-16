@@ -34,6 +34,7 @@ struct Config {
     bool search;     // Google Search grounding (needs a billing-enabled key)
     bool greet;      // greet when the camera sees a person
     bool night_dim;  // dim the screen 22:00-06:00 while resting
+    std::string language;  // id from assistant.json "languages" (vi, en, ko, zh)
 };
 
 Config LoadConfig();
@@ -45,6 +46,10 @@ Character ActiveCharacter();
 void SaveCharacterOverride(const std::string& id, const std::string& name, const std::string& voice,
                            const std::string& persona);
 bool SetActiveCharacter(const std::string& id_or_name);
+struct Language {
+    std::string id, name, prompt;
+};
+std::vector<Language> Languages();
 std::string SystemPrompt();  // active persona + shared rules
 std::vector<App> Apps();
 std::vector<Station> Stations();

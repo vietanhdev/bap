@@ -9,6 +9,7 @@
 #include <mbedtls/base64.h>
 
 #include <algorithm>
+#include <functional>
 #include <cstring>
 #include <ctime>
 #include <vector>
@@ -124,6 +125,7 @@ bool GeminiLiveProtocol::Start() {
         ESP_LOGW(TAG, "SNTP init failed");
     }
     esp_ota_mark_app_valid_cancel_rollback();  // no OTA server marks it for us in direct mode
+    assistant::InstallFontFallback();
     assistant::SyncClock();
     assistant::RegisterTools();
     assistant::StartScheduler();
@@ -490,7 +492,9 @@ std::string GeminiLiveProtocol::BuildSetupMessage() {
                             "slidingWindow");
     cJSON* resumption = cJSON_AddObjectToObject(setup, "sessionResumption");
     // A handle only resumes on the key (project) that issued it.
-    if (!resume_handle_.empty() && resume_paid_ == use_paid_ &&
+    // A different character or language must start a fresh session, not resume the old persona.
+    setup_hash_ = std::hash<std::string>{}(prompt + character.voice);
+    if (!resume_handle_.empty() && resume_paid_ == use_paid_ && resume_setup_hash_ == setup_hash_ &&
         std::chrono::steady_clock::now() - resume_handle_time_ < std::chrono::minutes(10)) {
         cJSON_AddStringToObject(resumption, "handle", resume_handle_.c_str());
         resuming_ = true;
@@ -547,6 +551,7 @@ void GeminiLiveProtocol::HandleMessage(const char* data, size_t len) {
         if (cJSON_IsTrue(cJSON_GetObjectItem(update, "resumable")) && cJSON_IsString(handle)) {
             resume_handle_ = handle->valuestring;
             resume_handle_time_ = std::chrono::steady_clock::now();
+            resume_setup_hash_ = setup_hash_;
             resume_paid_ = use_paid_;
         }
     }

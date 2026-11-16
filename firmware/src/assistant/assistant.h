@@ -17,6 +17,7 @@ bool OnWheelRotate(bool clockwise);
 bool OnWheelClick();
 void OnWheelDoubleClick();
 void WheelTick();
+void InstallFontFallback();  // Korean/Chinese glyphs from the assets partition
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none
 void RegisterNotifyRoutes(void* server);  // httpd_handle_t

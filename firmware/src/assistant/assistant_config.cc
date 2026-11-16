@@ -55,6 +55,7 @@ Config LoadConfig() {
     c.search = s.GetBool("search", false);
     c.greet = s.GetBool("greet", false);
     c.night_dim = s.GetBool("night_dim", true);
+    c.language = s.GetString("language", "vi");
     return c;
 }
 
@@ -72,6 +73,7 @@ void SaveConfig(const Config& c) {
         s.SetBool("search", c.search);
         s.SetBool("greet", c.greet);
         s.SetBool("night_dim", c.night_dim);
+        s.SetString("language", c.language);
     }
     {
         std::lock_guard<std::mutex> lock(g_active_mutex);
@@ -164,6 +166,15 @@ bool SetActiveCharacter(const std::string& id_or_name) {
     return false;
 }
 
+std::vector<Language> Languages() {
+    std::vector<Language> out;
+    const cJSON* item = nullptr;
+    cJSON_ArrayForEach (item, cJSON_GetObjectItem(Builtin(), "languages")) {
+        out.push_back({Str(item, "id"), Str(item, "name"), Str(item, "prompt")});
+    }
+    return out;
+}
+
 std::string SystemPrompt() {
     auto c = ActiveCharacter();
     std::string prompt = c.persona;
@@ -181,6 +192,10 @@ std::string SystemPrompt() {
     for (auto& a : Apps())
         apps += (apps.empty() ? "" : ", ") + a.id + " (" + a.title + ")";
     prompt += "\nCác ứng dụng có thể mở: " + apps + ".";
+    auto lang = LoadConfig().language;
+    for (auto& l : Languages()) {
+        if (l.id == lang && !l.prompt.empty()) prompt += "\n" + l.prompt;
+    }
     return prompt;
 }
 

@@ -109,6 +109,8 @@ private:
     std::string last_subtitle_;
     std::vector<uint8_t> pending_audio_;  // uplink PCM waiting to be batched
     std::string resume_handle_;  // Gemini session resumption handle
+    size_t resume_setup_hash_ = 0;  // prompt+voice the handle was issued for
+    size_t setup_hash_ = 0;         // prompt+voice of the session being opened
     std::chrono::steady_clock::time_point resume_handle_time_;
     bool resuming_ = false;
     std::string user_text_;  // accumulated input transcription for this turn

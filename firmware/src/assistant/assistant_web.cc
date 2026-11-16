@@ -129,6 +129,14 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
     cJSON_AddBoolToObject(r, "search", c.search);
     cJSON_AddBoolToObject(r, "greet", c.greet);
     cJSON_AddBoolToObject(r, "night_dim", c.night_dim);
+    cJSON_AddStringToObject(r, "language", c.language.c_str());
+    cJSON* langs = cJSON_AddArrayToObject(r, "languages");
+    for (auto& l : Languages()) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddStringToObject(o, "id", l.id.c_str());
+        cJSON_AddStringToObject(o, "name", l.name.c_str());
+        cJSON_AddItemToArray(langs, o);
+    }
     cJSON_AddItemToObject(r, "hooks", cJSON_Parse(LoadList("hooks").c_str()));
     cJSON_AddNumberToObject(r, "volume", board.GetAudioCodec()->output_volume());
     if (auto bl = board.GetBacklight()) cJSON_AddNumberToObject(r, "brightness", bl->brightness());
@@ -187,6 +195,10 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
     if (cJSON_IsBool(num("search"))) c.search = cJSON_IsTrue(num("search"));
     if (cJSON_IsBool(num("greet"))) c.greet = cJSON_IsTrue(num("greet"));
     if (cJSON_IsBool(num("night_dim"))) c.night_dim = cJSON_IsTrue(num("night_dim"));
+    if (auto l = cJSON_GetObjectItem(in, "language"); cJSON_IsString(l)) {
+        for (auto& lang : Languages())
+            if (lang.id == l->valuestring) c.language = lang.id;
+    }
     if (cJSON_IsArray(num("hooks")) && cJSON_GetArraySize(num("hooks")) <= 8) {
         char* t = cJSON_PrintUnformatted(num("hooks"));
         if (strlen(t) < 3000) SaveList("hooks", t);

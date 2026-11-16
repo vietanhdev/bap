@@ -298,6 +298,22 @@ Level SettingsMenu() {
                                    if (auto bl = Board::GetInstance().GetBacklight()) bl->SetBrightness(v, true);
                                }));
                        }});
+    m.items.push_back({"Ngôn ngữ", []() {
+                           Level l{.title = "Ngôn ngữ"};
+                           std::string active = LoadConfig().language;
+                           int i = 0;
+                           for (auto& lang : Languages()) {
+                               if (lang.id == active) l.index = i;
+                               ++i;
+                               l.items.push_back({lang.name, Then([id = lang.id]() {
+                                                      auto c = LoadConfig();
+                                                      c.language = id;
+                                                      SaveConfig(c);
+                                                      Board::GetInstance().GetDisplay()->SetEmotion("happy");
+                                                  })});
+                           }
+                           Push(std::move(l));
+                       }});
     m.items.push_back(Toggle("Chế độ đêm", &Config::night_dim));
     m.items.push_back(Toggle("Thấy người thì chào", &Config::greet));
     m.items.push_back({"Thông tin máy", []() {

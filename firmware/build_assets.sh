@@ -10,6 +10,9 @@ cp "$HERE/assets/fonts/font_nunito_vi_30_4.bin" "$STAGE/cbin/font_noto_sans_comm
 cp "$SRC/managed_components/78__xiaozhi-fonts/manifest.json" "$STAGE/manifest.json"
 # Faces are drawn natively on the device; the assets only carry two small avatars per character
 # for the web UI (every emoji-collection entry costs internal RAM at boot).
+# Korean/Chinese fallback font for subtitles, loaded by assistant_fonts.cc
+mkdir -p "$STAGE/extra"
+cp "$HERE/assets/fonts/font_cjk_24_4.bin" "$STAGE/extra/"
 mkdir -p "$STAGE/gif/faces"
 for f in "$HERE"/assets/faces/*_happy.gif "$HERE"/assets/faces/*_relaxed.gif; do cp "$f" "$STAGE/gif/faces/"; done
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$SRC":/project -v "$HERE":/fw -w /project \
@@ -17,6 +20,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$SRC":/project -v "$HERE
     --sdkconfig /project/sdkconfig \
     --builtin_text_font font_noto_sans_basic_30_4 \
     --emoji_collection faces \
+    --extra_files /fw/build/assets-stage/extra \
     --noto_fonts_path /fw/build/assets-stage \
     --esp_sr_model_path /project/managed_components/espressif__esp-sr/model \
     --max_size 0x1000000 \

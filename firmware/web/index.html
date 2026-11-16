@@ -126,6 +126,10 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
   <ul id="memory"></ul>
 </section>
 <section>
+  <h2>Ngôn ngữ</h2>
+  <label>Bắp nói bằng<small>Đổi xong, cuộc trò chuyện sau sẽ dùng ngôn ngữ mới.</small><select id="language"></select></label>
+</section>
+<section>
   <h2>Nơi ở</h2>
   <label>Thành phố<small>Dùng cho thời tiết.</small><select id="cityPick"></select></label>
   <label>Tên hiển thị<input type="text" id="city" maxlength="60"></label>
@@ -224,6 +228,7 @@ function renderApps(){const box=$('apps');box.textContent='';(cfg.apps||[]).forE
 async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e){msg('Không tải được cấu hình.','bad');return}
   ['city','lat','lon','idle_s','model','volume','brightness'].forEach(k=>{if(cfg[k]!==undefined)$(k).value=cfg[k]});
   ['search','greet','night_dim'].forEach(k=>$(k).checked=!!cfg[k]);
+  $('language').innerHTML=(cfg.languages||[]).map(l=>`<option value="${l.id}">${l.name}</option>`).join('');$('language').value=cfg.language||'vi';
   chars=cfg.characters||[];editing=cfg.character;const a=chars.find(c=>c.id===cfg.character)||{name:'Trợ lý'};
   $('pwNow').textContent=cfg.has_password?'Đã bật mật khẩu.':'Chưa có mật khẩu: ai cùng mạng Wi-Fi cũng mở được trang này.';
   $('keyNow').textContent=cfg.api_key_masked?'Đang dùng: '+cfg.api_key_masked:'Chưa có key';
@@ -234,7 +239,7 @@ async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e)
   lists.notes=cfg.notes||[];lists.memory=cfg.memory||[];hooks=cfg.hooks||[];dirty=false;
   renderList('notes','Chưa có ghi chú. Thử nói: "Ghi chú mua sữa".');renderList('memory','Chưa nhớ gì. Thử nói: "Nhớ giúp mình là mình thích trà sữa".');renderHooks();renderChars();showChar();renderApps()}
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());return r.json()}
-async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,volume:+$('volume').value,brightness:+$('brightness').value};
+async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,language:$('language').value,volume:+$('volume').value,brightness:+$('brightness').value};
   if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
   if($('api_key_paid').value.trim())b.api_key_paid=$('api_key_paid').value.trim();
   if(dirty){b.notes=lists.notes;b.memory=lists.memory;b.hooks=hooks.filter(h=>h.name&&h.url)}
