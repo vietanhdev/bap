@@ -6,7 +6,7 @@
 # The patch contains `git diff` of tracked files plus untracked files (as new-file hunks),
 # EXCEPT files that build.sh generates or copies in on every build:
 #   main/assistant/                          <- copied from firmware/src/assistant (+ generated headers)
-#   main/protocols/gemini_live_protocol.*    <- copied from firmware/src/protocols
+#   main/protocols/gemini_live_protocol.*, ticket_ssl.*  <- copied from firmware/src/protocols
 #   main/boards/sensecap-watcher/config.home.json  <- generated, CONTAINS THE API KEY
 #
 # The vendor repository is not modified: a temporary git index is used to mark untracked files.
@@ -22,6 +22,8 @@ EXCLUDES=(
     ':(exclude)main/assistant'
     ':(exclude)main/protocols/gemini_live_protocol.cc'
     ':(exclude)main/protocols/gemini_live_protocol.h'
+    ':(exclude)main/protocols/ticket_ssl.cc'
+    ':(exclude)main/protocols/ticket_ssl.h'
     ':(exclude)main/boards/sensecap-watcher/config.home.json'
 )
 
