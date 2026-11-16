@@ -41,6 +41,11 @@ std::string ToLowerAscii(std::string s) {
 
 }  // namespace
 
+namespace {
+std::mutex g_language_mutex;
+std::string g_language;  // cached so status updates do not hit NVS
+}  // namespace
+
 Config LoadConfig() {
     Settings s("assistant", false);
     Config c;
@@ -74,6 +79,8 @@ void SaveConfig(const Config& c) {
         s.SetBool("greet", c.greet);
         s.SetBool("night_dim", c.night_dim);
         s.SetString("language", c.language);
+        std::lock_guard<std::mutex> lock(g_language_mutex);
+        g_language = c.language;
     }
     {
         std::lock_guard<std::mutex> lock(g_active_mutex);
@@ -164,6 +171,23 @@ bool SetActiveCharacter(const std::string& id_or_name) {
         }
     }
     return false;
+}
+
+std::string Localize(const char* text) {
+    std::string lang;
+    {
+        std::lock_guard<std::mutex> lock(g_language_mutex);
+        if (g_language.empty()) g_language = LoadConfig().language;
+        lang = g_language;
+    }
+    if (lang == "vi" || text == nullptr) return text ? text : "";
+    const cJSON* item = nullptr;
+    cJSON_ArrayForEach (item, cJSON_GetObjectItem(Builtin(), "languages")) {
+        if (Str(item, "id") != lang) continue;
+        auto t = cJSON_GetObjectItem(cJSON_GetObjectItem(item, "ui"), text);
+        if (cJSON_IsString(t)) return t->valuestring;
+    }
+    return text;
 }
 
 std::vector<Language> Languages() {

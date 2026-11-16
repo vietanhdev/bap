@@ -336,7 +336,12 @@ esp_err_t HandleOta(httpd_req_t* req) {
     if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &handle) != ESP_OK) return Reject(req, "Không bắt đầu được");
     ESP_LOGI(TAG, "OTA upload: %u bytes", (unsigned)req->content_len);
     Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);  // modem sleep drops big uploads
-    std::string buf(4096, '\0');
+    // Flash writes stall the other core; the wake-word engine then backs up and starves Wi-Fi.
+    // Pause it for the upload (the device reboots afterwards anyway).
+    auto& audio = Application::GetInstance().GetAudioService();
+    audio.EnableWakeWordDetection(false);
+    Board::GetInstance().GetDisplay()->SetChatMessage("system", "Đang cập nhật phần mềm...");
+    std::string buf(16384, '\0');  // PSRAM; fewer, larger flash writes
     size_t remaining = req->content_len;
     while (remaining > 0) {
         int n = httpd_req_recv(req, buf.data(), std::min(buf.size(), remaining));
@@ -344,6 +349,7 @@ esp_err_t HandleOta(httpd_req_t* req) {
         if (n <= 0 || esp_ota_write(handle, buf.data(), n) != ESP_OK) {
             esp_ota_abort(handle);
             Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
+            audio.EnableWakeWordDetection(true);
             return Reject(req, "Tải lên bị gián đoạn");
         }
         remaining -= n;

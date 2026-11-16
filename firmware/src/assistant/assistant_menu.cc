@@ -155,7 +155,8 @@ void Show(lv_obj_t* obj, bool visible) {
 }
 
 std::string LabelOf(const Item& item) {
-    return item.value ? item.label + ": " + item.value() : item.label;
+    std::string label = Localize(item.label.c_str());
+    return item.value ? label + ": " + Localize(item.value().c_str()) : label;
 }
 
 void Render() {
@@ -174,19 +175,19 @@ void Render() {
     Level& level = g_stack.back();
     const bool info = !level.info.empty();
     const bool slider = static_cast<bool>(level.get_value);
-    lv_label_set_text(g_title, level.title.c_str());
+    lv_label_set_text(g_title, Localize(level.title.c_str()).c_str());
     Show(g_info, info);
     Show(g_pill, !info);
     Show(g_current, !info);
     Show(g_prev, !info && !slider);
     Show(g_next, !info && !slider);
     Show(g_counter, !info && !slider);
-    const char* back = g_stack.size() > 1 ? "giữ quay lại" : "giữ thoát";
+    const std::string back = Localize(g_stack.size() > 1 ? "giữ quay lại" : "giữ thoát");
 
     if (info) {
         lv_label_set_text(g_info, level.info.c_str());
         lv_arc_set_angles(g_arc, kArcStart, kArcStart + kArcSweep);
-        lv_label_set_text_fmt(g_hint, "bấm xong · %s", back);
+        lv_label_set_text(g_hint, (Localize("bấm xong") + " · " + back).c_str());
         return;
     }
     if (slider) {
@@ -195,7 +196,7 @@ void Render() {
         lv_obj_set_style_text_color(g_current, lv_color_hex(kText), LV_PART_MAIN);
         lv_obj_set_style_border_color(g_pill, lv_color_hex(kAccent), LV_PART_MAIN);
         lv_arc_set_angles(g_arc, kArcStart, kArcStart + kArcSweep * v / 100);
-        lv_label_set_text(g_hint, "xoay chỉnh · bấm xong");
+        lv_label_set_text(g_hint, (Localize("xoay chỉnh") + " · " + Localize("bấm xong")).c_str());
         return;
     }
     const int n = (int)level.items.size();
@@ -213,7 +214,7 @@ void Render() {
     int from = kArcStart + seg * level.index;
     lv_arc_set_angles(g_arc, from, from + (seg > 8 ? seg - 2 : seg));
     lv_obj_set_style_arc_color(g_arc, lv_color_hex(accent), LV_PART_INDICATOR);
-    lv_label_set_text_fmt(g_hint, "bấm chọn · %s", back);
+    lv_label_set_text(g_hint, (Localize("bấm chọn") + " · " + back).c_str());
 }
 
 void Push(Level level) {

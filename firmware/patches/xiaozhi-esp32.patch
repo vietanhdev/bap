@@ -388,7 +388,7 @@ index 1c48fad..fbd5c94 100644
  
      // Set a DHCP hostname so the router shows a friendly name instead of "espressif".
 diff --git a/main/boards/sensecap-watcher/sensecap_watcher.cc b/main/boards/sensecap-watcher/sensecap_watcher.cc
-index 31ee1e4..6a0a7c4 100644
+index 31ee1e4..b450388 100644
 --- a/main/boards/sensecap-watcher/sensecap_watcher.cc
 +++ b/main/boards/sensecap-watcher/sensecap_watcher.cc
 @@ -5,6 +5,11 @@
@@ -403,7 +403,15 @@ index 31ee1e4..6a0a7c4 100644
  #include "config.h"
  #include "led/single_led.h"
  #include "power_save_timer.h"
-@@ -99,7 +104,40 @@ class CustomLcdDisplay : public SpiLcdDisplay {
+@@ -22,6 +27,7 @@
+ #include <driver/spi_common.h>
+ #include <iot_button.h>
+ #include <iot_knob.h>
++#include <esp_lcd_touch_spd2010.h>
+ #include <esp_io_expander_tca95xx_16bit.h>
+ #include <esp_sleep.h>
+ #include <esp_console.h>
+@@ -99,7 +105,40 @@ class CustomLcdDisplay : public SpiLcdDisplay {
              // 针对圆形屏幕调整底部对话框位置，避免被圆角遮挡
              lv_obj_set_style_pad_bottom(bottom_bar_, 30, 0);
              lv_obj_set_width(chat_message_label_, LV_HOR_RES * 0.75); // 限制宽度，避免文字贴边
@@ -444,7 +452,7 @@ index 31ee1e4..6a0a7c4 100644
  };
  
  class SensecapWatcher : public WifiBoard {
-@@ -220,6 +258,17 @@ private:
+@@ -220,6 +259,17 @@ private:
      }
  
      void OnKnobRotate(bool clockwise) {
@@ -462,7 +470,87 @@ index 31ee1e4..6a0a7c4 100644
          auto codec = GetAudioCodec();
          int current_volume = codec->output_volume();
          int new_volume = current_volume + (clockwise ? -5 : 5); 
-@@ -265,7 +314,11 @@ private:
+@@ -245,6 +295,79 @@ private:
+         power_save_timer_->WakeUp();
+     }
+ 
++#if CONFIG_USE_GEMINI_LIVE
++    // Touch is built into the SPD2010 display driver (I2C1 @0x53; INT on expander P0.5, active
++    // low). A small task reads it only while INT is asserted.
++    i2c_master_bus_handle_t touch_bus_ = nullptr;
++    esp_lcd_touch_handle_t touch_ = nullptr;
++
++    void InitializeTouch() {
++        i2c_master_bus_config_t cfg = {
++            .i2c_port = (i2c_port_t)BSP_TOUCH_I2C_NUM,
++            .sda_io_num = BSP_TOUCH_I2C_SDA,
++            .scl_io_num = BSP_TOUCH_I2C_SCL,
++            .clk_source = I2C_CLK_SRC_DEFAULT,
++            .glitch_ignore_cnt = 7,
++            .intr_priority = 0,
++            .trans_queue_depth = 0,
++            .flags = {.enable_internal_pullup = 1, .allow_pd = 0},
++        };
++        if (i2c_new_master_bus(&cfg, &touch_bus_) != ESP_OK) {
++            ESP_LOGW(TAG, "touch: no I2C bus");
++            return;
++        }
++        esp_lcd_panel_io_handle_t io = nullptr;
++        esp_lcd_panel_io_i2c_config_t io_cfg = {};  // ESP_LCD_TOUCH_IO_I2C_SPD2010_CONFIG() is C-only
++        io_cfg.dev_addr = ESP_LCD_TOUCH_IO_I2C_SPD2010_ADDRESS;
++        io_cfg.control_phase_bytes = 1;
++        io_cfg.dc_bit_offset = 0;
++        io_cfg.lcd_cmd_bits = 0;
++        io_cfg.flags.disable_control_phase = 1;
++        io_cfg.scl_speed_hz = BSP_TOUCH_I2C_CLK;
++        if (esp_lcd_new_panel_io_i2c(touch_bus_, &io_cfg, &io) != ESP_OK) return;
++        esp_lcd_touch_config_t tp_cfg = {};
++        tp_cfg.x_max = DISPLAY_WIDTH;
++        tp_cfg.y_max = DISPLAY_HEIGHT;
++        tp_cfg.rst_gpio_num = GPIO_NUM_NC;  // shared with the LCD reset, already done
++        tp_cfg.int_gpio_num = GPIO_NUM_NC;  // on the IO expander, polled below
++        if (esp_lcd_touch_new_i2c_spd2010(io, &tp_cfg, &touch_) != ESP_OK) {
++            ESP_LOGW(TAG, "touch: SPD2010 touch init failed");
++            touch_ = nullptr;
++            return;
++        }
++        xTaskCreate(
++            [](void* arg) {
++                auto* self = static_cast<SensecapWatcher*>(arg);
++                bool down = false;
++                int x = 0, y = 0;
++                while (true) {
++                    vTaskDelay(pdMS_TO_TICKS(25));
++                    bool touched = false;
++                    if (down || self->IoExpanderGetLevel(BSP_TOUCH_GPIO_INT) == 0) {
++                        esp_lcd_touch_point_data_t point[1];
++                        uint8_t count = 0;
++                        if (esp_lcd_touch_read_data(self->touch_) == ESP_OK &&
++                            esp_lcd_touch_get_data(self->touch_, point, &count, 1) == ESP_OK && count > 0) {
++                            touched = true;
++                            x = point[0].x;
++                            y = point[0].y;
++                        }
++                    }
++                    if (touched) {
++                        self->power_save_timer_->WakeUp();
++                        assistant::OnTouch(down ? assistant::TouchEvent::kMove : assistant::TouchEvent::kDown, x, y);
++                        down = true;
++                    } else if (down) {
++                        assistant::OnTouch(assistant::TouchEvent::kUp, x, y);
++                        down = false;
++                    }
++                }
++            },
++            "touch", 4096, this, 3, nullptr);
++        ESP_LOGI(TAG, "touch ready");
++    }
++#endif
++
+     void InitializeKnob() {
+         knob_ = std::make_unique<Knob>(BSP_KNOB_A_PIN, BSP_KNOB_B_PIN);
+         knob_->OnRotate([this](bool clockwise) {
+@@ -265,7 +388,11 @@ private:
          }
  
          button_config_t btn_config = {
@@ -474,7 +562,7 @@ index 31ee1e4..6a0a7c4 100644
              .short_press_time = 0
          };
          btn_driver_ = (button_driver_t*)calloc(1, sizeof(button_driver_t));
-@@ -275,6 +328,14 @@ private:
+@@ -275,6 +402,14 @@ private:
          };
          
          ESP_ERROR_CHECK(iot_button_create(&btn_config, btn_driver_, &btns));
@@ -489,7 +577,7 @@ index 31ee1e4..6a0a7c4 100644
          
          iot_button_register_cb(btns, BUTTON_SINGLE_CLICK, nullptr, [](void* button_handle, void* usr_data) {
              auto self = static_cast<SensecapWatcher*>(usr_data);
-@@ -285,13 +346,37 @@ private:
+@@ -285,13 +420,37 @@ private:
                  self->EnterWifiConfigMode();
                  return;
              }
@@ -528,7 +616,7 @@ index 31ee1e4..6a0a7c4 100644
              if (is_charging) {
                  ESP_LOGI(TAG, "charging");
              } else {
-@@ -304,7 +389,11 @@ private:
+@@ -304,7 +463,11 @@ private:
              auto self = static_cast<SensecapWatcher*>(usr_data);
              self->long_press_cnt_++; // 每隔20ms加一
              // 长按10s 恢复出厂设置: 2+0.02*400 = 10
@@ -540,6 +628,16 @@ index 31ee1e4..6a0a7c4 100644
                  ESP_LOGI(TAG, "Factory reset");
                  nvs_flash_erase();
                  esp_restart();
+@@ -605,6 +768,9 @@ public:
+         Initializespd2010Display();
+         GetBacklight()->RestoreBrightness();  // 对于不带摄像头的版本，InitializeCamera需要3s, 所以先恢复背光亮度
+         InitializeCamera();
++#if CONFIG_USE_GEMINI_LIVE
++        InitializeTouch();
++#endif
+     }
+ 
+     virtual AudioCodec* GetAudioCodec() override {
 diff --git a/main/boards/sensecap-watcher/sscma_camera.cc b/main/boards/sensecap-watcher/sscma_camera.cc
 index 6abd9ee..dd59266 100644
 --- a/main/boards/sensecap-watcher/sscma_camera.cc
@@ -633,10 +731,32 @@ index 7be9bad..310b3de 100644
      if (image == nullptr) {
          auto lvgl_theme = static_cast<LvglTheme*>(current_theme_);
 diff --git a/main/display/lvgl_display/lvgl_display.cc b/main/display/lvgl_display/lvgl_display.cc
-index 12a887e..bea51db 100644
+index 12a887e..fca5f6b 100644
 --- a/main/display/lvgl_display/lvgl_display.cc
 +++ b/main/display/lvgl_display/lvgl_display.cc
-@@ -333,6 +333,9 @@ bool LvglDisplay::SnapshotToJpeg(std::string& jpeg_data, int quality) {
+@@ -12,6 +12,9 @@
+ #include "dynamic_glyph_cache.h"
+ #include "jpg/image_to_jpeg.h"
+ #include "lvgl_display.h"
++#if CONFIG_USE_GEMINI_LIVE
++#include "assistant/assistant_config.h"
++#endif
+ #include "lvgl_theme.h"
+ #include "settings.h"
+ 
+@@ -157,7 +160,11 @@ void LvglDisplay::SetStatus(const char* status) {
+         }
+         return;
+     }
++#if CONFIG_USE_GEMINI_LIVE
++    lv_label_set_text(status_label_, assistant::Localize(status).c_str());
++#else
+     lv_label_set_text(status_label_, status);
++#endif
+     lv_obj_remove_flag(status_label_, LV_OBJ_FLAG_HIDDEN);
+     lv_obj_add_flag(notification_label_, LV_OBJ_FLAG_HIDDEN);
+ 
+@@ -333,6 +340,9 @@ bool LvglDisplay::SnapshotToJpeg(std::string& jpeg_data, int quality) {
      uint16_t* data = (uint16_t*)draw_buffer->data;
      size_t pixel_count = draw_buffer->data_size / 2;
      for (size_t i = 0; i < pixel_count; i++) {
@@ -647,7 +767,7 @@ index 12a887e..bea51db 100644
      }
  
 diff --git a/main/idf_component.yml b/main/idf_component.yml
-index 3067d6a..33986b5 100644
+index 3067d6a..e8f1d58 100644
 --- a/main/idf_component.yml
 +++ b/main/idf_component.yml
 @@ -1,5 +1,6 @@
@@ -657,6 +777,14 @@ index 3067d6a..33986b5 100644
    espressif/ip101:
      version: ^1.1.0
      rules:
+@@ -20,6 +21,7 @@ dependencies:
+     rules:
+     - if: target in [esp32, esp32s2, esp32s3, esp32p4]
+   espressif/esp_lcd_spd2010: ^2.0.0~1
++  espressif/esp_lcd_touch_spd2010: ^2.1.0
+   espressif/esp_io_expander_tca9554: ~2.0.3
+   waveshare/custom_io_expander_ch32v003: ^2.0.0
+   espressif/esp_lcd_panel_io_additions: ^1.0.1~1
 diff --git a/main/notify/notify_player.cc b/main/notify/notify_player.cc
 index 312bc96..4b411b9 100644
 --- a/main/notify/notify_player.cc

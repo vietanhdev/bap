@@ -50,6 +50,8 @@ struct Language {
     std::string id, name, prompt;
 };
 std::vector<Language> Languages();
+// Device UI text in the chosen language (assistant.json languages[].ui); Vietnamese otherwise.
+std::string Localize(const char* vietnamese);
 std::string SystemPrompt();  // active persona + shared rules
 std::vector<App> Apps();
 std::vector<Station> Stations();
