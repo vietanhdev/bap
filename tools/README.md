@@ -20,7 +20,7 @@ tools/gemini_keys.py delete UID --yes             # refuses without --yes
 `create`, `rotate` and `delete` accept `--dry-run`, which prints the gcloud commands instead of
 running them. Every command accepts `--project ID` to override `.gcp-project`.
 
-**rotate NAME [--device HOST]** (a bare `--device` means `bap.local`):
+**rotate NAME [--device HOST]** (a bare `--device` means `$BAP_DEVICE`):
 1. finds the uid of the key currently in `secrets/GEMINI_API_KEY`
 2. creates `NAME-yyyymmdd` and saves it to `secrets/keys/NAME-yyyymmdd`
 3. checks that `GET /v1beta/models` returns HTTP 200 with the new key (retries for up to 2 min while the key propagates)
@@ -52,7 +52,7 @@ Internet.
 ```sh
 cd tools/bap-desktop && cargo build --release
 ./target/release/bap-desktop agents --print --once     # xem thẻ sẽ gửi
-./target/release/bap-desktop agents --device bap.local # gửi mỗi 120 giây
+./target/release/bap-desktop agents --device bap-xxxx.local # gửi mỗi 120 giây
 ./target/release/bap-desktop say "Đã build xong firmware"  # nhờ nhân vật nói
 ```
 

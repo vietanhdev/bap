@@ -11,7 +11,7 @@ Before writing C++, check whether you need a tool at all:
 - **A fixed script for the model** (a game, a routine, a guided exercise): add an *app* to
   `firmware/data/assistant.json` instead. No code needed.
 - **Calling your own service** (Home Assistant, n8n, a script on your server): add a *hook* in the
-  web UI (`http://bap.local`, section for extensions). The built-in `mo_rong.goi` tool posts
+  web UI (`http://bap-xxxx.local`, section for extensions). The built-in `mo_rong.goi` tool posts
   `{"action": <name>, "text": <request>}` to the hook URL and reads back the reply.
 
 Write a native tool when it needs device features, has to be fast, or must work without a server.
@@ -87,7 +87,7 @@ area, add a few words there so every character knows to use it rather than guess
 2. Build and flash the app:
 
    ```bash
-   firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap.local
+   firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap-xxxx.local
    ```
 
 3. Check the serial log for `Add tool: vn.gia_xang` and `Exposed N device tools to Gemini`
@@ -95,7 +95,7 @@ area, add a few words there so every character knows to use it rather than guess
 4. Call the tool directly, without the model, from the web UI's API:
 
    ```bash
-   curl -s -X POST http://bap.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+   curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
      -d '{"name":"vn.gia_xang","arguments":{"loai":"RON 95"}}'
    ```
 

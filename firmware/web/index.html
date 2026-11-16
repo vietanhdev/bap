@@ -277,12 +277,13 @@ async function health(){
   $('health').innerHTML='<small>Đang đo…</small>';
   try{
     const p=await (await fetch('/api/perf')).json();
+    const st=await (await fetch('/api/status')).json();
     const cpu=Object.entries(p.cpu_percent).filter(([k])=>!k.startsWith('IDLE'));
     const idle=(p.cpu_percent.IDLE0||0)+(p.cpu_percent.IDLE1||0);
     const sig=p.rssi==null?'?':p.rssi>-55?'rất mạnh':p.rssi>-67?'tốt':p.rssi>-75?'trung bình':'yếu';
     const h=Math.floor(p.uptime_s/3600),m=Math.floor(p.uptime_s%3600/60);
     const row=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
-    $('health').innerHTML=row('Đã chạy',`${h} giờ ${m} phút`)+row('CPU rảnh',`${Math.round(idle)}%`)+
+    $('health').innerHTML=row('Địa chỉ',`${st.host||'?'} · ${location.hostname}`)+row('Đã chạy',`${h} giờ ${m} phút`)+row('CPU rảnh',`${Math.round(idle)}%`)+
       row('RAM trong chip trống',`${Math.round(p.free_internal/1024)} KB (thấp nhất ${Math.round(p.min_free_internal/1024)} KB)`)+
       row('PSRAM trống',`${(p.free_psram/1048576).toFixed(1)} MB`)+row('Wi-Fi',`${sig} (${p.rssi} dBm)`)+
       `<small>Việc đang chạy: ${cpu.slice(0,4).map(([k,v])=>k+' '+v+'%').join(', ')}</small>`;

@@ -3,7 +3,9 @@ Description=Bap desktop companion (coding-agent limits)
 After=network-online.target
 
 [Service]
-ExecStart=%h/Workspaces/SenseCap/tools/bap-desktop/target/release/bap-desktop agents --device bap.local --interval 120
+# Set to your device: the name is shown on the settings page (bap-xxxx.local) or use its IP.
+Environment=BAP_DEVICE=bap-xxxx.local
+ExecStart=%h/Workspaces/SenseCap/tools/bap-desktop/target/release/bap-desktop agents --device ${BAP_DEVICE} --interval 120
 Restart=on-failure
 RestartSec=30
 

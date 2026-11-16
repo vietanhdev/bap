@@ -7,7 +7,7 @@
 //! - Claude Code: ~/.claude/projects/*/*.jsonl assistant messages; tokens in the current
 //!   5-hour block and today (Claude does not log its plan limit locally, so no percentage).
 //!
-//! Usage: bap-desktop agents [--device bap.local] [--interval 120] [--once] [--print]
+//! Usage: bap-desktop agents [--device bap-xxxx.local | $BAP_DEVICE] [--interval 120] [--once] [--print]
 
 use serde_json::Value;
 use std::collections::HashSet;
@@ -261,7 +261,7 @@ pub fn post(device: &str, path: &str, body: &str) -> std::io::Result<u16> {
 
 pub fn run(args: &[String]) {
     let opt = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
-    let device = opt("--device").unwrap_or_else(|| "bap.local".into());
+    let device = opt("--device").or_else(|| std::env::var("BAP_DEVICE").ok()).unwrap_or_else(|| { eprintln!("set --device <bap-xxxx.local or IP> or BAP_DEVICE"); std::process::exit(2) });
     let interval: u64 = opt("--interval").and_then(|v| v.parse().ok()).unwrap_or(120);
     let once = args.iter().any(|a| a == "--once");
     let print_only = args.iter().any(|a| a == "--print");

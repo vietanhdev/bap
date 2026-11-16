@@ -264,6 +264,13 @@ esp_err_t HandleStatus(httpd_req_t* req) {
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "state", st >= 0 && st < 12 ? states[st] : "unknown");
     cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
+    {
+        uint8_t mac[6] = {};
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        char host[24];
+        snprintf(host, sizeof(host), "bap-%02x%02x.local", mac[4], mac[5]);
+        cJSON_AddStringToObject(r, "host", host);
+    }
     cJSON_AddNumberToObject(r, "free_heap", (double)esp_get_free_heap_size());
     cJSON_AddItemToObject(r, "device", cJSON_Parse(board.GetDeviceStatusJson().c_str()));
     cJSON_AddItemToObject(r, "log", cJSON_Parse(LogJson().c_str()));

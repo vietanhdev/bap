@@ -1,0 +1,4 @@
+# Public constants from the zingmp3.vn web client JavaScript (not our secrets); marked inline with
+# gitleaks:allow since, these entries cover the commit that first added them.
+3747f6c23e9ac02a1335815012f6600dc138d3d8:research/zing/zing_proto.py:generic-api-key:32
+3747f6c23e9ac02a1335815012f6600dc138d3d8:research/zing/zing_proto.py:generic-api-key:33

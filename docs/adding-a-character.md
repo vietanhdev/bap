@@ -92,7 +92,7 @@ firmware/build_assets.sh && firmware/flash_assets.sh
 ## 4. Try it
 
 ```bash
-firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap.local
+firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap-xxxx.local
 ```
 
 - Rotate the wheel while resting: the new character appears with its tagline.

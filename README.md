@@ -10,7 +10,7 @@ cần máy chủ trung gian. Firmware dựa trên [xiaozhi-esp32](https://github
 > personality and natively drawn face, a set of voice "apps", and on-device tools (Vietnamese lunar
 > calendar, weather, news, gold price, exchange rates, lottery, timers, alarms, notes, memory,
 > camera). Characters and apps are plain data in `firmware/data/assistant.json`. Settings live in a
-> LAN-only web UI at `http://bap.local`. Code is MIT licensed.
+> LAN-only web UI at `http://bap-xxxx.local`. Code is MIT licensed.
 
 ## Tính năng
 
@@ -22,14 +22,24 @@ cần máy chủ trung gian. Firmware dựa trên [xiaozhi-esp32](https://github
   thư giãn, hôm nay ăn gì, tập trung 25 phút, nhìn và kể. Nhấn đúp núm xoay để mở danh sách.
 - **Công cụ chạy trên thiết bị** (không cần API key riêng):
   lịch âm và đổi âm sang dương, thời tiết (Open-Meteo), tin tức (VnExpress RSS), tỷ giá
-  (Vietcombank), giá vàng (PNJ), kết quả xổ số, hẹn giờ, báo thức, ghi chú, ghi nhớ lâu dài,
-  chụp ảnh bằng camera, chỉnh âm lượng và độ sáng.
+  (Vietcombank), giá vàng (PNJ, tiệm Hải Hồng), chất lượng không khí, kết quả xổ số, hẹn giờ,
+  báo thức, ghi chú, ghi nhớ lâu dài, chụp ảnh bằng camera, chỉnh âm lượng và độ sáng.
+- **Nhạc và radio**: tìm và phát bài trên Zing MP3 (kèm lời chạy theo nhạc), radio VOV và FM Hà
+  Nội (HLS và MP3), nhạc trong thẻ nhớ SD (không cần mạng, tìm theo tên không dấu).
+- **Nhiều ngôn ngữ**: tiếng Việt, tiếng Anh, tiếng Hàn, tiếng Trung (phụ đề Hàn/Trung dùng phông
+  Noto Sans KR/SC trong phân vùng assets). Thêm ngôn ngữ chỉ là thêm dữ liệu vào `assistant.json`.
+- **Màn hình cảm ứng và menu**: giữ núm xoay (hoặc giữ ngón tay trên màn hình) để mở menu tròn:
+  trò chuyện, nhân vật, ứng dụng, radio, thiết lập, tắt máy.
+- **Nhận biết có người**: chip AI trong camera (Himax) nhận ra người ngay trên máy, màn hình sáng
+  lên và nhân vật mừng rỡ, không gửi ảnh đi đâu và không tốn lượt Gemini.
 - **Tiện ích mở rộng**: khai báo webhook (Home Assistant, n8n, máy chủ riêng) trong giao diện web,
   trợ lý sẽ gọi chúng qua công cụ `mo_rong.goi`.
-- **Tùy chọn**: tìm kiếm Google (cần key có bật thanh toán), chào khi camera thấy người, tự giảm
-  sáng màn hình ban đêm (22:00 đến 06:00).
-- **Giao diện cài đặt trên thiết bị** tại `http://bap.local`: API key, model, thành phố, nhân vật,
-  sửa tên/giọng/tính cách, nhật ký hội thoại, cập nhật firmware qua Wi-Fi (OTA).
+- **Tùy chọn**: tìm kiếm Google (cần key có bật thanh toán), chào khi camera thấy người, chế độ
+  đêm (22:00 đến 06:00: màn hình dịu, loa tối đa 35%), nhắc cắm sạc khi pin yếu.
+- **Giao diện cài đặt trên thiết bị** tại `http://bap-xxxx.local` (4 ký tự cuối địa chỉ MAC, mỗi máy
+  một tên): API key, model, ngôn ngữ, thành phố, nhân vật, sửa tên/giọng/tính cách, nhật ký hội
+  thoại, Wi-Fi, mật khẩu trang cài đặt, tình trạng máy (CPU, RAM, sóng Wi-Fi), cập nhật firmware
+  qua Wi-Fi (OTA, khoảng 35 giây).
 
 ## Nhân vật
 
@@ -101,7 +111,7 @@ phí được thử lại sau 1 phút, rồi 2, 4, 8 phút... tối đa 15 phút
 firmware/flash.sh          # lần đầu: bootloader, bảng phân vùng, otadata, ứng dụng, assets
 firmware/flash_app.sh      # những lần sau: chỉ ứng dụng (nhanh)
 firmware/flash_assets.sh   # chỉ phân vùng assets
-firmware/ota.sh bap.local  # cập nhật qua Wi-Fi, không cần cáp
+firmware/ota.sh bap-xxxx.local  # cập nhật qua Wi-Fi, không cần cáp
 ```
 
 Đổi cổng serial bằng `PORT=/dev/ttyACM0 firmware/flash.sh`.
@@ -110,7 +120,7 @@ firmware/ota.sh bap.local  # cập nhật qua Wi-Fi, không cần cáp
 
 1. Lần đầu khởi động, thiết bị phát Wi-Fi tên **`Bap-XXXX`**. Kết nối điện thoại vào mạng đó, trang
    cấu hình sẽ tự mở (hoặc vào `http://192.168.4.1`), chọn Wi-Fi nhà bạn và nhập mật khẩu.
-2. Khi thiết bị đã vào mạng, mở **`http://bap.local`** (hoặc IP hiện trên màn hình) trên máy cùng mạng.
+2. Khi thiết bị đã vào mạng, mở **`http://bap-xxxx.local`** (hoặc IP hiện trên màn hình) trên máy cùng mạng.
 3. Nhập Gemini API key (nếu chưa build kèm), chọn thành phố và nhân vật.
 4. Nói từ đánh thức "Hi Lili" hoặc nhấn núm xoay để bắt đầu.
 
@@ -122,6 +132,21 @@ firmware/ota.sh bap.local  # cập nhật qua Wi-Fi, không cần cáp
 | Đang nghỉ | Nhấn đúp | Mở danh sách ứng dụng, xoay để chọn, nhấn để mở |
 | Đang trò chuyện | Xoay | Âm lượng |
 | Đang trò chuyện | Nhấn | Dừng hoặc tiếp tục nghe |
+| Bất kỳ | Giữ 1 giây | Mở menu (giữ lần nữa để quay lại) |
+| Trong menu | Xoay / nhấn | Chọn / mở |
+| Bất kỳ | Giữ 20 giây | Xóa toàn bộ cài đặt về mặc định |
+
+### Điều khiển bằng cảm ứng
+
+| Trạng thái | Thao tác | Kết quả |
+| --- | --- | --- |
+| Đang nghỉ | Chạm | Nhân vật cười khúc khích |
+| Đang nghỉ | Chạm đúp | Bắt đầu trò chuyện |
+| Đang nghỉ | Vuốt ngang | Đổi nhân vật |
+| Đang nghỉ | Giữ | Mở menu |
+| Đang nói | Chạm | Ngắt lời |
+| Đang phát nhạc | Chạm đúp | Dừng nhạc |
+| Trong menu | Vuốt hoặc chạm mục trên/dưới | Di chuyển; chạm mục giữa để mở; giữ để quay lại |
 
 ## Khôi phục firmware gốc
 
@@ -147,7 +172,7 @@ flowchart LR
         APP <--> PROTO[GeminiLiveProtocol<br/>gemini_live_protocol.cc]
         PROTO <--> MCP[McpServer<br/>tools from assistant_tools.cc]
         CFG[assistant_config.cc<br/>NVS + assistant.json] --> PROTO
-        WEB[assistant_web.cc<br/>http://bap.local] --> CFG
+        WEB[assistant_web.cc<br/>http://bap-xxxx.local] --> CFG
         WEB --> MCP
     end
     PROTO <-->|"WebSocket TLS<br/>PCM16 16 kHz up / 24 kHz down<br/>toolCall / toolResponse"| GEM[Google Gemini Live API]
@@ -186,7 +211,8 @@ vendor/xiaozhi-esp32 upstream (không commit, tạo lại bằng apply_patch.sh)
   key trực tiếp tới Google qua TLS, không qua máy chủ nào khác. Vì key nằm trong firmware, ai có
   quyền truy cập vật lý vào thiết bị hoặc file `xiaozhi.bin` bạn tự build đều có thể đọc được key:
   hãy dùng key riêng cho thiết bị, giới hạn quota, và không chia sẻ file `.bin` đã build.
-- **Giao diện web chỉ dùng trong mạng LAN**, không có đăng nhập. Mọi yêu cầu thay đổi (POST) phải
+- **Giao diện web chỉ dùng trong mạng LAN**, có thể đặt mật khẩu (HTTP Basic, chỉ lưu dạng băm
+  SHA-256 có salt). Mọi yêu cầu thay đổi (POST) phải
   có header `X-Bap`. Trình duyệt không tự gửi header tùy chỉnh khi một trang web lạ gửi form sang
   thiết bị, nên điều này chặn tấn công CSRF từ Internet. Đừng mở cổng 80 của thiết bị ra Internet
   và chỉ dùng trong mạng Wi-Fi tin cậy.
@@ -216,6 +242,8 @@ API key rỗng, và quét bí mật bằng gitleaks.
 - [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32): MIT, bản quyền các tác giả upstream.
 - Font [Nunito](https://github.com/googlefonts/nunito): SIL Open Font License 1.1, xem
   `firmware/assets/fonts/Nunito-OFL.txt`.
+- Font [Noto Sans KR/SC](https://github.com/notofonts/noto-cjk) (tập con, phụ đề Hàn/Trung): SIL
+  Open Font License 1.1, xem `firmware/assets/fonts/NotoSansCJK-OFL.txt`.
 - Thuật toán lịch âm theo công bố của Hồ Ngọc Đức.
 - Bắp không liên kết với Seeed Studio hay Google. "SenseCAP" và "Gemini" là nhãn hiệu của chủ sở
   hữu tương ứng.

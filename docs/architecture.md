@@ -17,7 +17,7 @@ code is generic.
 | `firmware/src/protocols/gemini_live_protocol.{h,cc}` | `GeminiLiveProtocol : Protocol`. WebSocket session with Gemini Live, audio up/down, transcripts, tool-call bridge |
 | `firmware/src/assistant/assistant_config.{h,cc}` | `Config`, `Character`, `Look`, `App`. Built-in data from `assistant.json` layered with NVS overrides. `SystemPrompt()` |
 | `firmware/src/assistant/assistant_tools.cc` | `RegisterTools()`: Vietnamese tools on the MCP server. Scheduler (timers, alarms), clock sync, conversation log, `Say()` |
-| `firmware/src/assistant/assistant_web.cc` | `StartWebServer()`: settings UI and JSON API on port 80, mDNS `bap.local` |
+| `firmware/src/assistant/assistant_web.cc` | `StartWebServer()`: settings UI and JSON API on port 80, mDNS `bap-xxxx.local` (last 4 hex digits of the MAC) |
 | `firmware/src/assistant/assistant_face.{h,cc}` | `FaceShow()`, `FaceSetTalking()`: characters drawn natively with LVGL |
 | `firmware/src/assistant/assistant_input.cc` | `OnWheelRotate()`, `OnWheelClick()`, `OnWheelDoubleClick()`, `WheelTick()` |
 | `firmware/src/assistant/vn_lunar.h` | Header-only Vietnamese lunar calendar (`FromSolar`, `ToSolar`, `YearName`, `DayName`, `Festival`) |
@@ -62,7 +62,7 @@ All changes are guarded by `CONFIG_USE_GEMINI_LIVE`:
 `Application` creates `GeminiLiveProtocol`. `GeminiLiveProtocol::Start()` sets the time zone
 (`ICT-7`), starts SNTP and also `assistant::SyncClock()` (HTTP `Date` header, for networks that
 block NTP), then calls `assistant::RegisterTools()`, `StartScheduler()` and `StartWebServer()`.
-If no API key is configured it shows an error pointing to `http://bap.local`.
+If no API key is configured it shows an error pointing to `http://bap-xxxx.local`.
 
 ### Session (device <-> Gemini Live)
 
