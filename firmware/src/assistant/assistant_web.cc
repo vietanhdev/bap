@@ -335,13 +335,16 @@ esp_err_t HandleOta(httpd_req_t* req) {
         return Reject(req, "File không hợp lệ");
     }
     esp_ota_handle_t handle = 0;
-    if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &handle) != ESP_OK) return Reject(req, "Không bắt đầu được");
+    // Erase exactly the image size up front (in yielding chunks) instead of sector-by-sector
+    // between network reads: roughly halves the upload time.
+    if (esp_ota_begin(part, req->content_len, &handle) != ESP_OK) return Reject(req, "Không bắt đầu được");
     ESP_LOGI(TAG, "OTA upload: %u bytes", (unsigned)req->content_len);
     Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);  // modem sleep drops big uploads
     // Flash writes stall the other core; the wake-word engine then backs up and starves Wi-Fi.
     // Pause it for the upload (the device reboots afterwards anyway).
     auto& audio = Application::GetInstance().GetAudioService();
     audio.EnableWakeWordDetection(false);
+    ApplyVision(false);  // camera inference floods SPI while flash writes stall the CPU
     Board::GetInstance().GetDisplay()->SetChatMessage("system", "Đang cập nhật phần mềm...");
     std::string buf(16384, '\0');  // PSRAM; fewer, larger flash writes
     size_t remaining = req->content_len;
@@ -352,6 +355,10 @@ esp_err_t HandleOta(httpd_req_t* req) {
             esp_ota_abort(handle);
             Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
             audio.EnableWakeWordDetection(true);
+            {
+                auto cfg = LoadConfig();
+                ApplyVision(cfg.greet || cfg.presence);
+            }
             return Reject(req, "Tải lên bị gián đoạn");
         }
         remaining -= n;
