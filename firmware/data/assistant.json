@@ -151,6 +151,24 @@
       "title": "Nhìn và kể",
       "desc": "Dùng camera để mô tả đồ vật, đọc chữ, nhận xét.",
       "prompt": "Hãy dùng camera chụp ảnh và mô tả ngắn gọn những gì bạn thấy trước mặt. Nếu có chữ thì đọc lên. Sau đó hỏi người dùng muốn biết thêm gì về thứ đang được nhìn."
+    },
+    {
+      "id": "nhat_ky",
+      "title": "Nhật ký cuối ngày",
+      "desc": "Kể về hôm nay, Bắp tóm tắt và lưu lại.",
+      "prompt": "Hãy làm nhật ký cuối ngày: hỏi lần lượt từng câu, chờ người dùng trả lời rồi mới hỏi câu tiếp: hôm nay có chuyện gì vui, có điều gì làm bạn mệt, và một điều bạn biết ơn. Sau đó tóm tắt thành hai ba câu ấm áp, lưu bằng công cụ ghi chú với tiêu đề có ngày hôm nay, và chúc ngủ ngon."
+    },
+    {
+      "id": "tu_vi_vui",
+      "title": "Tử vi vui",
+      "desc": "Lời chúc tích cực theo cung hoàng đạo, chỉ để giải trí.",
+      "prompt": "Hãy hỏi người dùng thuộc cung hoàng đạo nào (nếu đã nhớ thì dùng luôn), rồi nói một đoạn tử vi vui cho hôm nay: may mắn, tình cảm, công việc, màu may mắn. Luôn tích cực, dí dỏm, và nói rõ là chỉ để giải trí. Gọn trong khoảng 30 giây."
+    },
+    {
+      "id": "hoc_tieng_han",
+      "title": "Học tiếng Hàn",
+      "desc": "Ba từ tiếng Hàn mỗi lần, nói chậm và nhắc lại.",
+      "prompt": "Hãy dạy ba từ hoặc câu tiếng Hàn thông dụng theo chủ đề người dùng chọn (chào hỏi, ăn uống, mua sắm...). Mỗi từ: nói tiếng Hàn thật chậm, đọc phiên âm, nghĩa tiếng Việt, rồi mời người dùng nói theo và khen hoặc sửa nhẹ nhàng. Cuối cùng ôn lại cả ba từ."
     }
   ],
   "radio": [

@@ -18,7 +18,8 @@ cần máy chủ trung gian. Firmware dựa trên [xiaozhi-esp32](https://github
   ngắt lời được, hiện phụ đề trên màn hình.
 - **5 nhân vật**, mỗi nhân vật có giọng, tính cách và gương mặt riêng (vẽ trực tiếp bằng LVGL, có
   23 biểu cảm, miệng nhép theo lời nói). Đổi nhân vật bằng núm xoay hoặc bằng lời ("gọi Bắp ra đây").
-- **Ứng dụng bằng giọng nói**: bản tin sáng, kể chuyện cho bé, luyện nói tiếng Anh, đố vui, hít thở
+- **Ứng dụng bằng giọng nói**: bản tin sáng, kể chuyện cho bé, luyện nói tiếng Anh, học tiếng Hàn,
+  nhật ký cuối ngày, tử vi vui, đố vui, hít thở
   thư giãn, hôm nay ăn gì, tập trung 25 phút, nhìn và kể. Nhấn đúp núm xoay để mở danh sách.
 - **Công cụ chạy trên thiết bị** (không cần API key riêng):
   lịch âm và đổi âm sang dương, thời tiết (Open-Meteo), tin tức (VnExpress RSS), tỷ giá
