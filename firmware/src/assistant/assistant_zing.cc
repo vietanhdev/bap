@@ -30,6 +30,8 @@
 #ifndef ZING_SIG_HOST_TEST
 #include "assistant_zing.h"
 
+#include "lrc.h"
+
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -395,27 +397,8 @@ std::vector<std::pair<uint32_t, std::string>> ZingLyrics(const std::string& song
     auto r = Get(file, "");
     if (!r || r->body.size() > 64 * 1024)
         return out;
-    const std::string& lrc = r->body;
-    size_t pos = 0;
-    while (pos < lrc.size() && out.size() < 200) {
-        size_t end = lrc.find('\n', pos);
-        if (end == std::string::npos)
-            end = lrc.size();
-        std::string line = lrc.substr(pos, end - pos);
-        pos = end + 1;
-        while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
-            line.pop_back();
-        // "[mm:ss.xx]text"; metadata tags like "[ar: ...]" have no digits after '['.
-        int mm = 0, ss = 0, cs = 0, consumed = 0;
-        if (sscanf(line.c_str(), "[%d:%d.%d]%n", &mm, &ss, &cs, &consumed) < 3 || consumed == 0)
-            continue;
-        std::string text = line.substr(consumed);
-        size_t start = text.find_first_not_of(' ');
-        text = start == std::string::npos ? "" : text.substr(start);
-        uint32_t ms = (uint32_t)(mm * 60000 + ss * 1000 + cs * 10);
-        if (!text.empty())
-            out.emplace_back(ms, text);
-    }
+    for (auto& [ms, text] : ParseLrc(r->body))
+        out.emplace_back(ms, text);
     return out;
 }
 
