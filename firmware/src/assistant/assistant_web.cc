@@ -403,6 +403,7 @@ esp_err_t HandleOta(httpd_req_t* req) {
     auto& audio = Application::GetInstance().GetAudioService();
     audio.EnableWakeWordDetection(false);
     ApplyVision(false);  // camera inference floods SPI while flash writes stall the CPU
+    SetOtaInProgress(true);
     Board::GetInstance().GetDisplay()->SetChatMessage("system", "Đang cập nhật phần mềm...");
     std::string buf(16384, '\0');  // PSRAM; fewer, larger flash writes
     size_t remaining = req->content_len;
@@ -414,6 +415,7 @@ esp_err_t HandleOta(httpd_req_t* req) {
             esp_ota_abort(handle);
             Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
             audio.EnableWakeWordDetection(true);
+            SetOtaInProgress(false);
             {
                 auto cfg = LoadConfig();
                 ApplyVision(cfg.greet || cfg.presence);
@@ -424,6 +426,11 @@ esp_err_t HandleOta(httpd_req_t* req) {
         vTaskDelay(1);  // let the idle task feed the watchdog during the long upload
     }
     if (esp_ota_end(handle) != ESP_OK || esp_ota_set_boot_partition(part) != ESP_OK) {
+        SetOtaInProgress(false);
+        audio.EnableWakeWordDetection(true);
+        auto cfg = LoadConfig();
+        ApplyVision(cfg.greet || cfg.presence);
+        Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
         return Reject(req, "Firmware không hợp lệ");
     }
     httpd_resp_sendstr(req, "{\"ok\":true}");

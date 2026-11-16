@@ -9,6 +9,7 @@
 #include <esp_log.h>
 #include <esp_timer.h>
 
+#include <atomic>
 #include <cstdlib>
 #include <ctime>
 
@@ -321,5 +322,11 @@ bool QuietHours() {
         return false;
     return LoadConfig().quiet;
 }
+
+namespace {
+std::atomic<bool> g_ota_busy{false};
+}
+bool OtaInProgress() { return g_ota_busy; }
+void SetOtaInProgress(bool busy) { g_ota_busy = busy; }
 
 }  // namespace assistant

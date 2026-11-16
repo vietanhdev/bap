@@ -25,7 +25,10 @@ void OnPersonPresent();
 bool OnPersonArrived(int count);
 void SetWakeHandler(void (*handler)());                // board: wake the screen
 void SetVisionHandler(void (*handler)(bool enabled));  // board: start/stop on-camera detection
-void ApplyVision(bool enabled);                        // screen pixels; called from the touch task
+void ApplyVision(bool enabled);
+// True while a firmware upload writes flash: pollers back off (I2C reads time out meanwhile).
+bool OtaInProgress();
+void SetOtaInProgress(bool busy);  // screen pixels; called from the touch task
 void InstallFontFallback();
 // True between 22:00 and 06:00 when "do not disturb" is on: no wake word (touch/wheel still work).
 bool QuietHours();  // Korean/Chinese glyphs from the assets partition
