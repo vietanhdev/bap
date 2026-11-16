@@ -31,6 +31,7 @@ lv_obj_t* g_mouth = nullptr;   // mouth layer inside g_features (rebuilt when ta
 lv_timer_t* g_life = nullptr;  // random blinks and glances
 std::string g_character, g_emotion;
 bool g_talking = false;
+bool g_calm = false;  // night: no breathing (see FaceSetCalm)
 
 struct Palette {
     lv_color_t body, accent, ink, cheek, shade, outline, sheen, detail, iris;
@@ -915,8 +916,10 @@ void BuildExtras(lv_obj_t* p, const Expression& e) {
                                {zx - s / 2, zy - s / 2, zx + s / 2, zy - s / 2, zx - s / 2,
                                 zy + s / 2, zx + s / 2, zy + s / 2},
                                6, lv_color_hex(0xB9B0FF));
-            Animate(z, SetOpa, 50, 255, 800, i * 400);
-            Animate(z, SetY, 0, -Px(6), 1600, i * 400);
+            if (!g_calm) {  // night: static zzz, no redraws
+                Animate(z, SetOpa, 50, 255, 800, i * 400);
+                Animate(z, SetY, 0, -Px(6), 1600, i * 400);
+            }
         }
     }
     if (Has(x, "bubble")) {
@@ -1032,7 +1035,8 @@ void FaceShow(lv_obj_t* parent, const lv_font_t* font, const char* emotion) {
         lv_obj_align(parent, LV_ALIGN_CENTER, 0, -g_size / 9);  // leave room for subtitles below
         g_body = Layer(g_root);
         g_rig = BuildBody(g_body);
-        Animate(g_root, SetY, 0, -LV_MAX(2, Px(5)), 1900);  // gentle breathing
+        if (!g_calm)
+            Animate(g_root, SetY, 0, -LV_MAX(2, Px(5)), 1900);  // gentle breathing
         if (g_life == nullptr)
             g_life = lv_timer_create(LifeTick, 2500, nullptr);
         g_emotion.clear();
@@ -1041,6 +1045,23 @@ void FaceShow(lv_obj_t* parent, const lv_font_t* font, const char* emotion) {
         g_emotion = emotion;
         RebuildFeatures();
     }
+}
+
+void FaceSetCalm(bool calm) {
+    if (g_calm == calm)
+        return;
+    g_calm = calm;
+    if (g_root == nullptr)
+        return;
+    if (calm) {
+        // Breathing moves the whole gradient-filled face: the largest idle redraw. At night the
+        // screen is dimmed and nobody is watching, so hold still.
+        lv_anim_delete(g_root, SetY);
+        lv_obj_set_style_translate_y(g_root, 0, 0);
+    } else {
+        Animate(g_root, SetY, 0, -LV_MAX(2, Px(5)), 1900);
+    }
+    RebuildFeatures();  // eyes/zzz pick up the calm flag
 }
 
 void FaceSetTalking(bool talking) {

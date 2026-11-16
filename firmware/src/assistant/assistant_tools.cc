@@ -19,6 +19,7 @@
 #include "assets/lang_config.h"
 #include "assistant.h"
 #include "assistant_config.h"
+#include "assistant_face.h"
 #include "assistant_sd.h"
 #include "assistant_zing.h"
 #include "board.h"
@@ -286,6 +287,15 @@ void SchedulerTask(void*) {
                     backlight->SetBrightness(saved_brightness, false);
                     saved_brightness = -1;
                 }
+            }
+            // Calm face at night while resting (no breathing motion): idempotent, checked every
+            // minute.
+            {
+                bool calm = night && idle && LoadConfig().night_dim;
+                Application::GetInstance().Schedule([calm]() {
+                    DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+                    FaceSetCalm(calm);
+                });
             }
             // Quiet nights: cap the speaker for the whole night (conversations included) and give
             // the old volume back in the morning.

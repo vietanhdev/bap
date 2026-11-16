@@ -8,5 +8,6 @@ namespace assistant {
 void FaceShow(lv_obj_t* parent, const lv_font_t* font, const char* emotion);
 // Animate the mouth while the assistant is speaking.
 void FaceSetTalking(bool talking);
+void FaceSetCalm(bool calm);  // stop idle body motion (night); call with the display locked
 
 }  // namespace assistant
