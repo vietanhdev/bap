@@ -18,13 +18,18 @@
 namespace assistant {
 namespace {
 
+std::map<std::string, uint32_t> g_stack_free;  // task -> lowest free stack seen (bytes)
+
 std::map<std::string, uint32_t> Snapshot(uint32_t* total) {
     std::map<std::string, uint32_t> out;
     UBaseType_t n = uxTaskGetNumberOfTasks() + 4;
     std::vector<TaskStatus_t> tasks(n);
     n = uxTaskGetSystemState(tasks.data(), n, total);
-    for (UBaseType_t i = 0; i < n; ++i)
+    g_stack_free.clear();
+    for (UBaseType_t i = 0; i < n; ++i) {
         out[tasks[i].pcTaskName] += tasks[i].ulRunTimeCounter;
+        g_stack_free[tasks[i].pcTaskName] = tasks[i].usStackHighWaterMark * sizeof(StackType_t);
+    }
     return out;
 }
 
@@ -49,6 +54,10 @@ esp_err_t HandlePerf(httpd_req_t* req) {
             break;
         cJSON_AddNumberToObject(cpu, name.c_str(), (int)(pct * 10) / 10.0);
     }
+    // Stack headroom per task (lowest ever): anything under ~1 KB is a crash waiting to happen.
+    cJSON* stacks = cJSON_AddObjectToObject(r, "stack_free_min");
+    for (auto& [name, bytes] : g_stack_free)
+        cJSON_AddNumberToObject(stacks, name.c_str(), bytes);
     cJSON_AddNumberToObject(r, "free_internal", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "min_free_internal",
                             heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));

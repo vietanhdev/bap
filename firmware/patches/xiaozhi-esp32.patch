@@ -791,7 +791,7 @@ index d2d11f6..0bd7d89 100644
      virtual bool SetHMirror(bool enabled) override;
      virtual bool SetVFlip(bool enabled) override;
 diff --git a/main/display/lcd_display.cc b/main/display/lcd_display.cc
-index 7be9bad..310b3de 100644
+index 7be9bad..53f7df7 100644
 --- a/main/display/lcd_display.cc
 +++ b/main/display/lcd_display.cc
 @@ -1,4 +1,8 @@
@@ -830,7 +830,18 @@ index 7be9bad..310b3de 100644
      current_theme_ = LvglThemeManager::GetInstance().GetTheme(theme_name);
  
      // Create a timer to hide the preview image
-@@ -1210,6 +1224,21 @@ bool LcdDisplay::SetEmotion(const char* emotion) {
+@@ -166,6 +180,10 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
+     port_cfg.task_priority = 1;
+ #if CONFIG_SOC_CPU_CORES_NUM > 1
+     port_cfg.task_affinity = 1;
++#endif
++#if CONFIG_USE_GEMINI_LIVE
++    // Hand-drawn faces (gradients, arcs, CJK fallback glyphs) overflowed the default 7 KB stack.
++    port_cfg.task_stack = 12 * 1024;
+ #endif
+     lvgl_port_init(&port_cfg);
+ 
+@@ -1210,6 +1228,21 @@ bool LcdDisplay::SetEmotion(const char* emotion) {
      }
  
      auto emoji_collection = static_cast<LvglTheme*>(current_theme_)->emoji_collection();
