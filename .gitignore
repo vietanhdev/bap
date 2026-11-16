@@ -1,0 +1,80 @@
+# ---------------------------------------------------------------------------
+# NEVER COMMIT: secrets, device dumps, local config with keys
+# ---------------------------------------------------------------------------
+backup/
+secrets/
+server/.env
+server/data/.config.yaml
+.gcp-project
+*.env
+!*.env.example
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*_key.txt
+*apikey*
+*api_key*
+GEMINI_API_KEY*
+
+# Flash dumps and any local firmware images (a locally built xiaozhi.bin contains the API key)
+*.bin
+!firmware/assets/fonts/*.bin
+*.bin.sha256
+*.elf
+*.map
+
+# Upstream clone: recreated by firmware/scripts/apply_patch.sh from the pinned commit + patch
+vendor/
+
+# Generated board config (build.sh writes the API key into it)
+**/boards/sensecap-watcher/config.home.json
+
+# ---------------------------------------------------------------------------
+# Build outputs
+# ---------------------------------------------------------------------------
+firmware/build/
+build/
+dist/
+releases/
+*.log
+firmware/tests/*.out
+firmware/tests/test_*
+!firmware/tests/test_*.cc
+*.o
+*.a
+
+# Tooling scratch
+.playwright-mcp/
+server/data/tmp/
+tmp/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+.cache/
+.clangd
+compile_commands.json
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Generated face GIFs for the web UI (rebuild with firmware/assets/make_faces.py)
+firmware/assets/faces/

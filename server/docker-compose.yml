@@ -1,0 +1,19 @@
+services:
+  xiaozhi:
+    image: ghcr.io/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: bong-xiaozhi
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+      - HOME_CITY=${HOME_CITY:-Hà Nội}
+      - HOME_LAT=${HOME_LAT:-21.0285}
+      - HOME_LON=${HOME_LON:-105.8542}
+    ports:
+      - "8000:8000"   # WebSocket voice
+      - "8003:8003"   # OTA + vision HTTP
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
+      - ./prompts:/opt/xiaozhi-esp32-server/data/prompts:ro
+      # Our patches and plugins (each file mounted so built-ins stay visible)
+      - ./overrides/asr_openai.py:/opt/xiaozhi-esp32-server/core/providers/asr/openai.py:ro
+      - ./plugins/thoi_tiet.py:/opt/xiaozhi-esp32-server/plugins_func/functions/thoi_tiet.py:ro

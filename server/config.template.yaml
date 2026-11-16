@@ -1,0 +1,108 @@
+# Rendered by run.sh into data/.config.yaml (${VARS} come from .env).
+# Only keys that differ from the upstream config.yaml are listed here.
+
+server:
+  ip: 0.0.0.0
+  port: 8000
+  http_port: 8003
+  websocket: ws://${SERVER_IP}:8000/xiaozhi/v1/
+  vision_explain: http://${SERVER_IP}:8003/mcp/vision/explain
+  timezone_offset: +7
+  auth:
+    enabled: false
+
+log:
+  log_level: INFO
+
+close_connection_no_voice_time: 60
+enable_greeting: true
+enable_wakeup_words_response_cache: false
+
+exit_commands:
+  - "tạm biệt"
+  - "thoát"
+
+wakeup_words:
+  - "hi esp"
+  - "hi e s p"
+
+system_error_response: "Ui, Bông hơi mệt một chút. Bạn thử lại sau nhé."
+
+end_prompt:
+  enable: true
+  prompt: |
+    Hãy kết thúc cuộc trò chuyện bằng một câu tạm biệt ngắn, dễ thương, bằng tiếng Việt.
+
+prompt: |
+  Bạn tên là Bông, một bé mây bông nhỏ xíu sống trong chiếc máy tròn trên bàn. Bông xưng "Bông" và gọi người dùng là "bạn".
+  Tính cách: hồn nhiên, ấm áp, hơi tinh nghịch, hay khen và động viên. Nói chuyện tự nhiên như người Việt, thỉnh thoảng dùng từ dễ thương như "nè", "nha", "hihi" nhưng không lạm dụng.
+  Bông giỏi: trả lời câu hỏi đời thường, gợi ý món ăn, nhắc việc, kể chuyện ngắn, xem thời tiết, mở nhạc.
+  Nếu không chắc chắn, Bông nói thật là không biết thay vì bịa.
+
+prompt_template: data/prompts/agent-vi.txt
+
+selected_module:
+  VAD: SileroVAD
+  ASR: GroqWhisper
+  LLM: Gemini
+  VLLM: GeminiVision
+  TTS: HoaiMy
+  Memory: mem_local_short
+  Intent: function_call
+
+ASR:
+  GroqWhisper:
+    type: openai
+    api_key: ${GROQ_API_KEY}
+    base_url: https://api.groq.com/openai/v1/audio/transcriptions
+    model_name: whisper-large-v3-turbo
+    language: vi
+    prompt: "Xin chào Bông. Hôm nay trời thế nào? Mở nhạc cho mình nghe nhé."
+    output_dir: tmp/
+
+LLM:
+  Gemini:
+    type: openai
+    api_key: ${GEMINI_API_KEY}
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    model_name: ${GEMINI_MODEL}
+    temperature: 0.7
+    max_tokens: 800
+    timeout: 30
+
+VLLM:
+  GeminiVision:
+    type: openai
+    api_key: ${GEMINI_API_KEY}
+    url: https://generativelanguage.googleapis.com/v1beta/openai/
+    model_name: ${GEMINI_MODEL}
+
+TTS:
+  HoaiMy:
+    type: edge
+    voice: vi-VN-HoaiMyNeural
+    language: tiếng Việt
+    rate: 8
+    pitch: 12
+    output_dir: tmp/
+
+Memory:
+  mem_local_short:
+    type: mem_local_short
+    llm: Gemini
+
+Intent:
+  function_call:
+    type: function_call
+    functions:
+      - thoi_tiet
+      - play_music
+
+plugins:
+  play_music:
+    music_dir: "./data/music"
+    music_ext:
+      - ".mp3"
+      - ".wav"
+      - ".p3"
+    refresh_time: 300

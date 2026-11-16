@@ -1,0 +1,770 @@
+// Tools the assistant can call: Vietnamese information (âm lịch, thời tiết, tin tức, tỷ giá),
+// timers/alarms, notes and long-term memory. Everything runs on the device; data sources are
+// public endpoints that need no API key.
+#include <cJSON.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+#include <algorithm>
+#include <cstring>
+#include <ctime>
+#include <sys/time.h>
+#include <mutex>
+#include <vector>
+
+#include "application.h"
+#include "assets/lang_config.h"
+#include "board.h"
+#include "boards/common/backlight.h"
+#include "display/display.h"
+#include "assistant.h"
+#include "assistant_config.h"
+#include "mcp_server.h"
+#include "protocols/gemini_live_protocol.h"
+#include "vn_lunar.h"
+
+#define TAG "AssistantTools"
+
+namespace assistant {
+namespace {
+
+// ---------- helpers ----------
+
+std::expected<std::string, std::string> HttpGet(const std::string& url) {
+    auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+    http->SetTimeout(8000);
+    http->SetHeader("User-Agent", "Mozilla/5.0 (Bap assistant)");
+    if (auto opened = http->Open("GET", url); !opened) {
+        return std::unexpected("Không kết nối được máy chủ");
+    }
+    auto status = http->GetStatusCode();
+    if (!status || *status != 200) {
+        http->Close();
+        return std::unexpected("Máy chủ trả về lỗi");
+    }
+    std::string body = http->ReadAll();
+    http->Close();
+    return body;
+}
+
+std::string UrlEncode(const std::string& s) {
+    static const char* hex = "0123456789ABCDEF";
+    std::string out;
+    for (unsigned char c : s) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.') out += c;
+        else { out += '%'; out += hex[c >> 4]; out += hex[c & 15]; }
+    }
+    return out;
+}
+
+std::string Between(const std::string& s, const char* a, const char* b, size_t from, size_t* end) {
+    size_t i = s.find(a, from);
+    if (i == std::string::npos) return {};
+    i += strlen(a);
+    size_t j = s.find(b, i);
+    if (j == std::string::npos) return {};
+    if (end) *end = j + strlen(b);
+    return s.substr(i, j - i);
+}
+
+std::string CleanXmlText(std::string t) {
+    auto strip = [&t](const char* a) {
+        for (size_t p; (p = t.find(a)) != std::string::npos;) t.erase(p, strlen(a));
+    };
+    strip("<![CDATA[");
+    strip("]]>");
+    const char* ent[][2] = {{"&amp;", "&"}, {"&quot;", "\""}, {"&#39;", "'"}, {"&apos;", "'"}, {"&lt;", "<"}, {"&gt;", ">"}};
+    for (auto& e : ent) {
+        for (size_t p; (p = t.find(e[0])) != std::string::npos;) t.replace(p, strlen(e[0]), e[1]);
+    }
+    size_t a = t.find_first_not_of(" \n\r\t");
+    size_t b = t.find_last_not_of(" \n\r\t");
+    return a == std::string::npos ? "" : t.substr(a, b - a + 1);
+}
+
+bool Now(struct tm* out, time_t* epoch = nullptr) {
+    time_t now = time(nullptr);
+    if (now < 1700000000) return false;
+    localtime_r(&now, out);
+    if (epoch) *epoch = now;
+    return true;
+}
+
+const char* WeatherText(int code) {
+    switch (code) {
+        case 0: return "trời quang";
+        case 1: return "ít mây";
+        case 2: return "có mây";
+        case 3: return "nhiều mây";
+        case 45: case 48: return "sương mù";
+        case 51: case 53: case 55: return "mưa phùn";
+        case 61: return "mưa nhẹ";
+        case 63: return "mưa vừa";
+        case 65: return "mưa to";
+        case 80: case 81: return "mưa rào";
+        case 82: return "mưa rào rất to";
+        case 95: case 96: case 99: return "dông";
+        default: return "thời tiết không rõ";
+    }
+}
+
+// ---------- JSON string lists in NVS ----------
+
+std::vector<std::string> ListItems(const char* key) {
+    std::vector<std::string> items;
+    cJSON* arr = cJSON_Parse(LoadList(key).c_str());
+    cJSON* it = nullptr;
+    cJSON_ArrayForEach(it, arr) {
+        if (cJSON_IsString(it)) items.push_back(it->valuestring);
+    }
+    cJSON_Delete(arr);
+    return items;
+}
+
+void StoreItems(const char* key, const std::vector<std::string>& items) {
+    cJSON* arr = cJSON_CreateArray();
+    for (auto& s : items) cJSON_AddItemToArray(arr, cJSON_CreateString(s.c_str()));
+    char* txt = cJSON_PrintUnformatted(arr);
+    SaveList(key, txt);
+    cJSON_free(txt);
+    cJSON_Delete(arr);
+}
+
+std::string Numbered(const std::vector<std::string>& items, const char* empty) {
+    if (items.empty()) return empty;
+    std::string out;
+    for (size_t i = 0; i < items.size(); ++i) out += std::to_string(i + 1) + ". " + items[i] + "\n";
+    return out;
+}
+
+// ---------- timers and alarms ----------
+
+struct Alarm {
+    int id;
+    time_t at;          // next fire time (epoch)
+    bool daily;
+    std::string label;
+};
+
+std::mutex g_alarm_mutex;
+std::vector<Alarm> g_alarms;
+int g_next_alarm_id = 1;
+
+void PersistAlarms() {  // only wall-clock alarms survive a reboot
+    cJSON* arr = cJSON_CreateArray();
+    for (auto& a : g_alarms) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddNumberToObject(o, "at", (double)a.at);
+        cJSON_AddBoolToObject(o, "daily", a.daily);
+        cJSON_AddStringToObject(o, "label", a.label.c_str());
+        cJSON_AddItemToArray(arr, o);
+    }
+    char* txt = cJSON_PrintUnformatted(arr);
+    SaveList("alarms", txt);
+    cJSON_free(txt);
+    cJSON_Delete(arr);
+}
+
+void LoadAlarms() {
+    cJSON* arr = cJSON_Parse(LoadList("alarms").c_str());
+    cJSON* o = nullptr;
+    cJSON_ArrayForEach(o, arr) {
+        auto at = cJSON_GetObjectItem(o, "at");
+        auto label = cJSON_GetObjectItem(o, "label");
+        if (!cJSON_IsNumber(at)) continue;
+        g_alarms.push_back({g_next_alarm_id++, (time_t)at->valuedouble,
+                            cJSON_IsTrue(cJSON_GetObjectItem(o, "daily")) != 0,
+                            cJSON_IsString(label) ? label->valuestring : ""});
+    }
+    cJSON_Delete(arr);
+}
+
+std::string DescribeAlarms() {
+    std::lock_guard<std::mutex> lock(g_alarm_mutex);
+    if (g_alarms.empty()) return "Không có hẹn giờ hay báo thức nào.";
+    std::string out;
+    time_t now = time(nullptr);
+    for (auto& a : g_alarms) {
+        struct tm t;
+        localtime_r(&a.at, &t);
+        char buf[160];
+        long left = (long)(a.at - now);
+        snprintf(buf, sizeof(buf), "#%d: %02d:%02d%s, còn %ld phút %ld giây, nội dung: %s\n", a.id, t.tm_hour,
+                 t.tm_min, a.daily ? " hằng ngày" : "", left / 60, left % 60, a.label.empty() ? "(không)" : a.label.c_str());
+        out += buf;
+    }
+    return out;
+}
+
+void SchedulerTask(void*) {
+    int ticks = 0;
+    while (true) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        time_t now = time(nullptr);
+        ++ticks;
+        WheelTick();
+        // Resting screen: keep the date and lunar date on the bottom line.
+        static int idle_seconds = 0;
+        idle_seconds = Application::GetInstance().GetDeviceState() == kDeviceStateIdle ? idle_seconds + 1 : 0;
+        if (idle_seconds == 3 || (idle_seconds > 0 && idle_seconds % 60 == 0)) {
+            auto line = IdleLine();
+            if (!line.empty()) {
+                Application::GetInstance().Schedule([line]() {
+                    if (Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {
+                        Board::GetInstance().GetDisplay()->SetChatMessage("system", line.c_str());
+                    }
+                });
+            }
+        }
+        // Retry every 20 s until the clock is set, then refresh every 6 hours.
+        if ((now < 1700000000 && ticks % 20 == 1) || ticks % 21600 == 0) SyncClock();
+        if (now < 1700000000) continue;
+        if (ticks % 60 == 5) {  // dim the screen at night while resting
+            static int saved_brightness = -1;
+            struct tm tm_now;
+            localtime_r(&now, &tm_now);
+            bool night = tm_now.tm_hour >= 22 || tm_now.tm_hour < 6;
+            auto backlight = Board::GetInstance().GetBacklight();
+            bool idle = Application::GetInstance().GetDeviceState() == kDeviceStateIdle;
+            if (backlight != nullptr && LoadConfig().night_dim) {
+                if (night && idle && saved_brightness < 0 && backlight->brightness() > 25) {
+                    saved_brightness = backlight->brightness();
+                    backlight->SetBrightness(20, false);
+                } else if ((!night || !idle) && saved_brightness >= 0) {
+                    backlight->SetBrightness(saved_brightness, false);
+                    saved_brightness = -1;
+                }
+            }
+        }
+        std::vector<Alarm> due;
+        {
+            std::lock_guard<std::mutex> lock(g_alarm_mutex);
+            bool changed = false;
+            for (auto it = g_alarms.begin(); it != g_alarms.end();) {
+                if (it->at <= now) {
+                    // Skip alarms that expired long ago while the device was off.
+                    if (now - it->at < 600) due.push_back(*it);
+                    if (it->daily) {
+                        while (it->at <= now) it->at += 86400;
+                        ++it;
+                    } else {
+                        it = g_alarms.erase(it);
+                    }
+                    changed = true;
+                } else {
+                    ++it;
+                }
+            }
+            if (changed) PersistAlarms();
+        }
+        for (auto& a : due) {
+            ESP_LOGI(TAG, "Alarm fired: %s", a.label.c_str());
+            auto& app = Application::GetInstance();
+            app.PlaySound(Lang::Sounds::OGG_VIBRATION);
+            vTaskDelay(pdMS_TO_TICKS(1200));
+            Say("<hệ thống>Đã đến giờ hẹn" + (a.label.empty() ? std::string("") : ": " + a.label) +
+                ". Hãy báo cho người dùng một cách dễ thương. Nếu nội dung là một yêu cầu (ví dụ đọc thời "
+                "tiết, đọc tin, xem lịch âm) thì thực hiện luôn bằng công cụ.</hệ thống>");
+        }
+    }
+}
+
+}  // namespace
+
+namespace {
+std::mutex g_log_mutex;
+std::vector<std::pair<std::string, std::string>> g_log;  // (role, text), newest last
+}  // namespace
+
+void LogTurn(const char* role, const std::string& text) {
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    // Streaming transcripts grow in place: replace the last entry while it is a prefix.
+    if (!g_log.empty() && g_log.back().first == role && text.rfind(g_log.back().second, 0) == 0) {
+        g_log.back().second = text;
+        return;
+    }
+    g_log.emplace_back(role, text);
+    if (g_log.size() > 24) g_log.erase(g_log.begin());
+}
+
+std::string LogJson() {
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    cJSON* arr = cJSON_CreateArray();
+    for (auto& e : g_log) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddStringToObject(o, "role", e.first.c_str());
+        cJSON_AddStringToObject(o, "text", e.second.c_str());
+        cJSON_AddItemToArray(arr, o);
+    }
+    char* txt = cJSON_PrintUnformatted(arr);
+    std::string out(txt);
+    cJSON_free(txt);
+    cJSON_Delete(arr);
+    return out;
+}
+
+std::string IdleLine() {
+    struct tm t {};
+    if (!Now(&t)) return "";
+    static const char* wd[] = {"Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"};
+    auto l = vn_lunar::FromSolar(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+    char buf[120];
+    snprintf(buf, sizeof(buf), "%s %d/%d\n%d/%d âm lịch", wd[t.tm_wday], t.tm_mday, t.tm_mon + 1, l.day, l.month);
+    return buf;
+}
+
+std::string AlarmsText() { return DescribeAlarms(); }
+
+void Say(const std::string& text) {
+    auto* gemini = GeminiLiveProtocol::instance();
+    if (gemini != nullptr && gemini->IsAudioChannelOpened()) {
+        gemini->SendUserText(text);
+    } else {
+        Application::GetInstance().WakeWordInvoke("<say>" + text);
+    }
+}
+
+// NTP (UDP 123) is blocked on some home networks, so read the clock from an HTTP Date header.
+bool SyncClock() {
+    auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+    http->SetTimeout(5000);
+    if (auto opened = http->Open("GET", "http://www.gstatic.com/generate_204"); !opened) return false;
+    (void)http->GetStatusCode();
+    std::string date = http->GetResponseHeader("Date");  // e.g. "Mon, 16 Nov 2026 14:30:00 GMT"
+    http->Close();
+    char mon[4] = {};
+    int d, y, h, mi, s;
+    if (sscanf(date.c_str(), "%*3s, %d %3s %d %d:%d:%d", &d, mon, &y, &h, &mi, &s) != 6) {
+        ESP_LOGW(TAG, "No usable Date header: '%s'", date.c_str());
+        return false;
+    }
+    static const char* months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    const char* p = strstr(months, mon);
+    if (p == nullptr) return false;
+    int m = (int)(p - months) / 3 + 1;
+    long days = vn_lunar::JdFromDate(d, m, y) - 2440588;  // days since 1970-01-01
+    struct timeval tv = {.tv_sec = (time_t)days * 86400 + h * 3600 + mi * 60 + s, .tv_usec = 0};
+    settimeofday(&tv, nullptr);
+    ESP_LOGI(TAG, "Clock set from HTTP: %s", date.c_str());
+    return true;
+}
+
+void StartScheduler() {
+    static bool started = false;
+    if (started) return;
+    started = true;
+    {
+        std::lock_guard<std::mutex> lock(g_alarm_mutex);
+        LoadAlarms();
+    }
+    xTaskCreate(SchedulerTask, "assistant_sched", 4096, nullptr, 2, nullptr);
+}
+
+void RegisterTools() {
+    static bool registered = false;
+    if (registered) return;
+    registered = true;
+    auto& mcp = McpServer::GetInstance();
+
+    mcp.AddTool("vn.am_lich",
+                "Tra lịch âm (âm lịch Việt Nam): đổi ngày dương sang ngày âm, can chi, ngày lễ âm lịch. "
+                "Bỏ trống ngày/tháng/năm để xem hôm nay. Dùng khi người dùng hỏi hôm nay mùng mấy, "
+                "ngày rằm, mùng một, năm con gì.",
+                PropertyList({Property("ngay", kPropertyTypeInteger, 0, 0, 31),
+                              Property("thang", kPropertyTypeInteger, 0, 0, 12),
+                              Property("nam", kPropertyTypeInteger, 0, 0, 2100)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    struct tm t {};
+                    bool has_now = Now(&t);
+                    int d = p["ngay"].value<int>(), m = p["thang"].value<int>(), y = p["nam"].value<int>();
+                    if (d == 0 || m == 0) {
+                        if (!has_now) return std::string("Chưa đồng bộ được giờ.");
+                        d = t.tm_mday; m = t.tm_mon + 1; y = t.tm_year + 1900;
+                    } else if (y == 0) {
+                        y = has_now ? t.tm_year + 1900 : 2026;
+                    }
+                    auto l = vn_lunar::FromSolar(d, m, y);
+                    char buf[320];
+                    snprintf(buf, sizeof(buf),
+                             "Dương lịch %d/%d/%d là ngày %d tháng %d%s năm %s âm lịch. Ngày %s, tháng %s.%s%s",
+                             d, m, y, l.day, l.month, l.leap ? " nhuận" : "", vn_lunar::YearName(l.year).c_str(),
+                             vn_lunar::DayName(l.jd).c_str(), vn_lunar::MonthName(l.month, l.year).c_str(),
+                             vn_lunar::Festival(l) ? " Hôm đó là " : "", vn_lunar::Festival(l) ? vn_lunar::Festival(l) : "");
+                    return std::string(buf);
+                });
+
+    mcp.AddTool("vn.am_sang_duong",
+                "Đổi ngày âm lịch sang dương lịch. Ví dụ: rằm tháng 7 năm nay là ngày nào, Tết năm sau "
+                "rơi vào ngày nào (Tết là mùng 1 tháng 1 âm). Bỏ trống năm để dùng năm âm lịch hiện tại.",
+                PropertyList({Property("ngay_am", kPropertyTypeInteger, 1, 30),
+                              Property("thang_am", kPropertyTypeInteger, 1, 12),
+                              Property("nam_am", kPropertyTypeInteger, 0, 0, 2100),
+                              Property("thang_nhuan", kPropertyTypeBoolean, false)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    int y = p["nam_am"].value<int>();
+                    struct tm t {};
+                    if (y == 0) {
+                        if (!Now(&t)) return std::string("Chưa đồng bộ được giờ.");
+                        y = vn_lunar::FromSolar(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900).year;
+                    }
+                    auto s = vn_lunar::ToSolar(p["ngay_am"].value<int>(), p["thang_am"].value<int>(), y,
+                                               p["thang_nhuan"].value<bool>());
+                    if (s.day == 0) return std::string("Năm đó không có tháng nhuận này.");
+                    static const char* wd[] = {"Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy", "Chủ nhật"};
+                    long jd = vn_lunar::JdFromDate(s.day, s.month, s.year);
+                    char buf[200];
+                    snprintf(buf, sizeof(buf), "Ngày %d tháng %d năm %s âm lịch là %s, ngày %d/%d/%d dương lịch.",
+                             p["ngay_am"].value<int>(), p["thang_am"].value<int>(), vn_lunar::YearName(y).c_str(),
+                             wd[jd % 7], s.day, s.month, s.year);
+                    return std::string(buf);
+                });
+
+    mcp.AddTool("vn.thoi_tiet",
+                "Xem thời tiết hiện tại và dự báo 3 ngày tại Việt Nam hoặc bất kỳ đâu. Bỏ trống địa điểm "
+                "để xem nơi người dùng đang ở.",
+                PropertyList({Property("dia_diem", kPropertyTypeString, std::string(""))}),
+                [](const PropertyList& p) -> ToolResult {
+                    auto cfg = LoadConfig();
+                    std::string name = cfg.city;
+                    double lat = cfg.lat, lon = cfg.lon;
+                    auto place = p["dia_diem"].value<std::string>();
+                    if (!place.empty() && place != cfg.city) {
+                        auto geo = HttpGet("https://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
+                                           UrlEncode(place));
+                        if (!geo) return std::unexpected(geo.error());
+                        cJSON* root = cJSON_Parse(geo->c_str());
+                        cJSON* r = cJSON_GetArrayItem(cJSON_GetObjectItem(root, "results"), 0);
+                        if (r == nullptr) {
+                            cJSON_Delete(root);
+                            return std::string("Không tìm thấy địa điểm " + place);
+                        }
+                        name = cJSON_GetObjectItem(r, "name")->valuestring;
+                        lat = cJSON_GetObjectItem(r, "latitude")->valuedouble;
+                        lon = cJSON_GetObjectItem(r, "longitude")->valuedouble;
+                        cJSON_Delete(root);
+                    }
+                    char url[400];
+                    snprintf(url, sizeof(url),
+                             "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                             "&timezone=Asia%%2FHo_Chi_Minh&forecast_days=3"
+                             "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code"
+                             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                             lat, lon);
+                    auto body = HttpGet(url);
+                    if (!body) return std::unexpected(body.error());
+                    cJSON* root = cJSON_Parse(body->c_str());
+                    cJSON* cur = cJSON_GetObjectItem(root, "current");
+                    cJSON* daily = cJSON_GetObjectItem(root, "daily");
+                    if (!cur || !daily) {
+                        cJSON_Delete(root);
+                        return std::unexpected("Dữ liệu thời tiết không hợp lệ");
+                    }
+                    auto num = [](cJSON* o, const char* k) {
+                        auto v = cJSON_GetObjectItem(o, k);
+                        return cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+                    };
+                    char buf[200];
+                    snprintf(buf, sizeof(buf), "%s hiện tại: %s, %.0f độ C (cảm giác %.0f độ), độ ẩm %.0f%%.\n",
+                             name.c_str(), WeatherText((int)num(cur, "weather_code")), num(cur, "temperature_2m"),
+                             num(cur, "apparent_temperature"), num(cur, "relative_humidity_2m"));
+                    std::string out = buf;
+                    static const char* labels[] = {"Hôm nay", "Ngày mai", "Ngày kia"};
+                    for (int i = 0; i < 3; ++i) {
+                        auto at = [&](const char* k) {
+                            auto v = cJSON_GetArrayItem(cJSON_GetObjectItem(daily, k), i);
+                            return cJSON_IsNumber(v) ? v->valuedouble : 0.0;
+                        };
+                        snprintf(buf, sizeof(buf), "%s: %s, %.0f đến %.0f độ, khả năng mưa %.0f%%.\n", labels[i],
+                                 WeatherText((int)at("weather_code")), at("temperature_2m_min"),
+                                 at("temperature_2m_max"), at("precipitation_probability_max"));
+                        out += buf;
+                    }
+                    cJSON_Delete(root);
+                    return out;
+                });
+
+    mcp.AddTool("vn.tin_tuc",
+                "Đọc tin tức mới nhất từ báo VnExpress. chu_de là một trong: moi_nhat, thoi_su, the_gioi, "
+                "kinh_doanh, giai_tri, the_thao, phap_luat, giao_duc, suc_khoe, doi_song, du_lich, "
+                "khoa_hoc, so_hoa, xe. Trả về các tiêu đề và tóm tắt; hãy đọc ngắn gọn 3 đến 5 tin.",
+                PropertyList({Property("chu_de", kPropertyTypeString, std::string("moi_nhat"))}),
+                [](const PropertyList& p) -> ToolResult {
+                    std::string topic = p["chu_de"].value<std::string>();
+                    static const char* map[][2] = {
+                        {"moi_nhat", "tin-moi-nhat"}, {"thoi_su", "thoi-su"}, {"the_gioi", "the-gioi"},
+                        {"kinh_doanh", "kinh-doanh"}, {"giai_tri", "giai-tri"}, {"the_thao", "the-thao"},
+                        {"phap_luat", "phap-luat"}, {"giao_duc", "giao-duc"}, {"suc_khoe", "suc-khoe"},
+                        {"doi_song", "gia-dinh"}, {"du_lich", "du-lich"}, {"khoa_hoc", "khoa-hoc-cong-nghe"},
+                        {"so_hoa", "khoa-hoc-cong-nghe"}, {"xe", "oto-xe-may"}};
+                    const char* slug = "tin-moi-nhat";
+                    for (auto& m : map) if (topic == m[0]) slug = m[1];
+                    auto body = HttpGet(std::string("https://vnexpress.net/rss/") + slug + ".rss");
+                    if (!body) return std::unexpected(body.error());
+                    std::string out;
+                    size_t pos = 0;
+                    for (int n = 0; n < 6; ++n) {
+                        size_t item = body->find("<item>", pos);
+                        if (item == std::string::npos) break;
+                        size_t end = 0;
+                        std::string title = CleanXmlText(Between(*body, "<title>", "</title>", item, &end));
+                        std::string desc = Between(*body, "<description>", "</description>", item, nullptr);
+                        size_t br = desc.rfind("</br>");  // text follows the thumbnail markup
+                        if (br != std::string::npos) desc = desc.substr(br + 5);
+                        desc = CleanXmlText(desc);
+                        if (desc.size() > 220) desc.resize(220);
+                        if (title.empty()) break;
+                        out += std::to_string(n + 1) + ". " + title + (desc.empty() ? "" : " — " + desc) + "\n";
+                        pos = end;
+                    }
+                    if (out.empty()) return std::unexpected("Không đọc được tin");
+                    return "Tin từ VnExpress:\n" + out;
+                });
+
+    mcp.AddTool("vn.ty_gia",
+                "Tra tỷ giá ngoại tệ của Vietcombank (đổi sang đồng Việt Nam). ma là mã tiền tệ như USD, "
+                "EUR, JPY, KRW, CNY, THB, SGD, AUD, GBP.",
+                PropertyList({Property("ma", kPropertyTypeString, std::string("USD"))}),
+                [](const PropertyList& p) -> ToolResult {
+                    std::string code = p["ma"].value<std::string>();
+                    for (auto& c : code) c = toupper(c);
+                    auto body = HttpGet("https://portal.vietcombank.com.vn/Usercontrols/TVPortal.TyGia/pXML.aspx");
+                    if (!body) return std::unexpected(body.error());
+                    size_t at = body->find("CurrencyCode=\"" + code + "\"");
+                    if (at == std::string::npos) return std::string("Vietcombank không niêm yết " + code);
+                    std::string buy = Between(*body, "Buy=\"", "\"", at, nullptr);
+                    std::string transfer = Between(*body, "Transfer=\"", "\"", at, nullptr);
+                    std::string sell = Between(*body, "Sell=\"", "\"", at, nullptr);
+                    return "Tỷ giá Vietcombank 1 " + code + ": mua tiền mặt " + buy + " đồng, mua chuyển khoản " +
+                           transfer + " đồng, bán ra " + sell + " đồng. (Dấu phẩy là phân cách hàng nghìn.)";
+                });
+
+    mcp.AddTool("vn.gia_vang",
+                "Tra giá vàng trong nước hôm nay (nguồn PNJ): vàng miếng SJC, nhẫn trơn 9999 và các loại khác.",
+                PropertyList(),
+                [](const PropertyList&) -> ToolResult {
+                    auto body = HttpGet("https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00");
+                    if (!body) return std::unexpected(body.error());
+                    cJSON* root = cJSON_Parse(body->c_str());
+                    cJSON* data = cJSON_GetObjectItem(root, "data");
+                    auto updated = cJSON_GetObjectItem(root, "updateDate");
+                    std::string out = std::string("Giá vàng PNJ cập nhật ") +
+                                      (cJSON_IsString(updated) ? updated->valuestring : "hôm nay") +
+                                      " (triệu đồng một lượng, mua vào / bán ra):\n";
+                    int n = 0;
+                    cJSON* it = nullptr;
+                    cJSON_ArrayForEach(it, data) {
+                        auto name = cJSON_GetObjectItem(it, "tensp");
+                        auto buy = cJSON_GetObjectItem(it, "giamua");
+                        auto sell = cJSON_GetObjectItem(it, "giaban");
+                        if (!cJSON_IsString(name) || !cJSON_IsNumber(buy) || !cJSON_IsNumber(sell)) continue;
+                        char buf[200];  // source unit: thousand VND per chỉ; 10 chỉ = 1 lượng
+                        snprintf(buf, sizeof(buf), "- %s: %.2f / %.2f\n", name->valuestring,
+                                 buy->valuedouble / 100.0, sell->valuedouble / 100.0);
+                        out += buf;
+                        if (++n >= 5) break;
+                    }
+                    cJSON_Delete(root);
+                    if (n == 0) return std::unexpected("Không đọc được giá vàng");
+                    return out;
+                });
+
+    mcp.AddTool("vn.xo_so",
+                "Xem kết quả xổ số kiến thiết mới nhất. mien là bac, trung hoặc nam.",
+                PropertyList({Property("mien", kPropertyTypeString, std::string("bac"))}),
+                [](const PropertyList& p) -> ToolResult {
+                    std::string region = p["mien"].value<std::string>();
+                    const char* slug = region == "nam" ? "mien-nam-xsmn" : region == "trung" ? "mien-trung-xsmt" : "mien-bac-xsmb";
+                    auto body = HttpGet(std::string("https://xosodaiphat.com/ket-qua-xo-so-") + slug + ".rss");
+                    if (!body) return std::unexpected(body.error());
+                    size_t item = body->find("<item>");
+                    if (item == std::string::npos) return std::unexpected("Chưa có kết quả");
+                    std::string title = CleanXmlText(Between(*body, "<title>", "</title>", item, nullptr));
+                    std::string desc = CleanXmlText(Between(*body, "<description>", "</description>", item, nullptr));
+                    if (desc.size() > 900) desc.resize(900);
+                    return title + "\n" + desc + "\n(DB là giải đặc biệt, G.1 là giải nhất. Chỉ đọc giải đặc biệt và giải nhất trừ khi được hỏi thêm.)";
+                });
+
+    // User-defined extensions: HTTP endpoints on the local network (Home Assistant, a Next.js
+    // server, n8n...) configured in the web UI. The assistant posts {"action","text"} to them.
+    {
+        cJSON* hooks = cJSON_Parse(LoadList("hooks").c_str());
+        std::string names;
+        cJSON* h = nullptr;
+        cJSON_ArrayForEach(h, hooks) {
+            auto name = cJSON_GetObjectItem(h, "name");
+            auto desc = cJSON_GetObjectItem(h, "desc");
+            if (!cJSON_IsString(name)) continue;
+            names += std::string("\n- ") + name->valuestring + ": " + (cJSON_IsString(desc) ? desc->valuestring : "");
+        }
+        cJSON_Delete(hooks);
+        if (!names.empty()) {
+            mcp.AddTool("mo_rong.goi",
+                        "Gọi một tiện ích mở rộng do người dùng cài (nhà thông minh, dịch vụ riêng). "
+                        "Các tiện ích hiện có:" + names +
+                        "\nten phải đúng một trong các tên trên; noi_dung là yêu cầu cụ thể bằng lời.",
+                        PropertyList({Property("ten", kPropertyTypeString),
+                                      Property("noi_dung", kPropertyTypeString, std::string(""))}),
+                        [](const PropertyList& p) -> ToolResult {
+                            std::string want = p["ten"].value<std::string>(), url;
+                            cJSON* hooks = cJSON_Parse(LoadList("hooks").c_str());
+                            cJSON* h = nullptr;
+                            cJSON_ArrayForEach(h, hooks) {
+                                auto name = cJSON_GetObjectItem(h, "name");
+                                auto u = cJSON_GetObjectItem(h, "url");
+                                if (cJSON_IsString(name) && cJSON_IsString(u) && want == name->valuestring) url = u->valuestring;
+                            }
+                            cJSON_Delete(hooks);
+                            if (url.empty()) return std::unexpected("Không có tiện ích tên " + want);
+                            cJSON* body = cJSON_CreateObject();
+                            cJSON_AddStringToObject(body, "action", want.c_str());
+                            cJSON_AddStringToObject(body, "text", p["noi_dung"].value<std::string>().c_str());
+                            char* txt = cJSON_PrintUnformatted(body);
+                            auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+                            http->SetTimeout(10000);
+                            http->SetHeader("Content-Type", "application/json");
+                            http->SetContent(std::string(txt));
+                            cJSON_free(txt);
+                            cJSON_Delete(body);
+                            if (auto opened = http->Open("POST", url); !opened) return std::unexpected("Không gọi được tiện ích");
+                            auto status = http->GetStatusCode();
+                            std::string reply = http->ReadAll();
+                            http->Close();
+                            if (!status || *status >= 400) return std::unexpected("Tiện ích báo lỗi");
+                            if (reply.size() > 1200) reply.resize(1200);
+                            return reply.empty() ? std::string("Đã thực hiện.") : reply;
+                        });
+        }
+    }
+
+    mcp.AddTool("nhan_vat.doi",
+                "Đổi sang nhân vật trợ lý khác khi người dùng muốn nói chuyện với nhân vật đó, ví dụ: "
+                "\"gọi Bắp ra đây\", \"cho mình gặp Bơ\". ten là tên nhân vật.",
+                PropertyList({Property("ten", kPropertyTypeString)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    std::string name = p["ten"].value<std::string>();
+                    if (!SetActiveCharacter(name)) return std::string("Không có nhân vật tên " + name);
+                    // Voice and persona are fixed per session: restart it as the new character.
+                    xTaskCreate([](void*) {
+                        auto& app = Application::GetInstance();
+                        vTaskDelay(pdMS_TO_TICKS(300));  // let the tool reply go out first
+                        app.Schedule([]() {
+                            if (auto* g = GeminiLiveProtocol::instance()) g->CloseAudioChannel();
+                        });
+                        for (int i = 0; i < 40 && app.GetDeviceState() != kDeviceStateIdle; ++i) {
+                            vTaskDelay(pdMS_TO_TICKS(100));
+                        }
+                        vTaskDelay(pdMS_TO_TICKS(300));
+                        Say("<hệ thống>Người dùng vừa gọi bạn ra thay cho nhân vật trước. Hãy chào một câu ngắn đúng tính cách của bạn.</hệ thống>");
+                        vTaskDelete(nullptr);
+                    }, "char_switch", 4096, nullptr, 2, nullptr);
+                    return std::string("Đang đổi nhân vật, không cần nói gì thêm.");
+                });
+
+    mcp.AddTool("ung_dung.mo",
+                "Mở một ứng dụng theo mã (xem danh sách ứng dụng trong hướng dẫn). Trả về kịch bản; hãy "
+                "làm theo kịch bản đó ngay.",
+                PropertyList({Property("ma", kPropertyTypeString)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    std::string id = p["ma"].value<std::string>();
+                    for (auto& a : Apps()) {
+                        if (a.id == id) return a.prompt;
+                    }
+                    return std::string("Không có ứng dụng " + id);
+                });
+
+    mcp.AddTool("hen_gio.dat",
+                "Đặt hẹn giờ đếm ngược. Dùng khi người dùng nói: hẹn giờ 5 phút, nhắc mình sau 10 phút...",
+                PropertyList({Property("giay", kPropertyTypeInteger, 1, 86400),
+                              Property("noi_dung", kPropertyTypeString, std::string(""))}),
+                [](const PropertyList& p) -> ReturnValue {
+                    time_t now = time(nullptr);
+                    if (now < 1700000000) return std::string("Chưa đồng bộ được giờ nên chưa đặt được.");
+                    std::lock_guard<std::mutex> lock(g_alarm_mutex);
+                    Alarm a{g_next_alarm_id++, now + p["giay"].value<int>(), false, p["noi_dung"].value<std::string>()};
+                    g_alarms.push_back(a);
+                    PersistAlarms();
+                    return "Đã đặt hẹn giờ số " + std::to_string(a.id);
+                });
+
+    mcp.AddTool("bao_thuc.dat",
+                "Đặt báo thức hoặc lời nhắc vào giờ cụ thể trong ngày (giờ Việt Nam, 24 giờ). Nếu giờ đó "
+                "hôm nay đã qua thì báo vào ngày mai. hang_ngay=true để lặp lại mỗi ngày.",
+                PropertyList({Property("gio", kPropertyTypeInteger, 0, 23), Property("phut", kPropertyTypeInteger, 0, 59),
+                              Property("noi_dung", kPropertyTypeString, std::string("")),
+                              Property("hang_ngay", kPropertyTypeBoolean, false)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    struct tm t {};
+                    time_t now;
+                    if (!Now(&t, &now)) return std::string("Chưa đồng bộ được giờ nên chưa đặt được.");
+                    t.tm_hour = p["gio"].value<int>();
+                    t.tm_min = p["phut"].value<int>();
+                    t.tm_sec = 0;
+                    time_t at = mktime(&t);
+                    if (at <= now) at += 86400;
+                    std::lock_guard<std::mutex> lock(g_alarm_mutex);
+                    Alarm a{g_next_alarm_id++, at, p["hang_ngay"].value<bool>(), p["noi_dung"].value<std::string>()};
+                    g_alarms.push_back(a);
+                    PersistAlarms();
+                    return "Đã đặt báo thức số " + std::to_string(a.id);
+                });
+
+    mcp.AddTool("hen_gio.xem", "Xem danh sách hẹn giờ và báo thức đang chạy.", PropertyList(),
+                [](const PropertyList&) -> ReturnValue { return DescribeAlarms(); });
+
+    mcp.AddTool("hen_gio.huy", "Hủy hẹn giờ hoặc báo thức theo số. so=0 để hủy tất cả.",
+                PropertyList({Property("so", kPropertyTypeInteger, 0, 0, 100000)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    int id = p["so"].value<int>();
+                    std::lock_guard<std::mutex> lock(g_alarm_mutex);
+                    size_t before = g_alarms.size();
+                    g_alarms.erase(std::remove_if(g_alarms.begin(), g_alarms.end(),
+                                                  [id](const Alarm& a) { return id == 0 || a.id == id; }),
+                                   g_alarms.end());
+                    PersistAlarms();
+                    return "Đã hủy " + std::to_string(before - g_alarms.size()) + " mục.";
+                });
+
+    mcp.AddTool("ghi_chu.them",
+                "Thêm một mục vào danh sách ghi chú của người dùng (việc cần làm, đồ cần mua...).",
+                PropertyList({Property("noi_dung", kPropertyTypeString)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    auto items = ListItems("notes");
+                    if (items.size() >= 30) return std::string("Danh sách đã đầy 30 mục, hãy xóa bớt.");
+                    items.push_back(p["noi_dung"].value<std::string>());
+                    StoreItems("notes", items);
+                    return "Đã ghi. Hiện có " + std::to_string(items.size()) + " mục.";
+                });
+    mcp.AddTool("ghi_chu.xem", "Đọc danh sách ghi chú của người dùng.", PropertyList(),
+                [](const PropertyList&) -> ReturnValue { return Numbered(ListItems("notes"), "Chưa có ghi chú nào."); });
+    mcp.AddTool("ghi_chu.xoa", "Xóa ghi chú theo số thứ tự. so=0 để xóa hết.",
+                PropertyList({Property("so", kPropertyTypeInteger, 0, 0, 30)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    auto items = ListItems("notes");
+                    int n = p["so"].value<int>();
+                    if (n == 0) items.clear();
+                    else if (n <= (int)items.size()) items.erase(items.begin() + n - 1);
+                    else return std::string("Không có mục số đó.");
+                    StoreItems("notes", items);
+                    return std::string("Đã xóa.");
+                });
+
+    mcp.AddTool("tri_nho.luu",
+                "Ghi nhớ lâu dài một điều về người dùng (tên, sở thích, người thân, thói quen) để các lần "
+                "trò chuyện sau vẫn nhớ. Chỉ lưu khi người dùng chia sẻ thông tin đáng nhớ hoặc bảo hãy nhớ.",
+                PropertyList({Property("dieu_can_nho", kPropertyTypeString)}),
+                [](const PropertyList& p) -> ReturnValue {
+                    auto items = ListItems("memory");
+                    if (items.size() >= 20) items.erase(items.begin());
+                    items.push_back(p["dieu_can_nho"].value<std::string>());
+                    StoreItems("memory", items);
+                    return std::string("Đã nhớ.");
+                });
+    mcp.AddTool("tri_nho.quen", "Quên toàn bộ những điều đã ghi nhớ về người dùng.", PropertyList(),
+                [](const PropertyList&) -> ReturnValue {
+                    StoreItems("memory", {});
+                    return std::string("Đã quên hết.");
+                });
+}
+
+}  // namespace assistant

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bắp</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%E2%98%81%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--fg:#2b2440;--muted:#7a7391;--line:#e6e3f0;--accent:#7c5cff;--accent-fg:#fff;--soft:#efeaff;--ok:#1f9d6b;--bad:#d64562;--me:#e3f1ff}
+@media(prefers-color-scheme:dark){:root{--bg:#15131f;--card:#201d2e;--fg:#ece9f7;--muted:#9c95b5;--line:#322e45;--accent:#9d86ff;--accent-fg:#15131f;--soft:#2b2644;--ok:#4fd3a0;--bad:#ff7d95;--me:#1d3350}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 96px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;gap:14px;padding:8px 4px}
+.face{width:64px;height:64px;border-radius:50%;background:var(--soft);overflow:hidden;flex:none}
+.face img{display:block;width:100%;height:100%}
+.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.chars button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;background:var(--bg);border:2px solid transparent;font-size:15px}
+.chars button[aria-pressed=true]{border-color:var(--accent);background:var(--soft)}
+.chars img{width:72px;height:72px;border-radius:50%}
+.chars small{text-align:center;line-height:1.3}
+.apps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:440px){.apps{grid-template-columns:1fr}}
+.apps button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--bg);padding:12px}
+.apps small{line-height:1.35}
+h1{font-size:22px;margin:0}
+.state{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--ok)}
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:5px}
+nav button{background:none;padding:9px 4px;font-size:14px;border-radius:10px;color:var(--muted)}
+nav button[aria-selected=true]{background:var(--soft);color:var(--fg)}
+.tab{display:flex;flex-direction:column;gap:16px}
+.tab[hidden]{display:none}
+section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+h2{font-size:13px;margin:0;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+label{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600}
+small{font-weight:400;color:var(--muted);font-size:13px}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
+textarea{min-height:150px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:440px){.row{grid-template-columns:1fr}}
+.check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:500}
+.check input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--soft);color:var(--fg)}
+button.primary{background:var(--accent);color:var(--accent-fg)}
+button.link{background:none;padding:0;color:var(--accent);font-weight:500;font-size:14px;text-align:left}
+button:disabled{opacity:.5;cursor:default}
+.say{display:flex;gap:8px}
+.say input{flex:1;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font-weight:500;font-size:14px;padding:7px 12px;border-radius:999px}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+.chat p{margin:0;padding:8px 12px;border-radius:14px;max-width:86%;font-size:15px;overflow-wrap:anywhere;background:var(--bg);align-self:flex-start}
+.chat p.user{background:var(--me);align-self:flex-end}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+li{display:flex;gap:8px;align-items:center;background:var(--bg);border-radius:10px;padding:8px 10px;font-size:14px}
+li span{flex:1;min-width:0;overflow-wrap:anywhere}
+li button{padding:2px 9px;font-size:13px}
+.empty{color:var(--muted);font-size:14px}
+pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--muted)}
+.hook{display:grid;gap:8px;background:var(--bg);border-radius:12px;padding:10px}
+.hook input{background:var(--card)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px}
+.bar div{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.bar span{flex:1;font-size:14px;color:var(--muted);min-width:0}
+.bar span.ok{color:var(--ok)}.bar span.bad{color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="face"><img id="avatar" alt="" width="64" height="64"></div>
+  <div><h1 id="title">…</h1><div class="state"><i class="dot" id="dot"></i><span id="state">Đang kết nối…</span></div></div>
+</header>
+
+<nav role="tablist">
+  <button role="tab" data-tab="chat" aria-selected="true">Trò chuyện</button>
+  <button role="tab" data-tab="me" aria-selected="false">Cá nhân hóa</button>
+  <button role="tab" data-tab="sys" aria-selected="false">Hệ thống</button>
+</nav>
+
+<div class="tab" id="tab-chat">
+<section>
+  <h2>Trò chuyện</h2>
+  <div class="chat" id="chat"><span class="empty">Chưa có cuộc trò chuyện nào. Nói "Hi ESP" với máy hoặc gõ ở dưới.</span></div>
+  <form class="say" id="sayForm"><input type="text" id="sayText" placeholder="Gõ câu muốn nói" autocomplete="off"><button class="primary">Gửi</button></form>
+  <div class="chips" id="chips"></div>
+  <button type="button" id="talk">Bật / tắt nghe bằng micro</button>
+</section>
+<section>
+  <h2>Ứng dụng</h2>
+  <div class="apps" id="apps"></div>
+  <small>Cũng có thể mở bằng giọng nói, ví dụ: "Mở đố vui", "Kể chuyện cho bé đi".</small>
+</section>
+<section>
+  <h2>Hẹn giờ và báo thức</h2>
+  <pre id="alarms">…</pre>
+  <small>Đặt bằng giọng nói, ví dụ: "Hẹn giờ 10 phút", "7 giờ sáng mai gọi mình dậy và đọc thời tiết".</small>
+</section>
+<section>
+  <h2>Ghi chú</h2>
+  <ul id="notes"></ul>
+</section>
+</div>
+
+<div class="tab" id="tab-me" hidden>
+<section>
+  <h2>Nhân vật</h2>
+  <div class="chars" id="chars"></div>
+  <small>Chọn nhân vật để trò chuyện. Cũng có thể đổi bằng giọng nói: "Gọi Bắp ra đây".</small>
+</section>
+<section>
+  <h2 id="editTitle">Tùy chỉnh</h2>
+  <div class="row">
+    <label>Tên gọi<input type="text" id="c_name" maxlength="40"></label>
+    <label>Giọng nói<select id="c_voice"></select></label>
+  </div>
+  <label>Tính cách và cách nói chuyện<textarea id="c_persona" maxlength="3000"></textarea></label>
+  <button type="button" class="link" id="resetChar">Khôi phục nhân vật này về mặc định</button>
+</section>
+<section>
+  <h2>Những điều đã nhớ về bạn</h2>
+  <ul id="memory"></ul>
+</section>
+<section>
+  <h2>Nơi ở</h2>
+  <label>Thành phố<small>Dùng cho thời tiết.</small><select id="cityPick"></select></label>
+  <label>Tên hiển thị<input type="text" id="city" maxlength="60"></label>
+  <div class="row"><label>Vĩ độ<input type="number" id="lat" step="0.0001"></label><label>Kinh độ<input type="number" id="lon" step="0.0001"></label></div>
+</section>
+</div>
+
+<div class="tab" id="tab-sys" hidden>
+<section>
+  <h2>Âm thanh và màn hình</h2>
+  <label>Âm lượng: <span id="volV"></span><input type="range" id="volume" min="0" max="100"></label>
+  <label>Độ sáng: <span id="briV"></span><input type="range" id="brightness" min="5" max="100"></label>
+  <label class="check"><input type="checkbox" id="night_dim"><span>Giảm sáng ban đêm<br><small>Từ 22 giờ đến 6 giờ sáng, khi máy đang nghỉ.</small></span></label>
+  <label>Tự nghỉ sau khi im lặng (giây)<input type="number" id="idle_s" min="10" max="300"></label>
+  <label class="check"><input type="checkbox" id="greet"><span>Tự chào khi camera thấy người<br><small>Nhận diện chạy ngay trên máy, không gửi hình đi đâu. Cần khởi động lại máy sau khi đổi.</small></span></label>
+</section>
+<section>
+  <h2>Gemini</h2>
+  <label>API key<small id="keyNow"></small><input type="password" id="api_key" placeholder="Để trống nếu không đổi" autocomplete="off"></label>
+  <label>Model<input type="text" id="model" maxlength="80"></label>
+  <label class="check"><input type="checkbox" id="search"><span>Cho phép tìm Google<br><small>Cần API key đã bật thanh toán. Với key miễn phí, máy sẽ tự tắt mục này.</small></span></label>
+</section>
+<section>
+  <h2>Tiện ích mở rộng</h2>
+  <small>Địa chỉ HTTP trong mạng nhà (Home Assistant, server riêng…). Khi cần, trợ lý gửi POST dạng JSON {"action","text"} và đọc lại câu trả lời. Cần khởi động lại máy sau khi đổi.</small>
+  <div id="hooks" style="display:grid;gap:10px"></div>
+  <button type="button" id="addHook">Thêm tiện ích</button>
+</section>
+<section>
+  <h2>Wi-Fi</h2>
+  <small id="wifiNow"></small>
+  <ul id="wifiList"></ul>
+  <form class="say" id="wifiForm" autocomplete="off">
+    <input type="text" id="wifiSsid" placeholder="Tên mạng (2.4 GHz)" maxlength="32" aria-label="Tên mạng Wi-Fi">
+    <input type="password" id="wifiPass" placeholder="Mật khẩu" maxlength="64" aria-label="Mật khẩu Wi-Fi">
+    <button>Thêm</button>
+  </form>
+  <small>Máy tự nối vào mạng nào trong danh sách bắt được. Hữu ích khi mang máy đi nơi khác. Chỉ hỗ trợ Wi-Fi 2.4 GHz.</small>
+</section>
+<section>
+  <h2>Máy</h2>
+  <small id="ver"></small>
+  <label>Cập nhật firmware<small>Chọn file xiaozhi.bin. Máy tự khởi động lại khi xong.</small><input type="file" id="fw" accept=".bin"></label>
+  <div class="row"><button type="button" id="ota" disabled>Cập nhật</button><button type="button" id="reboot">Khởi động lại máy</button></div>
+</section>
+</div>
+</main>
+
+<div class="bar"><div><span id="msg">Thay đổi có hiệu lực ở lần trò chuyện kế tiếp.</span><button class="primary" id="save">Lưu</button></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const H={'Content-Type':'application/json','X-Bap':'1'};
+const VOICES=['Leda','Aoede','Kore','Zephyr','Callirrhoe','Autonoe','Despina','Erinome','Laomedeia','Sulafat','Puck','Charon','Fenrir','Orus','Achird'];
+const CITIES=[['Hà Nội',21.0285,105.8542],['TP. Hồ Chí Minh',10.7769,106.7009],['Đà Nẵng',16.0544,108.2022],['Hải Phòng',20.8449,106.6881],['Cần Thơ',10.0452,105.7469],['Huế',16.4637,107.5909],['Nha Trang',12.2388,109.1967],['Đà Lạt',11.9404,108.4583],['Vũng Tàu',10.346,107.0843],['Quy Nhơn',13.783,109.2197],['Vinh',18.6796,105.6813],['Hạ Long',20.9712,107.0448]];
+const CHIPS=['Hôm nay âm lịch ngày bao nhiêu?','Thời tiết hôm nay thế nào?','Đọc tin mới nhất','Giá vàng hôm nay','Tỷ giá đô la','Xổ số miền Bắc','Hẹn giờ 5 phút','Kể chuyện cười đi'];
+const STATES={idle:'Đang nghỉ',connecting:'Đang thức dậy…',listening:'Đang nghe',speaking:'Đang nói',starting:'Đang khởi động',activating:'Đang khởi động',wifi_configuring:'Đang cài Wi-Fi',upgrading:'Đang cập nhật'};
+let cfg={},chars=[],editing='',lists={notes:[],memory:[]},hooks=[],dirty=false,logKey='';
+
+VOICES.forEach(v=>$('c_voice').add(new Option(v,v)));
+$('cityPick').add(new Option('Chọn nhanh…',''));
+CITIES.forEach((c,i)=>$('cityPick').add(new Option(c[0],i)));
+CHIPS.forEach(t=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=()=>say(t);$('chips').append(b)});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));['chat','me','sys'].forEach(t=>$('tab-'+t).hidden=t!==b.dataset.tab)});
+
+function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
+function el(tag,text,cls){const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e}
+function renderList(key,empty){const ul=$(key);ul.textContent='';if(!lists[key].length){ul.append(el('li',empty,'empty'));return}
+  lists[key].forEach((t,i)=>{const li=el('li'),b=el('button','Xóa');b.type='button';b.onclick=()=>{lists[key].splice(i,1);dirty=true;renderList(key,empty);msg('Bấm Lưu để xác nhận xóa.')};li.append(el('span',t),b);ul.append(li)})}
+function renderHooks(){const box=$('hooks');box.textContent='';hooks.forEach((h,i)=>{const d=el('div','','hook');
+  [['name','Tên, ví dụ: den_phong_khach','text'],['desc','Mô tả để trợ lý biết khi nào dùng','text'],['url','http://192.168.0.10:3000/api/bap','url']].forEach(([k,ph,ty])=>{const inp=el('input');inp.type=ty;inp.placeholder=ph;inp.value=h[k]||'';inp.setAttribute('aria-label',ph);inp.oninput=()=>{h[k]=inp.value;dirty=true};d.append(inp)});
+  const b=el('button','Xóa tiện ích này');b.type='button';b.onclick=()=>{hooks.splice(i,1);dirty=true;renderHooks()};d.append(b);box.append(d)});
+  if(!hooks.length)box.append(el('span','Chưa có tiện ích nào.','empty'))}
+function cur(){return chars.find(c=>c.id===editing)||chars[0]}
+function stash(){const c=cur();if(!c)return;c.name=$('c_name').value.trim()||c.default_name;c.voice=$('c_voice').value;c.persona=$('c_persona').value.trim()||c.default_persona}
+function showChar(){const c=cur();if(!c)return;$('editTitle').textContent='Tùy chỉnh '+c.name;$('c_name').value=c.name;
+  if(![...$('c_voice').options].some(o=>o.value===c.voice))$('c_voice').add(new Option(c.voice,c.voice));
+  $('c_voice').value=c.voice;$('c_persona').value=c.persona}
+function renderChars(){const box=$('chars');box.textContent='';chars.forEach(c=>{const b=el('button');b.type='button';b.setAttribute('aria-pressed',c.id===cfg.character);
+  const img=el('img');img.src='/face?c='+c.id+'&e='+(c.id===cfg.character?'happy':'relaxed');img.alt='';img.loading='lazy';
+  b.append(img,el('span',c.name),el('small',c.tagline));b.onclick=()=>{stash();cfg.character=c.id;editing=c.id;renderChars();showChar();msg('Bấm Lưu để đổi sang '+c.name+'.')};box.append(b)})}
+function renderApps(){const box=$('apps');box.textContent='';(cfg.apps||[]).forEach(a=>{const b=el('button');b.type='button';b.append(el('span',a.title),el('small',a.desc));
+  b.onclick=()=>post('/api/app',{id:a.id}).then(()=>msg('Đã mở '+a.title+'.','ok')).catch(()=>msg('Không mở được.','bad'));box.append(b)})}
+async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e){msg('Không tải được cấu hình.','bad');return}
+  ['city','lat','lon','idle_s','model','volume','brightness'].forEach(k=>{if(cfg[k]!==undefined)$(k).value=cfg[k]});
+  ['search','greet','night_dim'].forEach(k=>$(k).checked=!!cfg[k]);
+  chars=cfg.characters||[];editing=cfg.character;const a=chars.find(c=>c.id===cfg.character)||{name:'Trợ lý'};
+  $('keyNow').textContent=cfg.api_key_masked?'Đang dùng: '+cfg.api_key_masked:'Chưa có key';
+  $('title').textContent=a.name;document.title=a.name;$('avatar').src='/face?c='+cfg.character+'&e=happy';
+  $('volV').textContent=$('volume').value;$('briV').textContent=$('brightness').value;
+  lists.notes=cfg.notes||[];lists.memory=cfg.memory||[];hooks=cfg.hooks||[];dirty=false;
+  renderList('notes','Chưa có ghi chú. Thử nói: "Ghi chú mua sữa".');renderList('memory','Chưa nhớ gì. Thử nói: "Nhớ giúp mình là mình thích trà sữa".');renderHooks();renderChars();showChar();renderApps()}
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,volume:+$('volume').value,brightness:+$('brightness').value};
+  if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
+  if(dirty){b.notes=lists.notes;b.memory=lists.memory;b.hooks=hooks.filter(h=>h.name&&h.url)}
+  try{await post('/api/config',b);$('api_key').value='';msg('Đã lưu.','ok');load()}catch(e){msg('Không lưu được: '+e.message,'bad')}}
+async function say(t){try{await post('/api/say',{text:t});msg('Đã gửi.','ok')}catch(e){msg('Không gửi được.','bad')}}
+async function live(k){try{await post('/api/config',{[k]:+$(k).value})}catch(e){}}
+function renderChat(log){const key=JSON.stringify(log);if(key===logKey||!log.length)return;logKey=key;const box=$('chat');box.textContent='';log.forEach(e=>box.append(el('p',e.text,e.role)));box.scrollTop=box.scrollHeight}
+async function status(){try{const s=await (await fetch('/api/status')).json();$('state').textContent=STATES[s.state]||s.state;$('dot').className='dot on';renderChat(s.log||[]);$('alarms').textContent=s.alarms||'';
+  const d=s.device||{};$('ver').textContent='Phiên bản '+(s.version||'?')+' · Wi-Fi '+((d.network||{}).ssid||'?')+' · Pin '+((d.battery||{}).level??'?')+'%'}catch(e){$('state').textContent='Mất kết nối với máy';$('dot').className='dot'}}
+
+$('sayForm').onsubmit=e=>{e.preventDefault();const t=$('sayText').value.trim();if(t){say(t);$('sayText').value=''}};
+$('save').onclick=save;
+$('talk').onclick=()=>post('/api/action',{action:'talk'}).catch(()=>msg('Không gửi được.','bad'));
+$('reboot').onclick=()=>{post('/api/action',{action:'reboot'}).then(()=>msg('Máy đang khởi động lại…','ok')).catch(()=>{})};
+$('resetChar').onclick=()=>{const c=cur();c.name=c.default_name;c.voice=c.default_voice;c.persona=c.default_persona;showChar();renderChars();msg('Bấm Lưu để xác nhận.')};
+$('addHook').onclick=()=>{if(hooks.length<8){hooks.push({name:'',desc:'',url:''});dirty=true;renderHooks()}};
+$('cityPick').onchange=e=>{const c=CITIES[e.target.value];if(c){$('city').value=c[0];$('lat').value=c[1];$('lon').value=c[2]}};
+$('volume').oninput=()=>$('volV').textContent=$('volume').value;$('volume').onchange=()=>live('volume');
+$('brightness').oninput=()=>$('briV').textContent=$('brightness').value;$('brightness').onchange=()=>live('brightness');
+$('fw').onchange=()=>{$('ota').disabled=!$('fw').files.length};
+$('ota').onclick=async()=>{const f=$('fw').files[0];if(!f)return;$('ota').disabled=true;msg('Đang tải firmware lên, đừng tắt máy…');
+  try{const r=await fetch('/api/ota',{method:'POST',headers:{'X-Bap':'1','Content-Type':'application/octet-stream'},body:f});if(!r.ok)throw new Error(await r.text());msg('Đã cập nhật. Máy đang khởi động lại…','ok')}catch(e){msg('Cập nhật thất bại: '+e.message,'bad');$('ota').disabled=false}};
+async function loadWifi(){try{const w=await (await fetch('/api/wifi')).json();$('wifiNow').textContent=w.current?'Đang dùng: '+w.current+' · '+w.ip:'Chưa kết nối';
+  const ul=$('wifiList');ul.textContent='';w.saved.forEach((n,i)=>{const li=el('li');li.append(el('span',n+(n===w.current?' (đang dùng)':'')));
+    if(i>0){const up=el('button','Ưu tiên');up.type='button';up.onclick=()=>post('/api/wifi',{action:'prefer',index:i}).then(loadWifi).catch(e=>msg(e.message,'bad'));li.append(up)}
+    const rm=el('button','Xóa');rm.type='button';rm.onclick=()=>post('/api/wifi',{action:'remove',index:i}).then(()=>{msg('Đã xóa mạng '+n+'.','ok');loadWifi()}).catch(e=>msg(e.message,'bad'));li.append(rm);ul.append(li)})}catch(e){}}
+$('wifiForm').onsubmit=e=>{e.preventDefault();const ssid=$('wifiSsid').value.trim();if(!ssid)return;post('/api/wifi',{action:'add',ssid,password:$('wifiPass').value}).then(()=>{$('wifiSsid').value='';$('wifiPass').value='';msg('Đã thêm mạng '+ssid+'.','ok');loadWifi()}).catch(e=>msg(e.message,'bad'))};
+load();status();loadWifi();setInterval(status,2500);
+</script>
+</body>
+</html>

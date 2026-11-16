@@ -1,0 +1,192 @@
+#include "assistant_config.h"
+
+#include <cJSON.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <mutex>
+
+#include "builtin_data.h"
+#include "sdkconfig.h"
+#include "settings.h"
+
+namespace assistant {
+namespace {
+
+std::string Str(const cJSON* obj, const char* key) {
+    auto v = cJSON_GetObjectItem(obj, key);
+    return cJSON_IsString(v) ? v->valuestring : "";
+}
+
+const cJSON* Builtin() {
+    static cJSON* root = cJSON_Parse(kAssistantJson);
+    return root;
+}
+
+std::mutex g_active_mutex;
+std::string g_active_id;  // cached: FaceName() runs on every emotion change
+
+std::string ToLowerAscii(std::string s) {
+    for (auto& c : s) c = tolower(static_cast<unsigned char>(c));
+    return s;
+}
+
+}  // namespace
+
+Config LoadConfig() {
+    Settings s("assistant", false);
+    Config c;
+    c.api_key = s.GetString("api_key", CONFIG_GEMINI_API_KEY);
+    c.model = s.GetString("model", CONFIG_GEMINI_MODEL);
+    c.character = s.GetString("character", Str(Builtin(), "default_character"));
+    c.city = s.GetString("city", "Hà Nội");
+    c.lat = atof(s.GetString("lat", "21.0285").c_str());
+    c.lon = atof(s.GetString("lon", "105.8542").c_str());
+    c.idle_s = s.GetInt("idle_s", CONFIG_GEMINI_IDLE_TIMEOUT_S);
+    c.search = s.GetBool("search", false);
+    c.greet = s.GetBool("greet", false);
+    c.night_dim = s.GetBool("night_dim", true);
+    return c;
+}
+
+void SaveConfig(const Config& c) {
+    {
+        Settings s("assistant", true);
+        s.SetString("api_key", c.api_key);
+        s.SetString("model", c.model);
+        s.SetString("character", c.character);
+        s.SetString("city", c.city);
+        s.SetString("lat", std::to_string(c.lat));
+        s.SetString("lon", std::to_string(c.lon));
+        s.SetInt("idle_s", c.idle_s);
+        s.SetBool("search", c.search);
+        s.SetBool("greet", c.greet);
+        s.SetBool("night_dim", c.night_dim);
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_active_mutex);
+        g_active_id = c.character;
+    }
+    // The Watcher's on-chip person detector reads these at boot.
+    Settings model("model", true);
+    model.SetInt("enable", c.greet ? 1 : 0);
+    if (c.greet && model.GetInt("interval", 8) < 60) model.SetInt("interval", 90);
+}
+
+std::vector<Character> Characters() {
+    std::vector<Character> out;
+    Settings s("assistant", false);
+    const cJSON* item = nullptr;
+    cJSON_ArrayForEach(item, cJSON_GetObjectItem(Builtin(), "characters")) {
+        Character c;
+        c.id = Str(item, "id");
+        c.kind = Str(item, "kind");
+        c.tagline = Str(item, "tagline");
+        c.default_name = Str(item, "name");
+        c.default_voice = Str(item, "voice");
+        c.default_persona = Str(item, "persona");
+        auto look = cJSON_GetObjectItem(item, "look");
+        c.look = {Str(look, "shape"), Str(look, "body"), Str(look, "accent"), Str(look, "ink"), Str(look, "cheek")};
+        // Overrides live in one NVS string per character: {"name","voice","persona"}
+        cJSON* ov = cJSON_Parse(s.GetString("c_" + c.id, "{}").c_str());
+        c.name = Str(ov, "name").empty() ? c.default_name : Str(ov, "name");
+        c.voice = Str(ov, "voice").empty() ? c.default_voice : Str(ov, "voice");
+        c.persona = Str(ov, "persona").empty() ? c.default_persona : Str(ov, "persona");
+        cJSON_Delete(ov);
+        out.push_back(std::move(c));
+    }
+    return out;
+}
+
+Character ActiveCharacter() {
+    auto all = Characters();
+    auto id = LoadConfig().character;
+    for (auto& c : all) {
+        if (c.id == id) return c;
+    }
+    return all.empty() ? Character{} : all.front();
+}
+
+void SaveCharacterOverride(const std::string& id, const std::string& name, const std::string& voice,
+                           const std::string& persona) {
+    cJSON* ov = cJSON_CreateObject();
+    if (!name.empty()) cJSON_AddStringToObject(ov, "name", name.c_str());
+    if (!voice.empty()) cJSON_AddStringToObject(ov, "voice", voice.c_str());
+    if (!persona.empty()) cJSON_AddStringToObject(ov, "persona", persona.c_str());
+    char* txt = cJSON_PrintUnformatted(ov);
+    Settings s("assistant", true);
+    if (strlen(txt) < 3900) s.SetString("c_" + id, txt);  // NVS strings are limited to 4000 bytes
+    cJSON_free(txt);
+    cJSON_Delete(ov);
+}
+
+bool SetActiveCharacter(const std::string& id_or_name) {
+    std::string want = ToLowerAscii(id_or_name);
+    for (auto& c : Characters()) {
+        if (c.id == want || c.name == id_or_name || c.default_name == id_or_name) {
+            auto cfg = LoadConfig();
+            cfg.character = c.id;
+            SaveConfig(cfg);
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string SystemPrompt() {
+    auto c = ActiveCharacter();
+    std::string prompt = c.persona;
+    if (c.name != c.default_name && c.persona == c.default_persona) {
+        prompt += " Tên của bạn bây giờ là " + c.name + ", hãy xưng bằng tên này.";
+    }
+    prompt += "\n" + Str(Builtin(), "common_rules");
+    std::string others;
+    for (auto& o : Characters()) {
+        if (o.id != c.id) others += (others.empty() ? "" : ", ") + o.name + " (" + o.kind + ")";
+    }
+    prompt += "\nCác nhân vật khác có thể đổi sang: " + others + ".";
+    std::string apps;
+    for (auto& a : Apps()) apps += (apps.empty() ? "" : ", ") + a.id + " (" + a.title + ")";
+    prompt += "\nCác ứng dụng có thể mở: " + apps + ".";
+    return prompt;
+}
+
+std::vector<App> Apps() {
+    std::vector<App> out;
+    const cJSON* item = nullptr;
+    cJSON_ArrayForEach(item, cJSON_GetObjectItem(Builtin(), "apps")) {
+        out.push_back({Str(item, "id"), Str(item, "title"), Str(item, "desc"), Str(item, "prompt")});
+    }
+    return out;
+}
+
+std::string FaceAlias(const char* emotion) {
+    static const char* aliases[][2] = {
+        {"gear", "thinking"}, {"cancel", "sad"}, {"warning", "shocked"},
+        {"cloud_off", "crying"}, {"download", "relaxed"}, {"cloud_download", "relaxed"},
+        {"link", "winking"}, {"robot_2", "relaxed"}};
+    std::string name = emotion;
+    for (auto& a : aliases) {
+        if (name == a[0]) name = a[1];
+    }
+    return name;
+}
+
+std::string FaceName(const char* emotion) {
+    std::lock_guard<std::mutex> lock(g_active_mutex);
+    if (g_active_id.empty()) g_active_id = LoadConfig().character;
+    return g_active_id + "_" + FaceAlias(emotion);
+}
+
+std::string LoadList(const char* key) {
+    Settings s("assistant", false);
+    auto v = s.GetString(key, "[]");
+    return v.empty() ? "[]" : v;
+}
+
+void SaveList(const char* key, const std::string& json) {
+    Settings s("assistant", true);
+    s.SetString(key, json);
+}
+
+}  // namespace assistant

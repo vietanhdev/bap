@@ -1,0 +1,455 @@
+// Settings UI served by the device itself on port 80 (LAN only, no cloud).
+#include <cJSON.h>
+#include <esp_http_server.h>
+#include <esp_log.h>
+#include <esp_netif.h>
+#include <esp_system.h>
+#include <esp_timer.h>
+#include <mdns.h>
+#include <esp_ota_ops.h>
+#include <esp_app_desc.h>
+#include <cstring>
+
+#include <string>
+
+#include "application.h"
+#include "board.h"
+#include "assistant.h"
+#include "assistant_config.h"
+#include "web_page.h"
+#include "boards/common/backlight.h"
+#include "audio/audio_codec.h"
+#include "settings.h"
+#include "assets.h"
+#include "ssid_manager.h"
+#include "wifi_manager.h"
+#include "display/display.h"
+#include "mcp_server.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <memory>
+
+#define TAG "AssistantWeb"
+
+namespace assistant {
+namespace {
+
+esp_err_t SendJson(httpd_req_t* req, cJSON* root) {
+    char* txt = cJSON_PrintUnformatted(root);
+    httpd_resp_set_type(req, "application/json");
+    esp_err_t err = httpd_resp_sendstr(req, txt);
+    cJSON_free(txt);
+    cJSON_Delete(root);
+    return err;
+}
+
+cJSON* ReadJson(httpd_req_t* req) {
+    if (req->content_len == 0 || req->content_len > 8192) return nullptr;
+    std::string body(req->content_len, '\0');
+    size_t got = 0;
+    while (got < body.size()) {
+        int n = httpd_req_recv(req, body.data() + got, body.size() - got);
+        if (n <= 0) return nullptr;
+        got += n;
+    }
+    return cJSON_Parse(body.c_str());
+}
+
+// Browsers send a custom header only for same-origin fetches; this blocks cross-site form posts.
+bool SameOrigin(httpd_req_t* req) {
+    char v[8];
+    return httpd_req_get_hdr_value_str(req, "X-Bap", v, sizeof(v)) == ESP_OK;
+}
+
+esp_err_t Reject(httpd_req_t* req, const char* msg) {
+    httpd_resp_set_status(req, "400 Bad Request");
+    return httpd_resp_sendstr(req, msg);
+}
+
+std::string MaskKey(const std::string& key) {
+    if (key.size() < 10) return key.empty() ? "" : "••••";
+    return key.substr(0, 4) + "••••••••" + key.substr(key.size() - 4);
+}
+
+esp_err_t HandleIndex(httpd_req_t* req) {
+    httpd_resp_set_type(req, "text/html; charset=utf-8");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    return httpd_resp_send(req, kWebPage, sizeof(kWebPage) - 1);
+}
+
+esp_err_t HandleGetConfig(httpd_req_t* req) {
+    auto c = LoadConfig();
+    auto& board = Board::GetInstance();
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "api_key_masked", MaskKey(c.api_key).c_str());
+    cJSON_AddStringToObject(r, "model", c.model.c_str());
+    cJSON_AddStringToObject(r, "character", c.character.c_str());
+    cJSON* chars = cJSON_AddArrayToObject(r, "characters");
+    for (auto& ch : Characters()) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddStringToObject(o, "id", ch.id.c_str());
+        cJSON_AddStringToObject(o, "name", ch.name.c_str());
+        cJSON_AddStringToObject(o, "kind", ch.kind.c_str());
+        cJSON_AddStringToObject(o, "tagline", ch.tagline.c_str());
+        cJSON_AddStringToObject(o, "voice", ch.voice.c_str());
+        cJSON_AddStringToObject(o, "persona", ch.persona.c_str());
+        cJSON_AddStringToObject(o, "default_name", ch.default_name.c_str());
+        cJSON_AddStringToObject(o, "default_voice", ch.default_voice.c_str());
+        cJSON_AddStringToObject(o, "default_persona", ch.default_persona.c_str());
+        cJSON_AddItemToArray(chars, o);
+    }
+    cJSON* apps = cJSON_AddArrayToObject(r, "apps");
+    for (auto& app : Apps()) {
+        cJSON* o = cJSON_CreateObject();
+        cJSON_AddStringToObject(o, "id", app.id.c_str());
+        cJSON_AddStringToObject(o, "title", app.title.c_str());
+        cJSON_AddStringToObject(o, "desc", app.desc.c_str());
+        cJSON_AddItemToArray(apps, o);
+    }
+    cJSON_AddStringToObject(r, "city", c.city.c_str());
+    cJSON_AddNumberToObject(r, "lat", c.lat);
+    cJSON_AddNumberToObject(r, "lon", c.lon);
+    cJSON_AddNumberToObject(r, "idle_s", c.idle_s);
+    cJSON_AddBoolToObject(r, "search", c.search);
+    cJSON_AddBoolToObject(r, "greet", c.greet);
+    cJSON_AddBoolToObject(r, "night_dim", c.night_dim);
+    cJSON_AddItemToObject(r, "hooks", cJSON_Parse(LoadList("hooks").c_str()));
+    cJSON_AddNumberToObject(r, "volume", board.GetAudioCodec()->output_volume());
+    if (auto bl = board.GetBacklight()) cJSON_AddNumberToObject(r, "brightness", bl->brightness());
+    cJSON_AddItemToObject(r, "notes", cJSON_Parse(LoadList("notes").c_str()));
+    cJSON_AddItemToObject(r, "memory", cJSON_Parse(LoadList("memory").c_str()));
+    return SendJson(req, r);
+}
+
+esp_err_t HandlePostConfig(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    if (in == nullptr) return Reject(req, "bad json");
+    auto c = LoadConfig();
+    auto str = [in](const char* k, std::string& dst, size_t max) {
+        auto v = cJSON_GetObjectItem(in, k);
+        if (cJSON_IsString(v) && strlen(v->valuestring) <= max) dst = v->valuestring;
+    };
+    std::string new_key;
+    str("api_key", new_key, 100);
+    if (!new_key.empty()) c.api_key = new_key;  // empty = keep the current key
+    str("model", c.model, 80);
+    std::string want_character;
+    str("character", want_character, 20);
+    for (auto& ch : Characters()) {
+        if (ch.id == want_character) c.character = ch.id;
+    }
+    // Per-character overrides: [{"id","name","voice","persona"}]; a value equal to the built-in
+    // one (or empty) clears the override.
+    cJSON* item = nullptr;
+    cJSON_ArrayForEach(item, cJSON_GetObjectItem(in, "characters")) {
+        auto get = [item](const char* k) {
+            auto v = cJSON_GetObjectItem(item, k);
+            return std::string(cJSON_IsString(v) ? v->valuestring : "");
+        };
+        for (auto& ch : Characters()) {
+            if (ch.id != get("id")) continue;
+            std::string name = get("name"), voice = get("voice"), persona = get("persona");
+            if (name.size() > 40 || voice.size() > 40 || persona.size() > 3000) continue;
+            SaveCharacterOverride(ch.id, name == ch.default_name ? "" : name,
+                                  voice == ch.default_voice ? "" : voice,
+                                  persona == ch.default_persona ? "" : persona);
+        }
+    }
+    str("city", c.city, 60);
+    auto num = [in](const char* k) { return cJSON_GetObjectItem(in, k); };
+    if (cJSON_IsNumber(num("lat"))) c.lat = num("lat")->valuedouble;
+    if (cJSON_IsNumber(num("lon"))) c.lon = num("lon")->valuedouble;
+    if (cJSON_IsNumber(num("idle_s"))) c.idle_s = std::max(10, std::min(300, num("idle_s")->valueint));
+    if (cJSON_IsBool(num("search"))) c.search = cJSON_IsTrue(num("search"));
+    if (cJSON_IsBool(num("greet"))) c.greet = cJSON_IsTrue(num("greet"));
+    if (cJSON_IsBool(num("night_dim"))) c.night_dim = cJSON_IsTrue(num("night_dim"));
+    if (cJSON_IsArray(num("hooks")) && cJSON_GetArraySize(num("hooks")) <= 8) {
+        char* t = cJSON_PrintUnformatted(num("hooks"));
+        if (strlen(t) < 3000) SaveList("hooks", t);
+        cJSON_free(t);
+    }
+    SaveConfig(c);
+
+    auto& board = Board::GetInstance();
+    if (cJSON_IsNumber(num("volume"))) {
+        board.GetAudioCodec()->SetOutputVolume(std::max(0, std::min(100, num("volume")->valueint)));
+    }
+    if (cJSON_IsNumber(num("brightness"))) {
+        if (auto bl = board.GetBacklight()) bl->SetBrightness(std::max(5, std::min(100, num("brightness")->valueint)), true);
+    }
+    if (cJSON_IsArray(num("notes"))) {
+        char* t = cJSON_PrintUnformatted(num("notes"));
+        SaveList("notes", t);
+        cJSON_free(t);
+    }
+    if (cJSON_IsArray(num("memory"))) {
+        char* t = cJSON_PrintUnformatted(num("memory"));
+        SaveList("memory", t);
+        cJSON_free(t);
+    }
+    cJSON_Delete(in);
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddBoolToObject(r, "ok", true);
+    return SendJson(req, r);
+}
+
+esp_err_t HandleStatus(httpd_req_t* req) {
+    auto& board = Board::GetInstance();
+    static const char* states[] = {"unknown", "starting", "wifi_configuring", "idle", "connecting", "listening",
+                                   "speaking", "notifying", "upgrading", "activating", "audio_testing", "fatal_error"};
+    int st = Application::GetInstance().GetDeviceState();
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "state", st >= 0 && st < 12 ? states[st] : "unknown");
+    cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
+    cJSON_AddNumberToObject(r, "free_heap", (double)esp_get_free_heap_size());
+    cJSON_AddItemToObject(r, "device", cJSON_Parse(board.GetDeviceStatusJson().c_str()));
+    cJSON_AddItemToObject(r, "log", cJSON_Parse(LogJson().c_str()));
+    cJSON_AddStringToObject(r, "alarms", AlarmsText().c_str());
+    cJSON_AddStringToObject(r, "version", esp_app_get_description()->version);
+    return SendJson(req, r);
+}
+
+esp_err_t HandleSay(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    auto text = cJSON_GetObjectItem(in, "text");
+    if (!cJSON_IsString(text) || text->valuestring[0] == '\0') {
+        cJSON_Delete(in);
+        return Reject(req, "missing text");
+    }
+    Say(text->valuestring);
+    cJSON_Delete(in);
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddBoolToObject(r, "ok", true);
+    return SendJson(req, r);
+}
+
+esp_err_t HandleAction(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    auto name = cJSON_GetObjectItem(in, "action");
+    std::string action = cJSON_IsString(name) ? name->valuestring : "";
+    cJSON_Delete(in);
+    auto& app = Application::GetInstance();
+    if (action == "talk") {
+        app.Schedule([&app]() { app.ToggleChatState(); });
+    } else if (action == "reboot") {
+        app.Schedule([&app]() { app.Reboot(); });
+    } else {
+        return Reject(req, "unknown action");
+    }
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddBoolToObject(r, "ok", true);
+    return SendJson(req, r);
+}
+
+// Call a device tool directly (same tools the assistant uses). Handy for testing and automation.
+esp_err_t HandleTool(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    auto name = cJSON_GetObjectItem(in, "name");
+    if (!cJSON_IsString(name)) {
+        cJSON_Delete(in);
+        return Reject(req, "missing name");
+    }
+    cJSON* rpc = cJSON_CreateObject();
+    cJSON_AddStringToObject(rpc, "jsonrpc", "2.0");
+    cJSON_AddNumberToObject(rpc, "id", 1);
+    cJSON_AddStringToObject(rpc, "method", "tools/call");
+    cJSON* params = cJSON_AddObjectToObject(rpc, "params");
+    cJSON_AddStringToObject(params, "name", name->valuestring);
+    auto args = cJSON_GetObjectItem(in, "arguments");
+    cJSON_AddItemToObject(params, "arguments", cJSON_IsObject(args) ? cJSON_Duplicate(args, true) : cJSON_CreateObject());
+    char* txt = cJSON_PrintUnformatted(rpc);
+    std::string request(txt);
+    cJSON_free(txt);
+    cJSON_Delete(rpc);
+    cJSON_Delete(in);
+
+    struct Pending { SemaphoreHandle_t done = xSemaphoreCreateBinary(); std::string reply; ~Pending() { vSemaphoreDelete(done); } };
+    auto pending = std::make_shared<Pending>();
+    McpServer::GetInstance().ParseMessage(request, [pending](const std::string& payload) {
+        pending->reply = payload;
+        xSemaphoreGive(pending->done);
+    });
+    httpd_resp_set_type(req, "application/json");
+    if (xSemaphoreTake(pending->done, pdMS_TO_TICKS(20000)) != pdTRUE) {
+        return httpd_resp_sendstr(req, "{\"error\":\"timeout\"}");
+    }
+    return httpd_resp_sendstr(req, pending->reply.c_str());
+}
+
+// Firmware update: the browser uploads xiaozhi.bin as the raw request body.
+esp_err_t HandleOta(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    const esp_partition_t* part = esp_ota_get_next_update_partition(nullptr);
+    if (part == nullptr || req->content_len < 100000 || req->content_len > part->size) {
+        return Reject(req, "File không hợp lệ");
+    }
+    esp_ota_handle_t handle = 0;
+    if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &handle) != ESP_OK) return Reject(req, "Không bắt đầu được");
+    ESP_LOGI(TAG, "OTA upload: %u bytes", (unsigned)req->content_len);
+    Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);  // modem sleep drops big uploads
+    std::string buf(4096, '\0');
+    size_t remaining = req->content_len;
+    while (remaining > 0) {
+        int n = httpd_req_recv(req, buf.data(), std::min(buf.size(), remaining));
+        if (n == HTTPD_SOCK_ERR_TIMEOUT) continue;
+        if (n <= 0 || esp_ota_write(handle, buf.data(), n) != ESP_OK) {
+            esp_ota_abort(handle);
+            Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
+            return Reject(req, "Tải lên bị gián đoạn");
+        }
+        remaining -= n;
+        vTaskDelay(1);  // let the idle task feed the watchdog during the long upload
+    }
+    if (esp_ota_end(handle) != ESP_OK || esp_ota_set_boot_partition(part) != ESP_OK) {
+        return Reject(req, "Firmware không hợp lệ");
+    }
+    httpd_resp_sendstr(req, "{\"ok\":true}");
+    auto& app = Application::GetInstance();
+    app.Schedule([&app]() {
+        vTaskDelay(pdMS_TO_TICKS(800));
+        app.Reboot();
+    });
+    return ESP_OK;
+}
+
+// Animated face of a character, straight from the assets partition: /face?c=bap&e=happy
+esp_err_t HandleFace(httpd_req_t* req) {
+    char query[64] = {}, id[20] = {}, emotion[24] = "happy";
+    httpd_req_get_url_query_str(req, query, sizeof(query));
+    httpd_query_key_value(query, "c", id, sizeof(id));
+    httpd_query_key_value(query, "e", emotion, sizeof(emotion));
+    std::string name = std::string(id) + "_" + emotion + ".gif";
+    void* ptr = nullptr;
+    size_t size = 0;
+    if (!Assets::GetInstance().GetAssetData(name, ptr, size)) {
+        httpd_resp_set_status(req, "404 Not Found");
+        return httpd_resp_sendstr(req, "not found");
+    }
+    httpd_resp_set_type(req, "image/gif");
+    httpd_resp_set_hdr(req, "Cache-Control", "max-age=86400");
+    return httpd_resp_send(req, static_cast<const char*>(ptr), size);
+}
+
+// Live screenshot of the round display (JPEG), used by the web UI preview and for debugging.
+esp_err_t HandleScreen(httpd_req_t* req) {
+    std::string jpeg;
+    auto display = Board::GetInstance().GetDisplay();
+    if (display == nullptr || !display->SnapshotToJpeg(jpeg, 85)) {
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        return httpd_resp_sendstr(req, "snapshot failed");
+    }
+    httpd_resp_set_type(req, "image/jpeg");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    return httpd_resp_send(req, jpeg.data(), jpeg.size());
+}
+
+esp_err_t HandleApp(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    auto id = cJSON_GetObjectItem(in, "id");
+    std::string want = cJSON_IsString(id) ? id->valuestring : "";
+    cJSON_Delete(in);
+    for (auto& app : Apps()) {
+        if (app.id != want) continue;
+        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + app.title + "\". " + app.prompt + "</hệ thống>");
+        return httpd_resp_sendstr(req, "{\"ok\":true}");
+    }
+    return Reject(req, "unknown app");
+}
+
+// Saved Wi-Fi networks. The device joins whichever saved network it finds (up to 10).
+esp_err_t HandleGetWifi(httpd_req_t* req) {
+    auto& wifi = WifiManager::GetInstance();
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddStringToObject(r, "current", wifi.IsConnected() ? wifi.GetSsid().c_str() : "");
+    cJSON_AddNumberToObject(r, "rssi", wifi.IsConnected() ? wifi.GetRssi() : 0);
+    cJSON_AddStringToObject(r, "ip", wifi.GetIpAddress().c_str());
+    cJSON* list = cJSON_AddArrayToObject(r, "saved");
+    for (auto& item : SsidManager::GetInstance().GetSsidList()) {
+        cJSON_AddItemToArray(list, cJSON_CreateString(item.ssid.c_str()));  // never return passwords
+    }
+    return SendJson(req, r);
+}
+
+esp_err_t HandlePostWifi(httpd_req_t* req) {
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    auto action = cJSON_GetObjectItem(in, "action");
+    auto ssid = cJSON_GetObjectItem(in, "ssid");
+    auto password = cJSON_GetObjectItem(in, "password");
+    auto index = cJSON_GetObjectItem(in, "index");
+    std::string act = cJSON_IsString(action) ? action->valuestring : "";
+    auto& ssids = SsidManager::GetInstance();
+    esp_err_t result;
+    if (act == "add" && cJSON_IsString(ssid) && strlen(ssid->valuestring) > 0 && strlen(ssid->valuestring) <= 32) {
+        std::string pass = cJSON_IsString(password) ? password->valuestring : "";
+        if (pass.size() > 64 || (!pass.empty() && pass.size() < 8)) {
+            cJSON_Delete(in);
+            return Reject(req, "Mật khẩu Wi-Fi phải từ 8 đến 64 ký tự");
+        }
+        ssids.AddSsid(ssid->valuestring, pass);
+        result = httpd_resp_sendstr(req, "{\"ok\":true}");
+    } else if (act == "remove" && cJSON_IsNumber(index) && index->valueint >= 0 &&
+               index->valueint < (int)ssids.GetSsidList().size()) {
+        if (ssids.GetSsidList().size() <= 1) {
+            cJSON_Delete(in);
+            return Reject(req, "Phải giữ lại ít nhất một mạng Wi-Fi");
+        }
+        ssids.RemoveSsid(index->valueint);
+        result = httpd_resp_sendstr(req, "{\"ok\":true}");
+    } else if (act == "prefer" && cJSON_IsNumber(index) && index->valueint >= 0 &&
+               index->valueint < (int)ssids.GetSsidList().size()) {
+        ssids.SetDefaultSsid(index->valueint);
+        result = httpd_resp_sendstr(req, "{\"ok\":true}");
+    } else {
+        result = Reject(req, "Yêu cầu không hợp lệ");
+    }
+    cJSON_Delete(in);
+    return result;
+}
+
+}  // namespace
+
+void StartWebServer() {
+    static httpd_handle_t server = nullptr;
+    if (server != nullptr) return;
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
+    config.max_uri_handlers = 18;
+    config.recv_wait_timeout = 15;
+    config.lru_purge_enable = true;
+    if (httpd_start(&server, &config) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start settings web server");
+        server = nullptr;
+        return;
+    }
+    static const httpd_uri_t routes[] = {
+        {.uri = "/", .method = HTTP_GET, .handler = HandleIndex, .user_ctx = nullptr},
+        {.uri = "/api/config", .method = HTTP_GET, .handler = HandleGetConfig, .user_ctx = nullptr},
+        {.uri = "/api/config", .method = HTTP_POST, .handler = HandlePostConfig, .user_ctx = nullptr},
+        {.uri = "/api/status", .method = HTTP_GET, .handler = HandleStatus, .user_ctx = nullptr},
+        {.uri = "/api/say", .method = HTTP_POST, .handler = HandleSay, .user_ctx = nullptr},
+        {.uri = "/api/action", .method = HTTP_POST, .handler = HandleAction, .user_ctx = nullptr},
+        {.uri = "/api/tool", .method = HTTP_POST, .handler = HandleTool, .user_ctx = nullptr},
+        {.uri = "/api/ota", .method = HTTP_POST, .handler = HandleOta, .user_ctx = nullptr},
+        {.uri = "/api/app", .method = HTTP_POST, .handler = HandleApp, .user_ctx = nullptr},
+        {.uri = "/face", .method = HTTP_GET, .handler = HandleFace, .user_ctx = nullptr},
+        {.uri = "/screen.jpg", .method = HTTP_GET, .handler = HandleScreen, .user_ctx = nullptr},
+        {.uri = "/api/wifi", .method = HTTP_GET, .handler = HandleGetWifi, .user_ctx = nullptr},
+        {.uri = "/api/wifi", .method = HTTP_POST, .handler = HandlePostWifi, .user_ctx = nullptr},
+    };
+    for (auto& r : routes) httpd_register_uri_handler(server, &r);
+    // http://bap.local on networks and devices that support mDNS
+    if (mdns_init() == ESP_OK) {
+        mdns_hostname_set("bap");
+        mdns_instance_name_set("Bap assistant");
+        mdns_service_add(nullptr, "_http", "_tcp", 80, nullptr, 0);
+    }
+    ESP_LOGI(TAG, "Settings UI ready on port 80 (http://bap.local)");
+}
+
+}  // namespace assistant
