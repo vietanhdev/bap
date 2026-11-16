@@ -1,6 +1,8 @@
 // Music on the SD card: scan, match by name, play through the radio pipeline ("radio:sd:<kw>").
 #include "assistant_sd.h"
 
+#include "text_fold.h"
+
 #include <esp_log.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -47,51 +49,7 @@ void Scan(const std::string& dir, int depth) {
     closedir(d);
 }
 
-// Decode one UTF-8 code point.
-uint32_t Next(const std::string& s, size_t& i) {
-    unsigned char c = s[i];
-    int n = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : 4;
-    uint32_t cp = n == 1 ? c : c & (0x3F >> (n - 1));
-    for (int k = 1; k < n && i + k < s.size(); ++k)
-        cp = (cp << 6) | (s[i + k] & 0x3F);
-    i += n;
-    return cp;
-}
-
-char Base(uint32_t cp) {
-    // Vietnamese letters by Unicode block -> base letter.
-    static const struct {
-        const char* letters;
-        char base;
-    } kMap[] = {{"àáạảãâầấậẩẫăằắặẳẵÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ", 'a'},
-                {"èéẹẻẽêềếệểễÈÉẸẺẼÊỀẾỆỂỄ", 'e'},
-                {"ìíịỉĩÌÍỊỈĨ", 'i'},
-                {"òóọỏõôồốộổỗơờớợởỡÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ", 'o'},
-                {"ùúụủũưừứựửữÙÚỤỦŨƯỪỨỰỬỮ", 'u'},
-                {"ỳýỵỷỹỲÝỴỶỸ", 'y'},
-                {"đĐ", 'd'}};
-    if (cp < 0x80)
-        return (char)tolower((int)cp);
-    for (auto& m : kMap) {
-        std::string letters = m.letters;
-        for (size_t i = 0; i < letters.size();) {
-            if (Next(letters, i) == cp)
-                return m.base;
-        }
-    }
-    return '?';
-}
-
 }  // namespace
-
-std::string Fold(const std::string& utf8) {
-    std::string out;
-    for (size_t i = 0; i < utf8.size();) {
-        char c = Base(Next(utf8, i));
-        out += (c == '_' || c == '-') ? ' ' : c;
-    }
-    return out;
-}
 
 void SetSdMounted(bool mounted) {
     g_mounted = mounted;

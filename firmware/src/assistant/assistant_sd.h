@@ -13,7 +13,5 @@ bool SdMounted();
 std::vector<std::string> SdSongs(const std::string& keyword = "");
 // "Thư mục/Tên bài.mp3" -> "Tên bài"
 std::string SongTitle(const std::string& path);
-// Lowercase ASCII with Vietnamese accents removed, for matching spoken requests to file names.
-std::string Fold(const std::string& utf8);
 
 }  // namespace assistant
