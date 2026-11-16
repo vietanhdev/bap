@@ -731,6 +731,57 @@ void RegisterTools() {
                 });
 
     mcp.AddTool(
+        "vn.chung_khoan",
+        "Xem nhanh thị trường chứng khoán Việt Nam: chỉ số VN-Index, VN30, HNX-Index, UPCoM (điểm, "
+        "tăng giảm, giá trị giao dịch). Dùng khi người dùng hỏi \"chứng khoán hôm nay\", "
+        "\"VN-Index\", "
+        "\"thị trường\" (hay bị nghe thành \"vê en index\", \"chứng khoáng\").",
+        PropertyList(), [](const PropertyList&) -> ToolResult {
+            // Public CafeF board feed; plain HTTP (public data, answers in ~60 ms).
+            auto body = HttpGet("http://banggia.cafef.vn/stockhandler.ashx?index=true");
+            if (!body)
+                return std::unexpected(body.error());
+            cJSON* root = cJSON_Parse(body->c_str());
+            if (!cJSON_IsArray(root)) {
+                cJSON_Delete(root);
+                return std::unexpected("Không đọc được dữ liệu chứng khoán");
+            }
+            static const struct {
+                const char* code;
+                const char* name;
+            } kIndexes[] = {{"VNINDEX", "VN-Index"},
+                            {"VN30", "VN30"},
+                            {"HNXINDEX", "HNX-Index"},
+                            {"HNXUPCOMINDEX", "UPCoM"}};
+            auto str = [](cJSON* o, const char* k) {
+                cJSON* v = cJSON_GetObjectItem(o, k);
+                return std::string(cJSON_IsString(v) ? v->valuestring : "");
+            };
+            std::string out = "Chứng khoán (điểm, thay đổi, phần trăm):\n";
+            int n = 0;
+            for (auto& idx : kIndexes) {
+                cJSON* it = nullptr;
+                cJSON_ArrayForEach (it, root) {
+                    if (str(it, "name") != idx.code)
+                        continue;
+                    std::string change = str(it, "change");
+                    bool up = !change.empty() && change[0] != '-';
+                    out += std::string("- ") + idx.name + ": " + str(it, "index") + " điểm, " +
+                           (up ? "tăng " : "giảm ") + (up ? change : change.substr(1)) + " (" +
+                           str(it, "percent") + "%)";
+                    if (strcmp(idx.code, "VNINDEX") == 0)
+                        out += ", giá trị giao dịch " + str(it, "value") + " tỷ đồng";
+                    out += "\n";
+                    ++n;
+                }
+            }
+            cJSON_Delete(root);
+            if (n == 0)
+                return std::unexpected("Không đọc được dữ liệu chứng khoán");
+            return out;
+        });
+
+    mcp.AddTool(
         "vn.gia_vang_hai_hong",
         "Tra bảng giá vàng, bạc hiện tại của tiệm vàng Hải Hồng (Hải Hồng Jewelry, 32A-48 Trần "
         "Hưng "
