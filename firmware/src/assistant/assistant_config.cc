@@ -63,6 +63,7 @@ Config LoadConfig() {
     c.greet = s.GetBool("greet", false);
     c.night_dim = s.GetBool("night_dim", true);
     c.presence = s.GetBool("presence", false);
+    c.morning = s.GetBool("morning", false);
     c.language = s.GetString("language", "vi");
     return c;
 }
@@ -82,6 +83,7 @@ void SaveConfig(const Config& c) {
         s.SetBool("greet", c.greet);
         s.SetBool("night_dim", c.night_dim);
         s.SetBool("presence", c.presence);
+        s.SetBool("morning", c.morning);
         s.SetString("language", c.language);
         std::lock_guard<std::mutex> lock(g_language_mutex);
         g_language = c.language;

@@ -35,6 +35,7 @@ struct Config {
     bool greet;            // greet when the camera sees a person
     bool night_dim;        // dim the screen 22:00-06:00 while resting
     bool presence;         // camera wakes the screen and the character reacts when someone comes
+    bool morning;          // first person seen 6:00-10:00: morning briefing (needs presence)
     std::string language;  // id from assistant.json "languages" (vi, en, ko, zh)
 };
 

@@ -325,6 +325,7 @@ Level SettingsMenu() {
                        }});
     m.items.push_back(Toggle("Chế độ đêm", &Config::night_dim));
     m.items.push_back(Toggle("Nhận biết có người", &Config::presence));
+    m.items.push_back(Toggle("Chào buổi sáng", &Config::morning));
     m.items.push_back(Toggle("Thấy người thì chào", &Config::greet));
     m.items.push_back({"Thông tin máy", []() {
                            Level l{.title = "Thông tin máy"};

@@ -267,10 +267,34 @@ void OnPersonPresent() {
         g_wake_handler();
 }
 
+// Morning briefing once a day, the first time someone shows up between 6:00 and 10:00.
+static bool MorningBriefing() {
+    static int done_yday = -1;
+    time_t now = time(nullptr);
+    if (now < 1700000000)
+        return false;
+    struct tm t;
+    localtime_r(&now, &t);
+    if (t.tm_hour < 6 || t.tm_hour >= 10 || t.tm_yday == done_yday)
+        return false;
+    done_yday = t.tm_yday;
+    for (auto& a : Apps()) {
+        if (a.id != "ban_tin_sang")
+            continue;
+        Say("<hệ thống>Người dùng vừa xuất hiện trước máy lần đầu trong buổi sáng hôm nay. " +
+            a.prompt + "</hệ thống>");
+        return true;
+    }
+    return false;
+}
+
 bool OnPersonArrived(int count) {
     auto c = LoadConfig();
     if (NightNow())
         return false;  // never wake anyone up at night
+    if (c.presence && c.morning &&
+        Application::GetInstance().GetDeviceState() == kDeviceStateIdle && MorningBriefing())
+        return false;  // the briefing is the greeting
     if (c.presence) {
         if (g_wake_handler != nullptr)
             g_wake_handler();
