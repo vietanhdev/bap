@@ -54,6 +54,29 @@ if mode == "gemini":
             "CONFIG_LV_DEF_REFR_PERIOD=40",
             "CONFIG_FATFS_API_ENCODING_UTF_8=y",  # Vietnamese file names on the SD card
             "CONFIG_LWIP_MAX_SOCKETS=16",  # web UI + Gemini + music + mDNS ran out at 10
+            # Only MP3/AAC/TS (music, radio) and Opus/OGG (sounds) are used: the rest cost ~300 KB
+            # of a 4 MB OTA slot.
+            "CONFIG_AUDIO_DECODER_G711_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_AMRNB_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_AMRWB_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_FLAC_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_VORBIS_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_ADPCM_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_ALAC_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_SBC_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_LC3_SUPPORT=n",
+            "CONFIG_AUDIO_DECODER_G722_SUPPORT=n",
+            "CONFIG_AUDIO_SIMPLE_DEC_WAV_SUPPORT=n",
+            "CONFIG_AUDIO_SIMPLE_DEC_M4A_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_AAC_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_G711_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_AMRNB_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_AMRWB_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_ADPCM_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_ALAC_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_SBC_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_LC3_SUPPORT=n",
+            "CONFIG_AUDIO_ENCODER_G722_SUPPORT=n",
             # Requests up to this size always use internal RAM; 1 KB sent every small string there.
             "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256"]
 else:
