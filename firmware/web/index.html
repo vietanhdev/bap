@@ -41,6 +41,7 @@ textarea{min-height:150px;resize:vertical}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.playing{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:12px;border-radius:14px;background:var(--soft)}.playing b{font-weight:600}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}.kv b{text-align:right}
 @media(max-width:440px){.row{grid-template-columns:1fr}}
 .check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:500}
@@ -86,6 +87,7 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
 <div class="tab" id="tab-chat">
 <section>
   <h2>Trò chuyện</h2>
+  <div class="playing" id="playing" hidden><span>♪ <b id="playingTitle"></b></span><button type="button" id="stopBtn">Dừng</button></div>
   <div class="chat" id="chat"><span class="empty">Chưa có cuộc trò chuyện nào. Nói "Hi Lili" với máy hoặc gõ ở dưới.</span></div>
   <form class="say" id="sayForm"><input type="text" id="sayText" placeholder="Gõ câu muốn nói" autocomplete="off"><button class="primary">Gửi</button></form>
   <div class="chips" id="chips"></div>
@@ -207,7 +209,7 @@ const H={'Content-Type':'application/json','X-Bap':'1'};
 const VOICES=['Leda','Aoede','Kore','Zephyr','Callirrhoe','Autonoe','Despina','Erinome','Laomedeia','Sulafat','Puck','Charon','Fenrir','Orus','Achird'];
 const CITIES=[['Hà Nội',21.0285,105.8542],['TP. Hồ Chí Minh',10.7769,106.7009],['Đà Nẵng',16.0544,108.2022],['Hải Phòng',20.8449,106.6881],['Cần Thơ',10.0452,105.7469],['Huế',16.4637,107.5909],['Nha Trang',12.2388,109.1967],['Đà Lạt',11.9404,108.4583],['Vũng Tàu',10.346,107.0843],['Quy Nhơn',13.783,109.2197],['Vinh',18.6796,105.6813],['Hạ Long',20.9712,107.0448]];
 const CHIPS=['Hôm nay âm lịch ngày bao nhiêu?','Thời tiết hôm nay thế nào?','Đọc tin mới nhất','Giá vàng hôm nay','Tỷ giá đô la','Xổ số miền Bắc','Hẹn giờ 5 phút','Kể chuyện cười đi'];
-const STATES={idle:'Đang nghỉ',connecting:'Đang thức dậy…',listening:'Đang nghe',speaking:'Đang nói',starting:'Đang khởi động',activating:'Đang khởi động',wifi_configuring:'Đang cài Wi-Fi',upgrading:'Đang cập nhật'};
+const STATES={idle:'Đang nghỉ',connecting:'Đang thức dậy…',listening:'Đang nghe',speaking:'Đang nói',starting:'Đang khởi động',activating:'Đang khởi động',wifi_configuring:'Đang cài Wi-Fi',upgrading:'Đang cập nhật',notifying:'Đang phát nhạc'};
 let cfg={},chars=[],editing='',lists={notes:[],memory:[]},hooks=[],dirty=false,logKey='';
 
 VOICES.forEach(v=>$('c_voice').add(new Option(v,v)));
@@ -257,8 +259,10 @@ async function say(t){try{await post('/api/say',{text:t});msg('Đã gửi.','ok'
 async function live(k){try{await post('/api/config',{[k]:+$(k).value})}catch(e){}}
 function renderChat(log){const key=JSON.stringify(log);if(key===logKey||!log.length)return;logKey=key;const box=$('chat');box.textContent='';log.forEach(e=>box.append(el('p',e.text,e.role)));box.scrollTop=box.scrollHeight}
 async function status(){try{const s=await (await fetch('/api/status')).json();$('state').textContent=STATES[s.state]||s.state;$('dot').className='dot on';renderChat(s.log||[]);$('alarms').textContent=s.alarms||'';
+  $('playing').hidden=!s.now_playing;$('playingTitle').textContent=s.now_playing||'';
   const d=s.device||{};$('ver').textContent='Phiên bản '+(s.version||'?')+' · Wi-Fi '+((d.network||{}).ssid||'?')+' · Pin '+((d.battery||{}).level??'?')+'%'}catch(e){$('state').textContent='Mất kết nối với máy';$('dot').className='dot'}}
 
+$('stopBtn').onclick=()=>post('/api/action',{action:'stop'}).then(()=>setTimeout(status,800));
 $('sayForm').onsubmit=e=>{e.preventDefault();const t=$('sayText').value.trim();if(t){say(t);$('sayText').value=''}};
 $('save').onclick=save;
 $('talk').onclick=()=>post('/api/action',{action:'talk'}).catch(()=>msg('Không gửi được.','bad'));

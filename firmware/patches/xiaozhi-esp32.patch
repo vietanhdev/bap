@@ -73,7 +73,7 @@ index 80161a1..f92ccfb 100644
 +    depends on USE_GEMINI_LIVE
 +endmenu
 diff --git a/main/application.cc b/main/application.cc
-index 300a36c..7846eb7 100644
+index 300a36c..e3f5cfa 100644
 --- a/main/application.cc
 +++ b/main/application.cc
 @@ -1,3 +1,4 @@
@@ -201,11 +201,17 @@ index 300a36c..7846eb7 100644
              audio_service_.EnableVoiceProcessing(false);
              audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
              break;
-@@ -1261,6 +1308,49 @@ void Application::StopNotification() {
+@@ -1261,6 +1308,59 @@ void Application::StopNotification() {
      }
  }
  
 +#if CONFIG_USE_GEMINI_LIVE
++std::string Application::NowPlaying() {
++    if (GetDeviceState() != kDeviceStateNotifying) return "";
++    std::lock_guard<std::mutex> lock(now_playing_mutex_);
++    return now_playing_;
++}
++
 +void Application::StopAll() {
 +    Schedule([this]() {
 +        if (GetDeviceState() == kDeviceStateNotifying) StopNotification();
@@ -236,6 +242,10 @@ index 300a36c..7846eb7 100644
 +                vTaskDelay(pdMS_TO_TICKS(100));
 +            }
 +            app->Schedule([job]() {
++                {
++                    std::lock_guard<std::mutex> lock(job->app->now_playing_mutex_);
++                    job->app->now_playing_ = job->title;
++                }
 +                auto lyrics = std::move(job->lyrics);
 +                lyrics.insert(lyrics.begin(), {.start_ms = 0, .text = job->title});
 +                job->app->StartNotification(job->url, std::move(lyrics));
@@ -252,10 +262,10 @@ index 300a36c..7846eb7 100644
      if (GetDeviceState() != kDeviceStateNotifying || notification_playback_id_ != playback_id) {
          return;
 diff --git a/main/application.h b/main/application.h
-index 866c2a7..57ca711 100644
+index 866c2a7..59900a8 100644
 --- a/main/application.h
 +++ b/main/application.h
-@@ -112,6 +112,13 @@ public:
+@@ -112,6 +112,15 @@ public:
  
      void Reboot();
      void WakeWordInvoke(const std::string& wake_word);
@@ -263,12 +273,23 @@ index 866c2a7..57ca711 100644
 +    // Play a stream (e.g. "radio:<url>") in the notifying state; the wake word stops it.
 +    // Stops music/radio or ends the conversation, back to resting. Safe from any task.
 +    void StopAll();
++    // Title of the stream being played (radio, Zing, SD), empty when nothing plays.
++    std::string NowPlaying();
 +    void PlayStream(const std::string& url, const std::string& title,
 +                    std::vector<NotifySubtitle> lyrics = {});
 +#endif
      bool UpgradeFirmware(const std::string& url, const std::string& version = "");
      bool CanEnterSleepMode();
      void SendMcpMessage(const std::string& payload);
+@@ -129,6 +138,8 @@ public:
+     void ResetProtocol();
+ 
+ private:
++    std::mutex now_playing_mutex_;
++    std::string now_playing_;
+     Application();
+     ~Application();
+ 
 diff --git a/main/audio/audio_service.cc b/main/audio/audio_service.cc
 index 358a094..632b769 100644
 --- a/main/audio/audio_service.cc

@@ -269,6 +269,7 @@ esp_err_t HandleStatus(httpd_req_t* req) {
     int st = Application::GetInstance().GetDeviceState();
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "state", st >= 0 && st < 12 ? states[st] : "unknown");
+    cJSON_AddStringToObject(r, "now_playing", Application::GetInstance().NowPlaying().c_str());
     cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
     {
         uint8_t mac[6] = {};
