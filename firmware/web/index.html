@@ -41,6 +41,7 @@ textarea{min-height:150px;resize:vertical}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}.kv b{text-align:right}
 @media(max-width:440px){.row{grid-template-columns:1fr}}
 .check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:500}
 .check input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
@@ -183,6 +184,11 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
   <small>Khi mở trang, trình duyệt sẽ hỏi: tên đăng nhập gõ gì cũng được, mật khẩu là mật khẩu này. Quên mật khẩu: giữ nút xoay 20 giây để đưa máy về mặc định.</small>
 </section>
 <section>
+  <h2>Tình trạng máy</h2>
+  <div id="health"><small>Đang đo…</small></div>
+  <button type="button" id="healthBtn" class="secondary">Đo lại</button>
+</section>
+<section>
   <h2>Máy</h2>
   <small id="ver"></small>
   <label>Cập nhật firmware<small>Chọn file xiaozhi.bin. Máy tự khởi động lại khi xong.</small><input type="file" id="fw" accept=".bin"></label>
@@ -267,6 +273,23 @@ async function loadWifi(){try{const w=await (await fetch('/api/wifi')).json();$(
   const ul=$('wifiList');ul.textContent='';w.saved.forEach((n,i)=>{const li=el('li');li.append(el('span',n+(n===w.current?' (đang dùng)':'')));
     if(i>0){const up=el('button','Ưu tiên');up.type='button';up.onclick=()=>post('/api/wifi',{action:'prefer',index:i}).then(loadWifi).catch(e=>msg(e.message,'bad'));li.append(up)}
     const rm=el('button','Xóa');rm.type='button';rm.onclick=()=>post('/api/wifi',{action:'remove',index:i}).then(()=>{msg('Đã xóa mạng '+n+'.','ok');loadWifi()}).catch(e=>msg(e.message,'bad'));li.append(rm);ul.append(li)})}catch(e){}}
+async function health(){
+  $('health').innerHTML='<small>Đang đo…</small>';
+  try{
+    const p=await (await fetch('/api/perf')).json();
+    const cpu=Object.entries(p.cpu_percent).filter(([k])=>!k.startsWith('IDLE'));
+    const idle=(p.cpu_percent.IDLE0||0)+(p.cpu_percent.IDLE1||0);
+    const sig=p.rssi==null?'?':p.rssi>-55?'rất mạnh':p.rssi>-67?'tốt':p.rssi>-75?'trung bình':'yếu';
+    const h=Math.floor(p.uptime_s/3600),m=Math.floor(p.uptime_s%3600/60);
+    const row=(k,v)=>`<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+    $('health').innerHTML=row('Đã chạy',`${h} giờ ${m} phút`)+row('CPU rảnh',`${Math.round(idle)}%`)+
+      row('RAM trong chip trống',`${Math.round(p.free_internal/1024)} KB (thấp nhất ${Math.round(p.min_free_internal/1024)} KB)`)+
+      row('PSRAM trống',`${(p.free_psram/1048576).toFixed(1)} MB`)+row('Wi-Fi',`${sig} (${p.rssi} dBm)`)+
+      `<small>Việc đang chạy: ${cpu.slice(0,4).map(([k,v])=>k+' '+v+'%').join(', ')}</small>`;
+  }catch(e){$('health').innerHTML='<small>Không đo được.</small>'}
+}
+$('healthBtn').onclick=health;
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.tab==='sys')health()}));
 $('pwSave').onclick=()=>{const p=$('webPw').value;if(p.length<4)return msg('Mật khẩu cần ít nhất 4 ký tự.','bad');post('/api/config',{web_password:p}).then(()=>{$('webPw').value='';msg('Đã đặt mật khẩu. Trình duyệt sẽ hỏi mật khẩu ở lần sau.','ok');setTimeout(()=>location.reload(),1500)}).catch(()=>msg('Không lưu được.','bad'))};
 $('pwClear').onclick=()=>post('/api/config',{web_password:''}).then(()=>{msg('Đã bỏ mật khẩu.','ok');$('pwNow').textContent='Chưa có mật khẩu: ai cùng mạng Wi-Fi cũng mở được trang này.'}).catch(()=>msg('Không lưu được.','bad'));
 $('wifiSetup').onclick=()=>post('/api/action',{action:'wifi_setup'}).then(()=>msg('Máy đang vào chế độ cài Wi-Fi. Hãy kết nối điện thoại vào mạng Bap-xxxx.','ok')).catch(()=>msg('Không gửi được.','bad'));

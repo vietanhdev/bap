@@ -3,6 +3,8 @@
 #include <cJSON.h>
 #include <esp_heap_caps.h>
 #include <esp_http_server.h>
+#include <esp_timer.h>
+#include <esp_wifi.h>
 
 #include "assistant_auth.h"
 #include <freertos/FreeRTOS.h>
@@ -48,6 +50,9 @@ esp_err_t HandlePerf(httpd_req_t* req) {
     cJSON_AddNumberToObject(r, "min_free_internal", heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "largest_internal", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "free_psram", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
+    wifi_ap_record_t ap = {};
+    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) cJSON_AddNumberToObject(r, "rssi", ap.rssi);
     char* txt = cJSON_PrintUnformatted(r);
     httpd_resp_set_type(req, "application/json");
     esp_err_t err = httpd_resp_sendstr(req, txt);
