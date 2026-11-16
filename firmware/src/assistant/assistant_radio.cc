@@ -4,6 +4,7 @@
 #include <esp_random.h>
 #include <cstdio>
 #include "assistant_sd.h"
+#include "protocols/ticket_ssl.h"
 
 #include <esp_audio_dec_default.h>
 #include <esp_audio_simple_dec.h>
@@ -143,7 +144,7 @@ std::vector<std::string> PlaylistEntries(const std::string& body) {
 // Streams one HTTP resource through the decoder. Returns false when stopped or on error.
 bool StreamUrl(const std::string& url, Decoder* decoder, esp_audio_simple_dec_type_t* type_out,
                const PcmSink& sink, const Cancelled& cancelled, bool endless, int redirects = 0) {
-    auto http = Board::GetInstance().GetNetwork()->CreateHttp(0);
+    auto http = FastNetwork()->CreateHttp(0);
     http->SetTimeout(10000);
     http->SetHeader("User-Agent", "Mozilla/5.0 (Bap radio)");
     http->SetHeader("Icy-MetaData", "0");
@@ -225,7 +226,7 @@ bool StreamUrl(const std::string& url, Decoder* decoder, esp_audio_simple_dec_ty
 }
 
 bool FetchText(const std::string& url, std::string* body, int redirects = 0) {
-    auto http = Board::GetInstance().GetNetwork()->CreateHttp(0);
+    auto http = FastNetwork()->CreateHttp(0);
     http->SetTimeout(8000);
     if (!http->Open("GET", url))
         return false;

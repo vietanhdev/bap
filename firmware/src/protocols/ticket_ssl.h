@@ -14,6 +14,7 @@
 #include <mutex>
 #include <string>
 
+#include "http_client.h"
 #include "network_interface.h"
 #include "tcp.h"
 
@@ -43,7 +44,9 @@ private:
 class TicketNetwork : public NetworkInterface {
 public:
     explicit TicketNetwork(NetworkInterface* base) : base_(base) {}
-    std::unique_ptr<Http> CreateHttp(int id = -1) override { return base_->CreateHttp(id); }
+    std::unique_ptr<Http> CreateHttp(int id = -1) override {
+        return std::make_unique<HttpClient>(this, id);  // HTTPS through TicketSsl as well
+    }
     std::unique_ptr<Tcp> CreateTcp(int id = -1) override { return base_->CreateTcp(id); }
     std::unique_ptr<Tcp> CreateSsl(int) override { return std::make_unique<TicketSsl>(); }
     std::unique_ptr<Udp> CreateUdp(int id = -1) override { return base_->CreateUdp(id); }
@@ -55,3 +58,6 @@ public:
 private:
     NetworkInterface* base_;
 };
+
+// The board network with TLS session resumption; use it for every outgoing connection.
+NetworkInterface* FastNetwork();

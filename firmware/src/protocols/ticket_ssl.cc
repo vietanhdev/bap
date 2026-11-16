@@ -13,6 +13,8 @@
 #include <cstring>
 #include <map>
 
+#include "board.h"
+
 static const char* TAG = "TicketSsl";
 
 #define ESP_SSL_EVENT_RECEIVE_TASK_EXIT 1
@@ -22,6 +24,11 @@ namespace {
 std::mutex g_session_mutex;
 std::map<std::string, esp_tls_client_session_t*> g_sessions;  // host -> last session
 }  // namespace
+
+NetworkInterface* FastNetwork() {
+    static TicketNetwork network(Board::GetInstance().GetNetwork());
+    return &network;
+}
 
 void TicketSsl::ForgetSessions() {
     std::lock_guard<std::mutex> lock(g_session_mutex);
@@ -115,7 +122,8 @@ NetworkResult<> TicketSsl::Connect(const std::string& host, int port) {
     }
     if (ret == 1) {
         ESP_LOGI(TAG, "TLS to %s in %d ms (%s)", host.c_str(),
-                 (int)((esp_timer_get_time() - t0) / 1000), resumed ? "resumed" : "full handshake");
+                 (int)((esp_timer_get_time() - t0) / 1000),
+                 resumed ? "ticket offered" : "full handshake");
         if (esp_tls_client_session_t* session = esp_tls_get_client_session(tls_client_)) {
             std::lock_guard<std::mutex> lock(g_session_mutex);
             auto& slot = g_sessions[key];

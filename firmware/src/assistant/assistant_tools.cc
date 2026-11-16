@@ -28,6 +28,7 @@
 #include "display/display.h"
 #include "mcp_server.h"
 #include "protocols/gemini_live_protocol.h"
+#include "protocols/ticket_ssl.h"
 #include "vn_lunar.h"
 
 #define TAG "AssistantTools"
@@ -38,7 +39,7 @@ namespace {
 // ---------- helpers ----------
 
 std::expected<std::string, std::string> HttpGet(const std::string& url) {
-    auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+    auto http = FastNetwork()->CreateHttp(2);
     http->SetTimeout(8000);
     http->SetHeader("User-Agent", "Mozilla/5.0 (Bap assistant)");
     if (!http->Open("GET", url)) {
@@ -438,7 +439,7 @@ void Say(const std::string& text) {
 
 // NTP (UDP 123) is blocked on some home networks, so read the clock from an HTTP Date header.
 bool SyncClock() {
-    auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+    auto http = FastNetwork()->CreateHttp(2);
     http->SetTimeout(5000);
     if (auto opened = http->Open("GET", "http://www.gstatic.com/generate_204"); !opened)
         return false;
@@ -558,7 +559,7 @@ void RegisterTools() {
             auto place = p["dia_diem"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
                 auto geo = HttpGet(
-                    "https://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
+                    "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
                     UrlEncode(place));
                 if (!geo)
                     return std::unexpected(geo.error());
@@ -576,7 +577,8 @@ void RegisterTools() {
             char url[400];
             snprintf(
                 url, sizeof(url),
-                "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
+                // Plain HTTP on purpose: public data, and TLS to these far-away servers cost 2-5 s.
+                "http://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
                 "&timezone=Asia%%2FHo_Chi_Minh&forecast_days=3"
                 "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code"
                 "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_"
@@ -818,7 +820,7 @@ void RegisterTools() {
             auto place = p["dia_diem"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
                 auto geo = HttpGet(
-                    "https://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
+                    "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
                     UrlEncode(place));
                 if (!geo)
                     return std::unexpected(geo.error());
@@ -934,7 +936,7 @@ void RegisterTools() {
                     cJSON_AddStringToObject(body, "text",
                                             p["noi_dung"].value<std::string>().c_str());
                     char* txt = cJSON_PrintUnformatted(body);
-                    auto http = Board::GetInstance().GetNetwork()->CreateHttp(2);
+                    auto http = FastNetwork()->CreateHttp(2);
                     http->SetTimeout(10000);
                     http->SetHeader("Content-Type", "application/json");
                     http->SetContent(std::string(txt));

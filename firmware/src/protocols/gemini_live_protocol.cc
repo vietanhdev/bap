@@ -221,8 +221,7 @@ GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Conf
     use_paid_ = paid;
 
     // TLS session tickets: reconnects skip the full handshake (see ticket_ssl.h).
-    static TicketNetwork ticket_network(Board::GetInstance().GetNetwork());
-    websocket_ = ticket_network.CreateWebSocket(1);
+    websocket_ = FastNetwork()->CreateWebSocket(1);
     if (websocket_ == nullptr) {
         ESP_LOGE(TAG, "Failed to create websocket");
         return OpenResult::kConnectFailed;

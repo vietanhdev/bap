@@ -29,6 +29,7 @@
 
 #ifndef ZING_SIG_HOST_TEST
 #include "assistant_zing.h"
+#include "protocols/ticket_ssl.h"
 
 #include "lrc.h"
 
@@ -240,7 +241,7 @@ struct Response {
 };
 
 std::expected<Response, std::string> Get(const std::string& url, const std::string& cookie) {
-    auto http = Board::GetInstance().GetNetwork()->CreateHttp(3);
+    auto http = FastNetwork()->CreateHttp(3);
     http->SetTimeout(10000);
     http->SetHeader("User-Agent", kUserAgent);
     http->SetHeader("Referer", "https://zingmp3.vn/");
