@@ -4,7 +4,7 @@
 // Touch screen:
 //   resting: tap = the character giggles, double tap = talk, swipe sideways = next character,
 //            hold = menu
-//   talking: tap = stop / interrupt; music or radio: tap = stop
+//   talking: tap = stop / interrupt; music or radio: double tap = stop
 //   menu   : swipe up/down = move, tap = open, hold = back
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -207,7 +207,17 @@ void OnTouch(TouchEvent event, int x, int y) {
             if (still) app.Schedule([]() { Application::GetInstance().ToggleChatState(); });
             break;
         case kDeviceStateNotifying:
-            if (still) app.StopAll();
+            // Music: a stray touch should not stop it; double tap does.
+            if (!still) break;
+            if (now - t.last_tap_us < kDoubleTapUs) {
+                t.last_tap_us = 0;
+                app.StopAll();
+            } else {
+                t.last_tap_us = now;
+                app.Schedule([]() {
+                    Board::GetInstance().GetDisplay()->ShowNotification(Localize("Chạm 2 lần để dừng nhạc"), 2000);
+                });
+            }
             break;
         default:
             break;

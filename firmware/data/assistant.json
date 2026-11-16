@@ -243,7 +243,8 @@
         "Nhận biết có người": "Notice people",
         "Đang phát nhạc": "Playing music",
         "Pin còn": "Battery",
-        "Cắm sạc giúp mình nhé!": "Please plug me in!"
+        "Cắm sạc giúp mình nhé!": "Please plug me in!",
+        "Chạm 2 lần để dừng nhạc": "Double tap to stop the music"
       }
     },
     {
@@ -288,7 +289,8 @@
         "Nhận biết có người": "사람 감지",
         "Đang phát nhạc": "음악 재생 중",
         "Pin còn": "배터리",
-        "Cắm sạc giúp mình nhé!": "충전해 주세요!"
+        "Cắm sạc giúp mình nhé!": "충전해 주세요!",
+        "Chạm 2 lần để dừng nhạc": "두 번 눌러 음악 끄기"
       }
     },
     {
@@ -333,7 +335,8 @@
         "Nhận biết có người": "感知有人",
         "Đang phát nhạc": "播放音乐",
         "Pin còn": "电量",
-        "Cắm sạc giúp mình nhé!": "请帮我充电！"
+        "Cắm sạc giúp mình nhé!": "请帮我充电！",
+        "Chạm 2 lần để dừng nhạc": "双击停止音乐"
       }
     }
   ]
