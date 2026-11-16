@@ -288,6 +288,24 @@ void SchedulerTask(void*) {
             }
             // Quiet nights: cap the speaker for the whole night (conversations included) and give
             // the old volume back in the morning.
+            // Low battery: one gentle reminder per discharge (not at night).
+            static bool battery_warned = false;
+            int level = 0;
+            bool charging = false, discharging = false;
+            if (Board::GetInstance().GetBatteryLevel(level, charging, discharging)) {
+                if (charging || level > 25) {
+                    battery_warned = false;
+                } else if (discharging && level <= 15 && !battery_warned && !night && idle) {
+                    battery_warned = true;
+                    Application::GetInstance().Schedule([level]() {
+                        auto display = Board::GetInstance().GetDisplay();
+                        display->SetEmotion("sad");
+                        std::string msg = Localize("Pin còn") + " " + std::to_string(level) + "%. " +
+                                          Localize("Cắm sạc giúp mình nhé!");
+                        display->SetChatMessage("system", msg.c_str());
+                    });
+                }
+            }
             static int saved_volume = -1;
             constexpr int kNightVolume = 35;
             auto codec = Board::GetInstance().GetAudioCodec();
