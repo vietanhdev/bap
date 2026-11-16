@@ -403,6 +403,15 @@ std::string GeminiLiveProtocol::BuildToolDeclarations() {
             auto schema = cJSON_GetObjectItem(tool, "inputSchema");
             if (!cJSON_IsString(name))
                 continue;
+            // Upstream tools that do not help a voice assistant here (camera model tuning, theme:
+            // the UI is always dark). Hiding them saves ~1.9 KB of tokens on every session.
+            static const char* const kHidden[] = {"self.model.param_get", "self.model.param_set",
+                                                  "self.model.enable", "self.screen.set_theme"};
+            bool hidden = false;
+            for (auto* h : kHidden)
+                hidden = hidden || strcmp(name->valuestring, h) == 0;
+            if (hidden)
+                continue;
             std::string fn = ToFunctionName(name->valuestring);
             fn_to_tool_[fn] = name->valuestring;
             cJSON* d = cJSON_CreateObject();
@@ -525,6 +534,8 @@ std::string GeminiLiveProtocol::BuildSetupMessage() {
     std::string out(s);
     cJSON_free(s);
     cJSON_Delete(root);
+    ESP_LOGI(TAG, "Setup message: %u bytes (prompt %u)", (unsigned)out.size(),
+             (unsigned)prompt.size());
     return out;
 }
 
