@@ -52,6 +52,7 @@ if mode == "gemini":
             "CONFIG_LWIP_TCP_RECVMBOX_SIZE=16",
             # 25 fps is smooth for the faces and leaves more CPU for audio and TLS.
             "CONFIG_LV_DEF_REFR_PERIOD=40",
+            "CONFIG_FATFS_API_ENCODING_UTF_8=y",  # Vietnamese file names on the SD card
             # Requests up to this size always use internal RAM; 1 KB sent every small string there.
             "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256"]
 else:

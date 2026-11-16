@@ -19,6 +19,7 @@
 #include "assets/lang_config.h"
 #include "assistant.h"
 #include "assistant_config.h"
+#include "assistant_sd.h"
 #include "board.h"
 #include "boards/common/backlight.h"
 #include "boards/common/wifi_board.h"
@@ -948,7 +949,25 @@ void RegisterTools() {
         std::string list;
         for (auto& st : Stations())
             list += (list.empty() ? "" : ", ") + st.id + " (" + st.name + ")";
-        mcp.AddTool("nhac.dung",
+        mcp.AddTool("nhac.the_nho",
+                "Phát nhạc có sẵn trong thẻ nhớ SD của máy (không cần mạng). tu_khoa: tên bài, ca sĩ hoặc "
+                "thư mục cần tìm; để trống để phát ngẫu nhiên tất cả. Dùng khi người dùng nói \"mở nhạc trong "
+                "thẻ nhớ\", \"nhạc offline\", \"nhạc trong máy\".",
+                PropertyList({Property("tu_khoa", kPropertyTypeString, "")}),
+                [](const PropertyList& props) -> ReturnValue {
+                    if (!SdMounted()) return std::string("Máy chưa có thẻ nhớ SD (hoặc thẻ không đọc được).");
+                    std::string kw = props["tu_khoa"].value<std::string>();
+                    auto songs = SdSongs(kw);
+                    if (songs.empty())
+                        return std::string(kw.empty() ? "Thẻ nhớ chưa có bài .mp3 nào."
+                                                      : "Không thấy bài nào khớp \"" + kw + "\" trong thẻ nhớ.");
+                    std::string title = songs.size() == 1 ? SongTitle(songs[0])
+                                                          : std::to_string(songs.size()) + " bài trong thẻ nhớ";
+                    Application::GetInstance().PlayStream("radio:sd:" + kw, title);
+                    return "Đang phát " + title + (songs.size() > 1 ? " (ngẫu nhiên)." : ".");
+                });
+
+    mcp.AddTool("nhac.dung",
                 "Tắt nhạc hoặc radio đang phát. Dùng khi người dùng nói \"tắt nhạc\", \"dừng radio\", "
                 "\"thôi không nghe nữa\".",
                 PropertyList(), [](const PropertyList&) -> ReturnValue {

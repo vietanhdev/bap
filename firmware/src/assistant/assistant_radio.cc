@@ -1,6 +1,9 @@
 // Internet radio for the notification player: plain MP3/AAC streams and HLS playlists (.m3u8)
 // with AAC or MPEG-TS segments. Decoded to 16-bit PCM and handed to the audio service.
 #include "assistant_radio.h"
+#include "assistant_sd.h"
+#include <cstdio>
+#include <esp_random.h>
 
 #include <esp_audio_dec_default.h>
 #include <esp_audio_simple_dec.h>
@@ -295,9 +298,47 @@ bool PlayHls(std::string playlist_url, const PcmSink& sink, const Cancelled& can
 
 bool IsRadioUrl(const std::string& url) { return url.rfind(kPrefix, 0) == 0; }
 
+// One local file (SD card). Returns false if it cannot be opened.
+bool PlayFile(const std::string& path, const PcmSink& sink, const Cancelled& cancelled) {
+    FILE* f = fopen(path.c_str(), "rb");
+    if (f == nullptr) {
+        ESP_LOGW(TAG, "cannot open %s", path.c_str());
+        return false;
+    }
+    Decoder decoder(TypeFor(path, ""));
+    std::vector<uint8_t> buf(4096);
+    bool ok = true;
+    while (!cancelled()) {
+        size_t n = fread(buf.data(), 1, buf.size(), f);
+        if (n == 0) break;
+        if (!decoder.Feed(buf.data(), n, sink)) {
+            ok = false;
+            break;
+        }
+    }
+    fclose(f);
+    return ok;
+}
+
+namespace {
+// "sd:<keyword>" playlists: every matching song on the card, shuffled, until cancelled.
+bool PlaySdList(const std::string& keyword, const PcmSink& sink, const Cancelled& cancelled) {
+    auto songs = SdSongs(keyword);
+    if (songs.empty()) return false;
+    for (size_t i = songs.size() - 1; i > 0; --i) std::swap(songs[i], songs[esp_random() % (i + 1)]);
+    for (auto& path : songs) {
+        if (cancelled()) break;
+        ESP_LOGI(TAG, "SD: %s", path.c_str());
+        PlayFile(path, sink, cancelled);
+    }
+    return true;
+}
+}  // namespace
+
 bool PlayRadio(const std::string& radio_url, const PcmSink& sink, const Cancelled& cancelled) {
     std::string url = radio_url.substr(strlen(kPrefix));
     ESP_LOGI(TAG, "Playing %s", url.c_str());
+    if (url.rfind("sd:", 0) == 0) return PlaySdList(url.substr(3), sink, cancelled) || cancelled();
     for (int attempt = 0; attempt < 3 && !cancelled(); ++attempt) {
         bool ok = url.find(".m3u8") != std::string::npos
                       ? PlayHls(url, sink, cancelled)
