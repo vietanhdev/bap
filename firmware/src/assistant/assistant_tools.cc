@@ -731,6 +731,96 @@ void RegisterTools() {
                 });
 
     mcp.AddTool(
+        "the_thao.bong_da",
+        "Lịch thi đấu và tỷ số bóng đá gần đây (giờ Việt Nam). giai: ngoai_hang_anh (mặc định), "
+        "c1 (Champions League), la_liga, serie_a, bundesliga, ligue_1. Dùng khi người "
+        "dùng "
+        "hỏi \"tối nay có trận gì\", \"tỷ số MU\", \"Ngoại hạng Anh\" (hay bị nghe thành \"ngoại "
+        "hạng ăng\", \"en pi en\").",
+        PropertyList({Property("giai", kPropertyTypeString, "ngoai_hang_anh")}),
+        [](const PropertyList& props) -> ToolResult {
+            static const struct {
+                const char* id;
+                const char* espn;
+                const char* name;
+            } kLeagues[] = {{"ngoai_hang_anh", "eng.1", "Ngoại hạng Anh"},
+                            {"c1", "uefa.champions", "Champions League"},
+                            {"la_liga", "esp.1", "La Liga"},
+                            {"serie_a", "ita.1", "Serie A"},
+                            {"bundesliga", "ger.1", "Bundesliga"},
+                            {"ligue_1", "fra.1", "Ligue 1"}};
+            std::string want = props["giai"].value<std::string>();
+            auto league = &kLeagues[0];
+            for (auto& l : kLeagues)
+                if (want == l.id)
+                    league = &l;
+            // ESPN's public scoreboard feed (plain HTTP: public data).
+            auto body =
+                HttpGet(std::string("http://site.api.espn.com/apis/site/v2/sports/soccer/") +
+                        league->espn + "/scoreboard");
+            if (!body)
+                return std::unexpected("Chưa lấy được lịch " + std::string(league->name));
+            cJSON* root = cJSON_Parse(body->c_str());
+            body->clear();
+            body->shrink_to_fit();
+            std::string out = std::string(league->name) + " (giờ Việt Nam):\n";
+            int n = 0;
+            cJSON* ev = nullptr;
+            cJSON_ArrayForEach (ev, cJSON_GetObjectItem(root, "events")) {
+                if (n >= 10)
+                    break;
+                cJSON* comp = cJSON_GetArrayItem(cJSON_GetObjectItem(ev, "competitions"), 0);
+                cJSON* teams = cJSON_GetObjectItem(comp, "competitors");
+                cJSON* status = cJSON_GetObjectItem(cJSON_GetObjectItem(ev, "status"), "type");
+                cJSON* state = cJSON_GetObjectItem(status, "state");
+                cJSON* date = cJSON_GetObjectItem(ev, "date");
+                std::string home, away, hs, as;
+                cJSON* t = nullptr;
+                cJSON_ArrayForEach (t, teams) {
+                    cJSON* side = cJSON_GetObjectItem(t, "homeAway");
+                    cJSON* name =
+                        cJSON_GetObjectItem(cJSON_GetObjectItem(t, "team"), "shortDisplayName");
+                    cJSON* score = cJSON_GetObjectItem(t, "score");
+                    bool is_home = cJSON_IsString(side) && strcmp(side->valuestring, "home") == 0;
+                    (is_home ? home : away) = cJSON_IsString(name) ? name->valuestring : "?";
+                    (is_home ? hs : as) = cJSON_IsString(score) ? score->valuestring : "";
+                }
+                // "2026-11-21T12:30Z" (UTC) -> local "dd/mm hh:mm" (UTC+7); timegm-free math.
+                char when[32] = "";
+                int y, mo, d, h, mi;
+                if (cJSON_IsString(date) &&
+                    sscanf(date->valuestring, "%d-%d-%dT%d:%d", &y, &mo, &d, &h, &mi) == 5) {
+                    static const int kDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+                    h += 7;
+                    if (h >= 24) {
+                        h -= 24;
+                        int dim = kDays[mo - 1] +
+                                  (mo == 2 && y % 4 == 0 && (y % 100 != 0 || y % 400 == 0));
+                        if (++d > dim) {
+                            d = 1;
+                            if (++mo > 12)
+                                mo = 1;
+                        }
+                    }
+                    snprintf(when, sizeof(when), "%02d/%02d %02d:%02d", d, mo, h, mi);
+                }
+                std::string st = cJSON_IsString(state) ? state->valuestring : "";
+                if (st == "pre")
+                    out += std::string("- ") + when + ": " + home + " gặp " + away + "\n";
+                else if (st == "in")
+                    out += "- Đang đá: " + home + " " + hs + "-" + as + " " + away + "\n";
+                else
+                    out += std::string("- ") + when + " kết thúc: " + home + " " + hs + "-" + as +
+                           " " + away + "\n";
+                ++n;
+            }
+            cJSON_Delete(root);
+            if (n == 0)
+                return std::string("Hiện chưa có trận nào của ") + league->name + " trong lịch.";
+            return out;
+        });
+
+    mcp.AddTool(
         "vn.chung_khoan",
         "Xem nhanh thị trường chứng khoán Việt Nam: chỉ số VN-Index, VN30, HNX-Index, UPCoM (điểm, "
         "tăng giảm, giá trị giao dịch). Dùng khi người dùng hỏi \"chứng khoán hôm nay\", "

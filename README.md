@@ -22,7 +22,8 @@ cần máy chủ trung gian. Firmware dựa trên [xiaozhi-esp32](https://github
   thư giãn, hôm nay ăn gì, tập trung 25 phút, nhìn và kể. Nhấn đúp núm xoay để mở danh sách.
 - **Công cụ chạy trên thiết bị** (không cần API key riêng):
   lịch âm và đổi âm sang dương, thời tiết (Open-Meteo), tin tức (VnExpress RSS), tỷ giá
-  (Vietcombank), giá vàng (PNJ, tiệm Hải Hồng), chứng khoán (VN-Index, VN30, HNX, UPCoM), chất
+  (Vietcombank), giá vàng (PNJ, tiệm Hải Hồng), chứng khoán (VN-Index, VN30, HNX, UPCoM), lịch và tỷ số bóng đá (Ngoại hạng Anh, C1, La
+  Liga, Serie A, Bundesliga, Ligue 1), chất
   lượng không khí, kết quả xổ số, hẹn giờ,
   báo thức, ghi chú, ghi nhớ lâu dài, chụp ảnh bằng camera, chỉnh âm lượng và độ sáng.
 - **Nhạc và radio**: tìm và phát bài trên Zing MP3 (kèm lời chạy theo nhạc), radio VOV và FM Hà
