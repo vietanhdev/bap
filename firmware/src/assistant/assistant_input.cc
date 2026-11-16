@@ -183,7 +183,9 @@ void OnTouch(TouchEvent event, int x, int y) {
     if (MenuIsOpen()) {
         if (vertical) MenuRotate(dy < 0);
         else if (sideways) MenuRotate(dx < 0);
-        else if (still) MenuClick();
+        else if (still && y < 150) MenuRotate(false);  // tap the faded item above: select it
+        else if (still && y > 262) MenuRotate(true);   // ... or the one below
+        else if (still) MenuClick();                    // tap the highlighted pill: open
         return;
     }
     switch (app.GetDeviceState()) {

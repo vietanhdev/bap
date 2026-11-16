@@ -53,6 +53,7 @@ if mode == "gemini":
             # 25 fps is smooth for the faces and leaves more CPU for audio and TLS.
             "CONFIG_LV_DEF_REFR_PERIOD=40",
             "CONFIG_FATFS_API_ENCODING_UTF_8=y",  # Vietnamese file names on the SD card
+            "CONFIG_LWIP_MAX_SOCKETS=16",  # web UI + Gemini + music + mDNS ran out at 10
             # Requests up to this size always use internal RAM; 1 KB sent every small string there.
             "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256"]
 else:
