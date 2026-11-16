@@ -212,6 +212,9 @@ void SetX(void* obj, int32_t v) {
     if (lv_obj_get_style_translate_x(o, LV_PART_MAIN) != v) lv_obj_set_style_translate_x(o, v, 0);
 }
 void SetOpa(void* obj, int32_t v) {
+    // ~11 opacity levels: fades still look smooth on this panel, but redraw a few times a second
+    // instead of on every frame (glows, zzz and sparkles overlap gradient-filled shapes).
+    v = v >= 250 ? 255 : (v / 24) * 24;
     auto* o = (lv_obj_t*)obj;
     if (lv_obj_get_style_opa(o, LV_PART_MAIN) != v) lv_obj_set_style_opa(o, (lv_opa_t)v, 0);
 }
