@@ -13,8 +13,12 @@ struct Look {
 
 struct Character {
     Look look;
-    std::string id, name, kind, tagline, voice, persona;      // effective values
-    std::string default_voice, default_persona, default_name; // built-in values
+    std::string id, name, kind, tagline, voice, persona;       // effective values
+    std::string default_voice, default_persona, default_name;  // built-in values
+};
+
+struct Station {
+    std::string id, name, url;
 };
 
 struct App {
@@ -23,11 +27,13 @@ struct App {
 
 struct Config {
     std::string api_key, model, city, character;  // character = active character id
+    // Billing-enabled key, used only while the free api_key is rejected (see gemini_live_protocol).
+    std::string api_key_paid;
     double lat, lon;
     int idle_s;
-    bool search;      // Google Search grounding (needs a billing-enabled key)
-    bool greet;       // greet when the camera sees a person
-    bool night_dim;   // dim the screen 22:00-06:00 while resting
+    bool search;     // Google Search grounding (needs a billing-enabled key)
+    bool greet;      // greet when the camera sees a person
+    bool night_dim;  // dim the screen 22:00-06:00 while resting
 };
 
 Config LoadConfig();
@@ -39,8 +45,9 @@ Character ActiveCharacter();
 void SaveCharacterOverride(const std::string& id, const std::string& name, const std::string& voice,
                            const std::string& persona);
 bool SetActiveCharacter(const std::string& id_or_name);
-std::string SystemPrompt();   // active persona + shared rules
+std::string SystemPrompt();  // active persona + shared rules
 std::vector<App> Apps();
+std::vector<Station> Stations();
 
 // Face asset name for an emotion: system icon aliases, then "<character>_<emotion>".
 std::string FaceName(const char* emotion);
@@ -48,7 +55,7 @@ std::string FaceName(const char* emotion);
 std::string FaceAlias(const char* emotion);
 
 // Small JSON string lists kept in NVS (notes, memory, alarms, hooks).
-std::string LoadList(const char* key);                 // JSON array text, "[]" if empty
+std::string LoadList(const char* key);  // JSON array text, "[]" if empty
 void SaveList(const char* key, const std::string& json);
 
 }  // namespace assistant

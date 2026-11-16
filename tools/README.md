@@ -36,3 +36,30 @@ If `check` gets HTTP 429 / `RESOURCE_EXHAUSTED`, it prints how to link a billing
 
 Note: the device API is plain HTTP on the LAN, so the key travels unencrypted on the local network
 during `--device` pushes.
+
+## bap-desktop (Rust)
+
+Hiện hạn mức của các coding agent trên màn hình Bắp. Chạy trên máy tính, chỉ đọc file log cục bộ
+và gửi một thẻ trạng thái ngắn tới thiết bị trong mạng nhà (`POST /api/notify`). Không gửi gì ra
+Internet.
+
+- **Codex:** đọc `rate_limits` mới nhất trong `~/.codex/sessions/**/rollout-*.jsonl` (phần trăm đã
+  dùng, cửa sổ, giờ đặt lại), đúng như Codex CLI tự báo.
+- **Claude Code:** cộng token trong khối 5 giờ hiện tại và hôm nay từ `~/.claude/projects/*/*.jsonl`.
+  Claude không ghi hạn mức gói cước ra file, nên chỉ hiện số token.
+- Khi một hạn mức vượt 80%, nhân vật nói một câu nhắc (mỗi cảnh báo chỉ nói một lần).
+
+```sh
+cd tools/bap-desktop && cargo build --release
+./target/release/bap-desktop agents --print --once     # xem thẻ sẽ gửi
+./target/release/bap-desktop agents --device bap.local # gửi mỗi 120 giây
+./target/release/bap-desktop say "Đã build xong firmware"  # nhờ nhân vật nói
+```
+
+Chạy nền khi đăng nhập (systemd user service):
+
+```sh
+mkdir -p ~/.config/systemd/user
+cp tools/bap-desktop/bap-desktop.service ~/.config/systemd/user/
+systemctl --user enable --now bap-desktop
+```

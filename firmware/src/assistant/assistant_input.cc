@@ -1,6 +1,6 @@
 // Scroll wheel behaviour:
-//   resting: rotate = pick a character, double click = app launcher (rotate to choose, click to start)
-//   in a conversation: rotate = volume (handled by the board), click = stop/start listening
+//   resting: rotate = pick a character, double click = app launcher (rotate to choose, click to
+//   start) in a conversation: rotate = volume (handled by the board), click = stop/start listening
 #include <esp_timer.h>
 
 #include <mutex>
@@ -10,6 +10,7 @@
 #include "assets/lang_config.h"
 #include "assistant.h"
 #include "assistant_config.h"
+#include "assistant_menu.h"
 #include "board.h"
 #include "display/display.h"
 
@@ -34,7 +35,8 @@ void Show(const std::string& status, const std::string& line, const char* emotio
 
 void ShowApp() {
     auto apps = Apps();
-    if (apps.empty()) return;
+    if (apps.empty())
+        return;
     g_app_index = (g_app_index % (int)apps.size() + apps.size()) % apps.size();
     Show("Ứng dụng " + std::to_string(g_app_index + 1) + "/" + std::to_string(apps.size()),
          apps[g_app_index].title + " · bấm để mở", "thinking");
@@ -51,13 +53,16 @@ bool OnWheelRotate(bool clockwise) {
         ShowApp();
         return true;
     }
-    if (app.GetDeviceState() != kDeviceStateIdle) return false;  // conversation: volume
+    if (app.GetDeviceState() != kDeviceStateIdle)
+        return false;  // conversation: volume
     auto chars = Characters();
-    if (chars.empty()) return false;
+    if (chars.empty())
+        return false;
     std::string active = LoadConfig().character;
     int index = 0;
     for (size_t i = 0; i < chars.size(); ++i) {
-        if (chars[i].id == active) index = (int)i;
+        if (chars[i].id == active)
+            index = (int)i;
     }
     index = (index + (clockwise ? 1 : -1) + chars.size()) % chars.size();
     SetActiveCharacter(chars[index].id);
@@ -68,20 +73,23 @@ bool OnWheelRotate(bool clockwise) {
 
 bool OnWheelClick() {
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_apps_menu) return false;
+    if (!g_apps_menu)
+        return false;
     g_apps_menu = false;
     g_preview_shown = false;
     auto apps = Apps();
     if (g_app_index < (int)apps.size()) {
         auto& a = apps[g_app_index];
-        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + a.title + "\". " + a.prompt + "</hệ thống>");
+        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + a.title + "\". " + a.prompt +
+            "</hệ thống>");
     }
     return true;
 }
 
 void OnWheelDoubleClick() {
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle) return;
+    if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle)
+        return;
     g_apps_menu = true;
     g_preview_shown = true;
     g_last_input_us = esp_timer_get_time();
@@ -90,8 +98,10 @@ void OnWheelDoubleClick() {
 }
 
 void WheelTick() {
+    MenuTick();
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_preview_shown || esp_timer_get_time() - g_last_input_us < kMenuTimeoutUs) return;
+    if (!g_preview_shown || esp_timer_get_time() - g_last_input_us < kMenuTimeoutUs)
+        return;
     g_apps_menu = false;
     g_preview_shown = false;
     if (Application::GetInstance().GetDeviceState() == kDeviceStateIdle) {

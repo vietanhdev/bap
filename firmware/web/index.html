@@ -85,7 +85,7 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
 <div class="tab" id="tab-chat">
 <section>
   <h2>Trò chuyện</h2>
-  <div class="chat" id="chat"><span class="empty">Chưa có cuộc trò chuyện nào. Nói "Hi ESP" với máy hoặc gõ ở dưới.</span></div>
+  <div class="chat" id="chat"><span class="empty">Chưa có cuộc trò chuyện nào. Nói "Hi Lili" với máy hoặc gõ ở dưới.</span></div>
   <form class="say" id="sayForm"><input type="text" id="sayText" placeholder="Gõ câu muốn nói" autocomplete="off"><button class="primary">Gửi</button></form>
   <div class="chips" id="chips"></div>
   <button type="button" id="talk">Bật / tắt nghe bằng micro</button>
@@ -138,15 +138,17 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
   <h2>Âm thanh và màn hình</h2>
   <label>Âm lượng: <span id="volV"></span><input type="range" id="volume" min="0" max="100"></label>
   <label>Độ sáng: <span id="briV"></span><input type="range" id="brightness" min="5" max="100"></label>
-  <label class="check"><input type="checkbox" id="night_dim"><span>Giảm sáng ban đêm<br><small>Từ 22 giờ đến 6 giờ sáng, khi máy đang nghỉ.</small></span></label>
+  <label class="check"><input type="checkbox" id="night_dim"><span>Chế độ đêm<br><small>22 giờ đến 6 giờ: màn hình dịu khi nghỉ, loa nhỏ tối đa 35%, sáng ra trả lại như cũ.</small></span></label>
   <label>Tự nghỉ sau khi im lặng (giây)<input type="number" id="idle_s" min="10" max="300"></label>
   <label class="check"><input type="checkbox" id="greet"><span>Tự chào khi camera thấy người<br><small>Nhận diện chạy ngay trên máy, không gửi hình đi đâu. Cần khởi động lại máy sau khi đổi.</small></span></label>
 </section>
 <section>
   <h2>Gemini</h2>
-  <label>API key<small id="keyNow"></small><input type="password" id="api_key" placeholder="Để trống nếu không đổi" autocomplete="off"></label>
+  <label>API key miễn phí<small id="keyNow"></small><input type="password" id="api_key" placeholder="Để trống nếu không đổi" autocomplete="off"></label>
+  <label>API key trả phí (dự phòng)<small id="paidNow"></small><input type="password" id="api_key_paid" placeholder="Để trống nếu không đổi, gõ - để xoá" autocomplete="off"></label>
+  <small id="keyStats"></small>
   <label>Model<input type="text" id="model" maxlength="80"></label>
-  <label class="check"><input type="checkbox" id="search"><span>Cho phép tìm Google<br><small>Cần API key đã bật thanh toán. Với key miễn phí, máy sẽ tự tắt mục này.</small></span></label>
+  <label class="check"><input type="checkbox" id="search"><span>Cho phép tìm Google<br><small>Không có trong hạn mức miễn phí: khi bật, phần lớn phiên sẽ dùng key trả phí. Không có key trả phí thì máy sẽ tự tắt mục này.</small></span></label>
 </section>
 <section>
   <h2>Tiện ích mở rộng</h2>
@@ -164,6 +166,16 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
     <button>Thêm</button>
   </form>
   <small>Máy tự nối vào mạng nào trong danh sách bắt được. Hữu ích khi mang máy đi nơi khác. Chỉ hỗ trợ Wi-Fi 2.4 GHz.</small>
+  <button type="button" id="wifiSetup">Cài Wi-Fi mới bằng điện thoại</button>
+  <small>Máy sẽ phát Wi-Fi tên Bap-xxxx; kết nối điện thoại vào đó rồi mở 192.168.4.1. Trang này sẽ mất kết nối cho tới khi cài xong.</small>
+</section>
+<section>
+  <h2>Mật khẩu trang này</h2>
+  <small id="pwNow"></small>
+  <label>Mật khẩu mới<input type="password" id="webPw" autocomplete="new-password" maxlength="64" placeholder="Ít nhất 4 ký tự"></label>
+  <button type="button" id="pwSave">Đặt mật khẩu</button>
+  <button type="button" id="pwClear" class="secondary">Bỏ mật khẩu</button>
+  <small>Khi mở trang, trình duyệt sẽ hỏi: tên đăng nhập gõ gì cũng được, mật khẩu là mật khẩu này. Quên mật khẩu: giữ nút xoay 20 giây để đưa máy về mặc định.</small>
 </section>
 <section>
   <h2>Máy</h2>
@@ -213,7 +225,10 @@ async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e)
   ['city','lat','lon','idle_s','model','volume','brightness'].forEach(k=>{if(cfg[k]!==undefined)$(k).value=cfg[k]});
   ['search','greet','night_dim'].forEach(k=>$(k).checked=!!cfg[k]);
   chars=cfg.characters||[];editing=cfg.character;const a=chars.find(c=>c.id===cfg.character)||{name:'Trợ lý'};
+  $('pwNow').textContent=cfg.has_password?'Đã bật mật khẩu.':'Chưa có mật khẩu: ai cùng mạng Wi-Fi cũng mở được trang này.';
   $('keyNow').textContent=cfg.api_key_masked?'Đang dùng: '+cfg.api_key_masked:'Chưa có key';
+  $('paidNow').textContent=cfg.api_key_paid_masked?'Đang dùng: '+cfg.api_key_paid_masked:'Chưa có key';
+  const k=cfg.keys;$('keyStats').textContent=k?'Từ lúc bật máy: '+k.free_sessions+' phiên miễn phí, '+k.paid_sessions+' phiên trả phí. '+(k.free_rest_s>0?'Key miễn phí hết hạn mức, quay lại sau '+k.free_rest_s+' giây.':'Đang ưu tiên key miễn phí.'):'';
   $('title').textContent=a.name;document.title=a.name;$('avatar').src='/face?c='+cfg.character+'&e=happy';
   $('volV').textContent=$('volume').value;$('briV').textContent=$('brightness').value;
   lists.notes=cfg.notes||[];lists.memory=cfg.memory||[];hooks=cfg.hooks||[];dirty=false;
@@ -221,8 +236,9 @@ async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e)
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());return r.json()}
 async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,volume:+$('volume').value,brightness:+$('brightness').value};
   if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
+  if($('api_key_paid').value.trim())b.api_key_paid=$('api_key_paid').value.trim();
   if(dirty){b.notes=lists.notes;b.memory=lists.memory;b.hooks=hooks.filter(h=>h.name&&h.url)}
-  try{await post('/api/config',b);$('api_key').value='';msg('Đã lưu.','ok');load()}catch(e){msg('Không lưu được: '+e.message,'bad')}}
+  try{await post('/api/config',b);$('api_key').value='';$('api_key_paid').value='';msg('Đã lưu.','ok');load()}catch(e){msg('Không lưu được: '+e.message,'bad')}}
 async function say(t){try{await post('/api/say',{text:t});msg('Đã gửi.','ok')}catch(e){msg('Không gửi được.','bad')}}
 async function live(k){try{await post('/api/config',{[k]:+$(k).value})}catch(e){}}
 function renderChat(log){const key=JSON.stringify(log);if(key===logKey||!log.length)return;logKey=key;const box=$('chat');box.textContent='';log.forEach(e=>box.append(el('p',e.text,e.role)));box.scrollTop=box.scrollHeight}
@@ -245,6 +261,9 @@ async function loadWifi(){try{const w=await (await fetch('/api/wifi')).json();$(
   const ul=$('wifiList');ul.textContent='';w.saved.forEach((n,i)=>{const li=el('li');li.append(el('span',n+(n===w.current?' (đang dùng)':'')));
     if(i>0){const up=el('button','Ưu tiên');up.type='button';up.onclick=()=>post('/api/wifi',{action:'prefer',index:i}).then(loadWifi).catch(e=>msg(e.message,'bad'));li.append(up)}
     const rm=el('button','Xóa');rm.type='button';rm.onclick=()=>post('/api/wifi',{action:'remove',index:i}).then(()=>{msg('Đã xóa mạng '+n+'.','ok');loadWifi()}).catch(e=>msg(e.message,'bad'));li.append(rm);ul.append(li)})}catch(e){}}
+$('pwSave').onclick=()=>{const p=$('webPw').value;if(p.length<4)return msg('Mật khẩu cần ít nhất 4 ký tự.','bad');post('/api/config',{web_password:p}).then(()=>{$('webPw').value='';msg('Đã đặt mật khẩu. Trình duyệt sẽ hỏi mật khẩu ở lần sau.','ok');setTimeout(()=>location.reload(),1500)}).catch(()=>msg('Không lưu được.','bad'))};
+$('pwClear').onclick=()=>post('/api/config',{web_password:''}).then(()=>{msg('Đã bỏ mật khẩu.','ok');$('pwNow').textContent='Chưa có mật khẩu: ai cùng mạng Wi-Fi cũng mở được trang này.'}).catch(()=>msg('Không lưu được.','bad'));
+$('wifiSetup').onclick=()=>post('/api/action',{action:'wifi_setup'}).then(()=>msg('Máy đang vào chế độ cài Wi-Fi. Hãy kết nối điện thoại vào mạng Bap-xxxx.','ok')).catch(()=>msg('Không gửi được.','bad'));
 $('wifiForm').onsubmit=e=>{e.preventDefault();const ssid=$('wifiSsid').value.trim();if(!ssid)return;post('/api/wifi',{action:'add',ssid,password:$('wifiPass').value}).then(()=>{$('wifiSsid').value='';$('wifiPass').value='';msg('Đã thêm mạng '+ssid+'.','ok');loadWifi()}).catch(e=>msg(e.message,'bad'))};
 load();status();loadWifi();setInterval(status,2500);
 </script>

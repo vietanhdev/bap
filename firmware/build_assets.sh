@@ -8,7 +8,10 @@ STAGE="$HERE/build/assets-stage"
 rm -rf "$STAGE"; mkdir -p "$STAGE/cbin" "$STAGE/gif" "$HERE/build"
 cp "$HERE/assets/fonts/font_nunito_vi_30_4.bin" "$STAGE/cbin/font_noto_sans_common_30_4.bin"
 cp "$SRC/managed_components/78__xiaozhi-fonts/manifest.json" "$STAGE/manifest.json"
-cp -r "$HERE/assets/faces" "$STAGE/gif/faces"
+# Faces are drawn natively on the device; the assets only carry two small avatars per character
+# for the web UI (every emoji-collection entry costs internal RAM at boot).
+mkdir -p "$STAGE/gif/faces"
+for f in "$HERE"/assets/faces/*_happy.gif "$HERE"/assets/faces/*_relaxed.gif; do cp "$f" "$STAGE/gif/faces/"; done
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$SRC":/project -v "$HERE":/fw -w /project \
   espressif/idf:release-v6.1 python scripts/build_default_assets.py \
     --sdkconfig /project/sdkconfig \

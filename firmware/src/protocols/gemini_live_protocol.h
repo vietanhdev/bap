@@ -15,9 +15,14 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "protocol.h"
 #include "web_socket.h"
+
+namespace assistant {
+struct Config;
+}
 
 class GeminiLiveProtocol : public Protocol {
 public:
@@ -42,8 +47,23 @@ public:
     // Send one JPEG frame for the model to look at.
     bool SendImage(const uint8_t* jpeg, size_t len);
 
+    // Sessions use the free key; the paid key only while the free one rests after a rejection.
+    // Free-tier Live quota is tokens per minute, so a rest is minutes, not the rest of the day.
+    struct KeyStats {
+        bool last_paid;     // the latest session used the paid key
+        int free_sessions;  // sessions opened since boot, per key
+        int paid_sessions;
+        int free_rest_s;  // seconds until the free key is tried again (0 = free key in use)
+    };
+    KeyStats GetKeyStats() const;
+
 private:
     bool SendText(const std::string& text) override;
+
+    enum class OpenResult { kOpened, kConnectFailed, kRejected };
+    OpenResult TryOpen(const assistant::Config& cfg, bool paid);  // one key; retries stale resume
+    void RestFreeKey();
+    bool FreeKeyResting() const;
 
     std::string BuildSetupMessage();
     std::string BuildToolDeclarations();
@@ -53,6 +73,7 @@ private:
     void DeliverAudio(const std::string& b64);
     void FinishTurn(bool interrupted);
     void FlushAssistantText(bool force);
+    bool FlushAudio();
     void ShowSubtitle(const std::string& text, size_t max_bytes);
 
     void EmitTts(const char* state, const std::string& text = "");
@@ -76,9 +97,21 @@ private:
     std::atomic<bool> close_after_turn_{false};
     std::atomic<bool> channel_open_{false};
 
-    std::string assistant_text_;   // pending sentence for display
+    // Key choice (see KeyStats). Touched from the main task and the websocket task.
+    std::atomic<bool> use_paid_{false};
+    std::atomic<int64_t> free_retry_ms_{0};  // esp_timer ms when the free key may be tried again
+    std::atomic<int> free_rest_s_{0};        // current rest length, doubles on repeated rejections
+    std::atomic<int> free_sessions_{0};
+    std::atomic<int> paid_sessions_{0};
+    bool resume_paid_ = false;  // key that issued resume_handle_ (handles are per project)
+
+    std::string assistant_text_;  // pending sentence for display
     std::string last_subtitle_;
-    std::string user_text_;        // accumulated input transcription for this turn
+    std::vector<uint8_t> pending_audio_;  // uplink PCM waiting to be batched
+    std::string resume_handle_;  // Gemini session resumption handle
+    std::chrono::steady_clock::time_point resume_handle_time_;
+    bool resuming_ = false;
+    std::string user_text_;  // accumulated input transcription for this turn
     std::chrono::steady_clock::time_point last_activity_;
 
     // MCP bridge: gemini function name <-> MCP tool name, pending calls by MCP request id

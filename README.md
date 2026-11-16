@@ -83,10 +83,17 @@ firmware/build_assets.sh   # font Nunito tiếng Việt + mặt nhân vật + wa
 ```
 
 Biến môi trường tùy chọn của `build.sh`: `GEMINI_MODEL` (mặc định `gemini-3.1-flash-live-preview`),
-`GEMINI_VOICE`, `WAKE_WORD` (mặc định `hiesp`), `LANG_CODE` (mặc định `vi-VN`).
+`GEMINI_VOICE`, `WAKE_WORD` (mặc định `wn9_hilili_tts`, tức "Hi Lili"), `LANG_CODE` (mặc định `vi-VN`).
 
 Key cũng có thể để trống khi build và nhập sau trong giao diện web: tạo `secrets/GEMINI_API_KEY`
 rỗng. Firmware do CI build luôn không có key.
+
+**Key miễn phí + key trả phí dự phòng (tuỳ chọn).** `secrets/GEMINI_API_KEY` nên là key của một
+project *không* bật thanh toán (free tier). Nếu có thêm `secrets/GEMINI_API_KEY_PAID` (key của một
+project khác *đã* bật thanh toán), thiết bị luôn thử key miễn phí trước và chỉ dùng key trả phí khi
+key miễn phí bị từ chối (hạn mức free của Live tính theo token mỗi phút). Sau lần bị từ chối, key miễn
+phí được thử lại sau 1 phút, rồi 2, 4, 8 phút... tối đa 15 phút nếu vẫn bị từ chối. Cả hai key đều sửa
+được trong giao diện web, và trang này cũng hiện số phiên đã dùng mỗi key từ lúc bật máy.
 
 ### 3. Flash
 
@@ -105,7 +112,7 @@ firmware/ota.sh bap.local  # cập nhật qua Wi-Fi, không cần cáp
    cấu hình sẽ tự mở (hoặc vào `http://192.168.4.1`), chọn Wi-Fi nhà bạn và nhập mật khẩu.
 2. Khi thiết bị đã vào mạng, mở **`http://bap.local`** (hoặc IP hiện trên màn hình) trên máy cùng mạng.
 3. Nhập Gemini API key (nếu chưa build kèm), chọn thành phố và nhân vật.
-4. Nói từ đánh thức "Hi ESP" hoặc nhấn núm xoay để bắt đầu.
+4. Nói từ đánh thức "Hi Lili" hoặc nhấn núm xoay để bắt đầu.
 
 ### Điều khiển bằng núm xoay
 

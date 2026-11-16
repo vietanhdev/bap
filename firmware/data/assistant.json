@@ -14,7 +14,12 @@
         "body": "#FFFFFF",
         "accent": "#DCEBFF",
         "ink": "#3A2E4C",
-        "cheek": "#FF9EB5"
+        "cheek": "#FF9EB5",
+        "shade": "#C6D8F4",
+        "outline": "#9DB6E4",
+        "sheen": "#FFFFFF",
+        "detail": "#FFFFFF",
+        "iris": "#7C6AB4"
       }
     },
     {
@@ -29,7 +34,12 @@
         "body": "#FFD84D",
         "accent": "#7EC460",
         "ink": "#4A3420",
-        "cheek": "#FF8F6B"
+        "cheek": "#FF8F6B",
+        "shade": "#F0AE34",
+        "outline": "#C9862A",
+        "sheen": "#FFF6C8",
+        "detail": "#F7E2A6",
+        "iris": "#9A6A3C"
       }
     },
     {
@@ -44,7 +54,12 @@
         "body": "#4A7C48",
         "accent": "#C9E084",
         "ink": "#34451F",
-        "cheek": "#F5A77B"
+        "cheek": "#F5A77B",
+        "shade": "#2E5A33",
+        "outline": "#1F3D24",
+        "sheen": "#F1F7CC",
+        "detail": "#A0673C",
+        "iris": "#6E8C3A"
       }
     },
     {
@@ -59,7 +74,12 @@
         "body": "#FFD0DE",
         "accent": "#FF96B4",
         "ink": "#5A3448",
-        "cheek": "#FF7FA6"
+        "cheek": "#FF7FA6",
+        "shade": "#F2A8C0",
+        "outline": "#D9809F",
+        "sheen": "#FFF3F7",
+        "detail": "#FFE07A",
+        "iris": "#A0607E"
       }
     },
     {
@@ -74,7 +94,12 @@
         "body": "#CEE4F6",
         "accent": "#1E2A44",
         "ink": "#6FE3FF",
-        "cheek": "#3C6C8C"
+        "cheek": "#FF8FB8",
+        "shade": "#9DBBD6",
+        "outline": "#6F8FB2",
+        "sheen": "#FFFFFF",
+        "detail": "#FF7A8A",
+        "iris": "#D2F7FF"
       }
     }
   ],
@@ -126,6 +151,48 @@
       "title": "Nhìn và kể",
       "desc": "Dùng camera để mô tả đồ vật, đọc chữ, nhận xét.",
       "prompt": "Hãy dùng camera chụp ảnh và mô tả ngắn gọn những gì bạn thấy trước mặt. Nếu có chữ thì đọc lên. Sau đó hỏi người dùng muốn biết thêm gì về thứ đang được nhìn."
+    }
+  ],
+  "radio": [
+    {
+      "id": "vov1",
+      "name": "VOV1 Thời sự",
+      "url": "https://str.vov.gov.vn/vovlive/vov1vov5Vietnamese.sdp_aac/playlist.m3u8"
+    },
+    {
+      "id": "vov2",
+      "name": "VOV2 Văn hóa Đời sống",
+      "url": "https://audio-lss.vov.vn/live/vov2.m3u8"
+    },
+    {
+      "id": "vov3",
+      "name": "VOV3 Âm nhạc",
+      "url": "https://audio-lss.vov.vn/live/vov3.m3u8"
+    },
+    {
+      "id": "vovgt_hn",
+      "name": "VOV Giao thông Hà Nội",
+      "url": "https://play.vovgiaothong.vn/live/gthn/playlist.m3u8"
+    },
+    {
+      "id": "vovgt_hcm",
+      "name": "VOV Giao thông TP.HCM",
+      "url": "https://play.vovgiaothong.vn/live/gthcm/playlist.m3u8"
+    },
+    {
+      "id": "fm_hanoi_90",
+      "name": "FM Hà Nội 90",
+      "url": "http://14.162.146.90:8000/HANOI90"
+    },
+    {
+      "id": "fm_hanoi_96",
+      "name": "FM Hà Nội 96",
+      "url": "http://222.252.21.96:8000/HANOI96"
+    },
+    {
+      "id": "rfi",
+      "name": "RFI Tiếng Việt",
+      "url": "https://rfienvietnamien64k.ice.infomaniak.ch/rfienvietnamien-64.mp3"
     }
   ]
 }

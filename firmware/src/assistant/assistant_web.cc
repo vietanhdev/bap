@@ -5,6 +5,7 @@
 #include <esp_netif.h>
 #include <esp_system.h>
 #include <esp_timer.h>
+#include <esp_mac.h>
 #include <mdns.h>
 #include <esp_ota_ops.h>
 #include <esp_app_desc.h>
@@ -15,14 +16,19 @@
 #include "application.h"
 #include "board.h"
 #include "assistant.h"
+#include "assistant_auth.h"
 #include "assistant_config.h"
+#include "assistant_menu.h"
+#include "assistant_face.h"
 #include "web_page.h"
 #include "boards/common/backlight.h"
 #include "audio/audio_codec.h"
 #include "settings.h"
 #include "assets.h"
+#include "protocols/gemini_live_protocol.h"
 #include "ssid_manager.h"
 #include "wifi_manager.h"
+#include "boards/common/wifi_board.h"
 #include "display/display.h"
 #include "mcp_server.h"
 #include <freertos/FreeRTOS.h>
@@ -82,6 +88,16 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
     auto& board = Board::GetInstance();
     cJSON* r = cJSON_CreateObject();
     cJSON_AddStringToObject(r, "api_key_masked", MaskKey(c.api_key).c_str());
+    cJSON_AddBoolToObject(r, "has_password", HasWebPassword());
+    cJSON_AddStringToObject(r, "api_key_paid_masked", MaskKey(c.api_key_paid).c_str());
+    if (auto gl = GeminiLiveProtocol::instance()) {
+        auto ks = gl->GetKeyStats();
+        cJSON* k = cJSON_AddObjectToObject(r, "keys");
+        cJSON_AddBoolToObject(k, "last_paid", ks.last_paid);
+        cJSON_AddNumberToObject(k, "free_sessions", ks.free_sessions);
+        cJSON_AddNumberToObject(k, "paid_sessions", ks.paid_sessions);
+        cJSON_AddNumberToObject(k, "free_rest_s", ks.free_rest_s);
+    }
     cJSON_AddStringToObject(r, "model", c.model.c_str());
     cJSON_AddStringToObject(r, "character", c.character.c_str());
     cJSON* chars = cJSON_AddArrayToObject(r, "characters");
@@ -133,6 +149,13 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
     std::string new_key;
     str("api_key", new_key, 100);
     if (!new_key.empty()) c.api_key = new_key;  // empty = keep the current key
+    if (auto pw = cJSON_GetObjectItem(in, "web_password"); cJSON_IsString(pw) && strlen(pw->valuestring) <= 64) {
+        SetWebPassword(pw->valuestring);  // "" removes it
+    }
+    std::string new_paid;
+    str("api_key_paid", new_paid, 100);
+    if (new_paid == "-") c.api_key_paid.clear();  // "-" = remove the paid key
+    else if (!new_paid.empty()) c.api_key_paid = new_paid;
     str("model", c.model, 80);
     std::string want_character;
     str("character", want_character, 20);
@@ -234,6 +257,16 @@ esp_err_t HandleAction(httpd_req_t* req) {
     auto& app = Application::GetInstance();
     if (action == "talk") {
         app.Schedule([&app]() { app.ToggleChatState(); });
+    } else if (action == "stop") {
+        app.StopAll();
+    } else if (action == "wheel_hold") {  // remote wheel, same as the physical one
+        MenuIsOpen() ? MenuBack() : MenuOpen();
+    } else if (action == "wheel_left" || action == "wheel_right") {
+        MenuRotate(action == "wheel_right");
+    } else if (action == "wheel_click") {
+        MenuClick();
+    } else if (action == "wifi_setup") {
+        app.Schedule([]() { static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode(); });
     } else if (action == "reboot") {
         app.Schedule([&app]() { app.Reboot(); });
     } else {
@@ -334,6 +367,35 @@ esp_err_t HandleFace(httpd_req_t* req) {
     return httpd_resp_send(req, static_cast<const char*>(ptr), size);
 }
 
+// Debug: preview a face expression without talking. {"emotion":"happy"} and/or {"talking":true}.
+// The answer carries the LVGL heap usage measured after the previous request.
+esp_err_t HandleFacePreview(httpd_req_t* req) {
+    static volatile uint32_t lv_used = 0, lv_free = 0;
+    if (!SameOrigin(req)) return Reject(req, "missing header");
+    cJSON* in = ReadJson(req);
+    if (in == nullptr) return Reject(req, "bad json");
+    auto em = cJSON_GetObjectItem(in, "emotion");
+    auto talk = cJSON_GetObjectItem(in, "talking");
+    std::string emotion = cJSON_IsString(em) && strlen(em->valuestring) < 24 ? em->valuestring : "";
+    int talking = cJSON_IsBool(talk) ? (cJSON_IsTrue(talk) ? 1 : 0) : -1;
+    cJSON_Delete(in);
+    Application::GetInstance().Schedule([emotion, talking]() {
+        auto display = Board::GetInstance().GetDisplay();
+        if (!emotion.empty()) display->SetEmotion(emotion.c_str());
+        DisplayLockGuard lock(display);
+        if (talking >= 0) FaceSetTalking(talking == 1);
+        lv_mem_monitor_t mon;
+        lv_mem_monitor(&mon);
+        lv_used = mon.total_size - mon.free_size;
+        lv_free = mon.free_size;
+    });
+    cJSON* r = cJSON_CreateObject();
+    cJSON_AddBoolToObject(r, "ok", true);
+    cJSON_AddNumberToObject(r, "lv_used", lv_used);
+    cJSON_AddNumberToObject(r, "lv_free", lv_free);
+    return SendJson(req, r);
+}
+
 // Live screenshot of the round display (JPEG), used by the web UI preview and for debugging.
 esp_err_t HandleScreen(httpd_req_t* req) {
     std::string jpeg;
@@ -419,7 +481,7 @@ void StartWebServer() {
     if (server != nullptr) return;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 8192;
-    config.max_uri_handlers = 18;
+    config.max_uri_handlers = 24;
     config.recv_wait_timeout = 15;
     config.lru_purge_enable = true;
     if (httpd_start(&server, &config) != ESP_OK) {
@@ -439,17 +501,25 @@ void StartWebServer() {
         {.uri = "/api/app", .method = HTTP_POST, .handler = HandleApp, .user_ctx = nullptr},
         {.uri = "/face", .method = HTTP_GET, .handler = HandleFace, .user_ctx = nullptr},
         {.uri = "/screen.jpg", .method = HTTP_GET, .handler = HandleScreen, .user_ctx = nullptr},
+        {.uri = "/api/face", .method = HTTP_POST, .handler = HandleFacePreview, .user_ctx = nullptr},
         {.uri = "/api/wifi", .method = HTTP_GET, .handler = HandleGetWifi, .user_ctx = nullptr},
         {.uri = "/api/wifi", .method = HTTP_POST, .handler = HandlePostWifi, .user_ctx = nullptr},
     };
-    for (auto& r : routes) httpd_register_uri_handler(server, &r);
+    for (auto& r : routes) RegisterGuarded(server, r);
+    RegisterNotifyRoutes(server);
+    RegisterPerfRoutes(server);
     // http://bap.local on networks and devices that support mDNS
     if (mdns_init() == ESP_OK) {
-        mdns_hostname_set("bap");
+        // One name per device so several Bắp on the same network do not clash: bap-8f78.local
+        uint8_t mac[6] = {};
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        char host[16];
+        snprintf(host, sizeof(host), "bap-%02x%02x", mac[4], mac[5]);
+        mdns_hostname_set(host);
         mdns_instance_name_set("Bap assistant");
         mdns_service_add(nullptr, "_http", "_tcp", 80, nullptr, 0);
     }
-    ESP_LOGI(TAG, "Settings UI ready on port 80 (http://bap.local)");
+    ESP_LOGI(TAG, "Settings UI ready on port 80 (http://bap-xxxx.local, see router or screen)");
 }
 
 }  // namespace assistant
