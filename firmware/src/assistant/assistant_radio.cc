@@ -142,9 +142,17 @@ std::vector<std::string> PlaylistEntries(const std::string& body) {
 }
 
 // Streams one HTTP resource through the decoder. Returns false when stopped or on error.
+// reuse: a keep-alive connection shared by consecutive requests (HLS segments); left open on
+// success.
 bool StreamUrl(const std::string& url, Decoder* decoder, esp_audio_simple_dec_type_t* type_out,
-               const PcmSink& sink, const Cancelled& cancelled, bool endless, int redirects = 0) {
-    auto http = FastNetwork()->CreateHttp(0);
+               const PcmSink& sink, const Cancelled& cancelled, bool endless, int redirects = 0,
+               Http* reuse = nullptr) {
+    std::unique_ptr<Http> own_http;
+    Http* http = reuse;
+    if (http == nullptr) {
+        own_http = FastNetwork()->CreateHttp(0);
+        http = own_http.get();
+    }
     http->SetTimeout(10000);
     http->SetHeader("User-Agent", "Mozilla/5.0 (Bap radio)");
     http->SetHeader("Icy-MetaData", "0");
@@ -159,7 +167,7 @@ bool StreamUrl(const std::string& url, Decoder* decoder, esp_audio_simple_dec_ty
         if (location.empty() || redirects >= 3)
             return false;
         return StreamUrl(Resolve(url, location), decoder, type_out, sink, cancelled, endless,
-                         redirects + 1);
+                         redirects + 1, reuse);
     }
     if (!status || *status >= 400) {
         http->Close();
@@ -219,14 +227,22 @@ bool StreamUrl(const std::string& url, Decoder* decoder, esp_audio_simple_dec_ty
             break;
         }
     }
-    http->Close();
-    ESP_LOGI(TAG, "stream ended (%s) after %u bytes", why, (unsigned)total);
+    // A fully read segment leaves a shared keep-alive connection open for the next one.
+    if (reuse == nullptr || strcmp(why, "end of stream") != 0)
+        http->Close();
+    ESP_LOGD(TAG, "stream ended (%s) after %u bytes", why, (unsigned)total);
     (void)endless;
     return keep_going && !cancelled();
 }
 
-bool FetchText(const std::string& url, std::string* body, int redirects = 0) {
-    auto http = FastNetwork()->CreateHttp(0);
+bool FetchText(const std::string& url, std::string* body, int redirects = 0,
+               Http* reuse = nullptr) {
+    std::unique_ptr<Http> own_http;
+    Http* http = reuse;
+    if (http == nullptr) {
+        own_http = FastNetwork()->CreateHttp(0);
+        http = own_http.get();
+    }
     http->SetTimeout(8000);
     if (!http->Open("GET", url))
         return false;
@@ -234,20 +250,27 @@ bool FetchText(const std::string& url, std::string* body, int redirects = 0) {
     if (status && *status >= 300 && *status < 400 && redirects < 3) {
         std::string location = http->GetResponseHeader("Location");
         http->Close();
-        return !location.empty() && FetchText(Resolve(url, location), body, redirects + 1);
+        return !location.empty() && FetchText(Resolve(url, location), body, redirects + 1, reuse);
     }
     if (!status || *status != 200) {
         http->Close();
         return false;
     }
     *body = http->ReadAll();
-    http->Close();
+    if (reuse == nullptr)
+        http->Close();
     return true;
 }
 
 bool PlayHls(std::string playlist_url, const PcmSink& sink, const Cancelled& cancelled) {
+    // One keep-alive connection for the playlist and every segment: no TLS handshake per 2 s
+    // segment (each cost ~0.45 s of CPU-heavy work on the S3). Note: esp-ml307's HttpClient only
+    // reuses a connection when the server sends "Connection: keep-alive" explicitly (VOV's Wowza
+    // relies on the HTTP/1.1 default), so today this falls back to one connection per segment.
+    auto conn = FastNetwork()->CreateHttp(0);
+    conn->SetKeepAlive(true);
     std::string body;
-    if (!FetchText(playlist_url, &body))
+    if (!FetchText(playlist_url, &body, 0, conn.get()))
         return false;
     if (body.find("#EXT-X-STREAM-INF") !=
         std::string::npos) {  // master playlist: take first variant
@@ -255,7 +278,7 @@ bool PlayHls(std::string playlist_url, const PcmSink& sink, const Cancelled& can
         if (entries.empty())
             return false;
         playlist_url = Resolve(playlist_url, entries.front());
-        if (!FetchText(playlist_url, &body))
+        if (!FetchText(playlist_url, &body, 0, conn.get()))
             return false;
     }
     std::unique_ptr<Decoder> decoder;
@@ -284,12 +307,13 @@ bool PlayHls(std::string playlist_url, const PcmSink& sink, const Cancelled& can
                     return false;
             }
             any = true;
-            if (!StreamUrl(url, decoder.get(), nullptr, sink, cancelled, false) && cancelled())
+            if (!StreamUrl(url, decoder.get(), nullptr, sink, cancelled, false, 0, conn.get()) &&
+                cancelled())
                 return true;
         }
         if (!any)
             vTaskDelay(pdMS_TO_TICKS(1000));
-        if (cancelled() || !FetchText(playlist_url, &body))
+        if (cancelled() || !FetchText(playlist_url, &body, 0, conn.get()))
             break;
     }
     return cancelled();
