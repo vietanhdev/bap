@@ -130,7 +130,9 @@ esp_timer_handle_t g_giggle_timer = nullptr;
 void Giggle() {
     auto& app = Application::GetInstance();
     app.Schedule([]() { Board::GetInstance().GetDisplay()->SetEmotion("laughing"); });
-    if (g_giggle_timer == nullptr) {
+    // Called from the touch task and the camera task: create the timer exactly once.
+    static std::once_flag once;
+    std::call_once(once, []() {
         esp_timer_create_args_t args = {};
         args.callback = [](void*) {
             Application::GetInstance().Schedule([]() {
@@ -140,7 +142,7 @@ void Giggle() {
         };
         args.name = "giggle";
         esp_timer_create(&args, &g_giggle_timer);
-    }
+    });
     esp_timer_stop(g_giggle_timer);
     esp_timer_start_once(g_giggle_timer, 1500 * 1000);
 }
