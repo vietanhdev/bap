@@ -270,17 +270,20 @@ index 866c2a7..57ca711 100644
      bool CanEnterSleepMode();
      void SendMcpMessage(const std::string& payload);
 diff --git a/main/audio/audio_service.cc b/main/audio/audio_service.cc
-index 358a094..e8654bd 100644
+index 358a094..632b769 100644
 --- a/main/audio/audio_service.cc
 +++ b/main/audio/audio_service.cc
-@@ -1,4 +1,6 @@
+@@ -1,4 +1,9 @@
  #include "audio_service.h"
++#if CONFIG_USE_GEMINI_LIVE
++#include "assistant/assistant.h"
++#endif
 +
 +#include <freertos/idf_additions.h>
  #include <esp_log.h>
  #include <cstring>
  
-@@ -161,6 +163,18 @@ void AudioService::Start() {
+@@ -161,6 +166,18 @@ void AudioService::Start() {
  #endif
  
      /* Start the opus codec task */
@@ -299,7 +302,7 @@ index 358a094..e8654bd 100644
      xTaskCreate(
          [](void* arg) {
              AudioService* audio_service = (AudioService*)arg;
-@@ -168,6 +182,7 @@ void AudioService::Start() {
+@@ -168,6 +185,7 @@ void AudioService::Start() {
              vTaskDelete(NULL);
          },
          "opus_codec", 2048 * 12, this, 2, &opus_codec_task_handle_);
@@ -307,7 +310,7 @@ index 358a094..e8654bd 100644
  }
  
  void AudioService::Stop() {
-@@ -406,9 +421,39 @@ void AudioService::OpusCodecTask() {
+@@ -406,9 +424,39 @@ void AudioService::OpusCodecTask() {
              task.playback_id = packet->playback_id;
              task.media_position_ms = packet->media_position_ms;
  
@@ -349,7 +352,7 @@ index 358a094..e8654bd 100644
                  task.pcm.resize(decoder_frame_size_);
                  esp_audio_dec_in_raw_t raw = {
                      .buffer = (uint8_t*)(packet->payload.data()),
-@@ -474,6 +519,24 @@ void AudioService::OpusCodecTask() {
+@@ -474,6 +522,24 @@ void AudioService::OpusCodecTask() {
              packet->sample_rate = 16000;
              packet->timestamp = task.timestamp;
  
@@ -374,6 +377,16 @@ index 358a094..e8654bd 100644
              if (opus_encoder_ != nullptr && task.pcm.size() == encoder_frame_size_) {
                  packet->payload.resize(encoder_outbuf_size_);
                  esp_audio_enc_in_frame_t in = {
+@@ -663,6 +729,9 @@ std::unique_ptr<AudioStreamPacket> AudioService::PopWakeWordPacket() {
+ }
+ 
+ void AudioService::EnableWakeWordDetection(bool enable) {
++#if CONFIG_USE_GEMINI_LIVE
++    if (enable && assistant::QuietHours()) enable = false;  // "do not disturb" nights
++#endif
+     ESP_LOGD(TAG, "%s wake word detection", enable ? "Enabling" : "Disabling");
+     if (enable) {
+         if (!InitializeAudioEngine()) {
 diff --git a/main/audio/audio_service.h b/main/audio/audio_service.h
 index b79d033..cd94958 100644
 --- a/main/audio/audio_service.h

@@ -26,7 +26,9 @@ bool OnPersonArrived(int count);
 void SetWakeHandler(void (*handler)());                // board: wake the screen
 void SetVisionHandler(void (*handler)(bool enabled));  // board: start/stop on-camera detection
 void ApplyVision(bool enabled);                        // screen pixels; called from the touch task
-void InstallFontFallback();  // Korean/Chinese glyphs from the assets partition
+void InstallFontFallback();
+// True between 22:00 and 06:00 when "do not disturb" is on: no wake word (touch/wheel still work).
+bool QuietHours();  // Korean/Chinese glyphs from the assets partition
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none
 void RegisterNotifyRoutes(void* server);  // httpd_handle_t

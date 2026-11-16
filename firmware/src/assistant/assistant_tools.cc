@@ -289,6 +289,20 @@ void SchedulerTask(void*) {
                     saved_brightness = -1;
                 }
             }
+            // Do-not-disturb boundaries (22:00 / 06:00): re-apply the wake word state while
+            // resting.
+            {
+                static int last_quiet = -1;
+                int quiet = QuietHours() ? 1 : 0;
+                if (idle && quiet != last_quiet) {
+                    last_quiet = quiet;
+                    Application::GetInstance().Schedule([quiet]() {
+                        auto& app = Application::GetInstance();
+                        if (app.GetDeviceState() == kDeviceStateIdle)
+                            app.GetAudioService().EnableWakeWordDetection(!quiet);
+                    });
+                }
+            }
             // Calm face at night while resting (no breathing motion): idempotent, checked every
             // minute.
             {

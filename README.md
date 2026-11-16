@@ -37,7 +37,8 @@ cần máy chủ trung gian. Firmware dựa trên [xiaozhi-esp32](https://github
 - **Tiện ích mở rộng**: khai báo webhook (Home Assistant, n8n, máy chủ riêng) trong giao diện web,
   trợ lý sẽ gọi chúng qua công cụ `mo_rong.goi`.
 - **Tùy chọn**: tìm kiếm Google (cần key có bật thanh toán), chào khi camera thấy người, chế độ
-  đêm (22:00 đến 06:00: màn hình dịu, loa tối đa 35%), nhắc cắm sạc khi pin yếu.
+  đêm (22:00 đến 06:00: màn hình dịu, loa tối đa 35%), không làm phiền ban đêm (tắt từ đánh
+  thức), chào buổi sáng tự động khi thấy người, nhắc cắm sạc khi pin yếu.
 - **Giao diện cài đặt trên thiết bị** tại `http://bap-xxxx.local` (4 ký tự cuối địa chỉ MAC, mỗi máy
   một tên): API key, model, ngôn ngữ, thành phố, nhân vật, sửa tên/giọng/tính cách, nhật ký hội
   thoại, Wi-Fi, mật khẩu trang cài đặt, tình trạng máy (CPU, RAM, sóng Wi-Fi), cập nhật firmware

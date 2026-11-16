@@ -245,7 +245,8 @@
         "Pin còn": "Battery",
         "Cắm sạc giúp mình nhé!": "Please plug me in!",
         "Chạm 2 lần để dừng nhạc": "Double tap to stop the music",
-        "Chào buổi sáng": "Morning briefing"
+        "Chào buổi sáng": "Morning briefing",
+        "Không làm phiền đêm": "Quiet nights"
       }
     },
     {
@@ -292,7 +293,8 @@
         "Pin còn": "배터리",
         "Cắm sạc giúp mình nhé!": "충전해 주세요!",
         "Chạm 2 lần để dừng nhạc": "두 번 눌러 음악 끄기",
-        "Chào buổi sáng": "아침 브리핑"
+        "Chào buổi sáng": "아침 브리핑",
+        "Không làm phiền đêm": "야간 방해 금지"
       }
     },
     {
@@ -339,7 +341,8 @@
         "Pin còn": "电量",
         "Cắm sạc giúp mình nhé!": "请帮我充电！",
         "Chạm 2 lần để dừng nhạc": "双击停止音乐",
-        "Chào buổi sáng": "早安播报"
+        "Chào buổi sáng": "早安播报",
+        "Không làm phiền đêm": "夜间勿扰"
       }
     }
   ]

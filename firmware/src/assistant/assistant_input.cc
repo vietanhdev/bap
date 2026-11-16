@@ -314,4 +314,10 @@ bool OnPersonArrived(int count) {
     return c.greet;
 }
 
+bool QuietHours() {
+    if (!NightNow())
+        return false;
+    return LoadConfig().quiet;
+}
+
 }  // namespace assistant

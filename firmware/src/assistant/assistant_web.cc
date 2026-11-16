@@ -134,6 +134,7 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
     cJSON_AddBoolToObject(r, "night_dim", c.night_dim);
     cJSON_AddBoolToObject(r, "presence", c.presence);
     cJSON_AddBoolToObject(r, "morning", c.morning);
+    cJSON_AddBoolToObject(r, "quiet", c.quiet);
     cJSON_AddStringToObject(r, "language", c.language.c_str());
     cJSON* langs = cJSON_AddArrayToObject(r, "languages");
     for (auto& l : Languages()) {
@@ -221,6 +222,8 @@ esp_err_t HandlePostConfig(httpd_req_t* req) {
         c.presence = cJSON_IsTrue(num("presence"));
     if (cJSON_IsBool(num("morning")))
         c.morning = cJSON_IsTrue(num("morning"));
+    if (cJSON_IsBool(num("quiet")))
+        c.quiet = cJSON_IsTrue(num("quiet"));
     if (auto l = cJSON_GetObjectItem(in, "language"); cJSON_IsString(l)) {
         for (auto& lang : Languages())
             if (lang.id == l->valuestring)
