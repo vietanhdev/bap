@@ -1,0 +1,57 @@
+// TLS transport with session-ticket resumption, used for the Gemini Live WebSocket.
+//
+// Derived from EspSsl in 78/esp-ml307 (Apache License 2.0,
+// https://github.com/78/esp-ml307). Changes: caches the TLS session per host and offers it on the
+// next connection, so a reconnect skips the expensive ECDHE/certificate work (~1 s on the S3).
+#pragma once
+
+#include <esp_tls.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
+#include <freertos/task.h>
+
+#include <memory>
+#include <mutex>
+#include <string>
+
+#include "network_interface.h"
+#include "tcp.h"
+
+class TicketSsl : public Tcp {
+public:
+    TicketSsl();
+    ~TicketSsl() override;
+
+    NetworkResult<> Connect(const std::string& host, int port) override;
+    void Disconnect() override;
+    int Send(const std::string& data) override;
+
+    // Drops every cached session (e.g. after the server rejected one).
+    static void ForgetSessions();
+
+private:
+    esp_tls_t* tls_client_ = nullptr;
+    int sockfd_ = -1;
+    std::mutex tls_mutex_;
+    EventGroupHandle_t event_group_ = nullptr;
+    TaskHandle_t receive_task_handle_ = nullptr;
+
+    void ReceiveTask();
+};
+
+// Forwards everything to the board's network, except TLS connections, which use TicketSsl.
+class TicketNetwork : public NetworkInterface {
+public:
+    explicit TicketNetwork(NetworkInterface* base) : base_(base) {}
+    std::unique_ptr<Http> CreateHttp(int id = -1) override { return base_->CreateHttp(id); }
+    std::unique_ptr<Tcp> CreateTcp(int id = -1) override { return base_->CreateTcp(id); }
+    std::unique_ptr<Tcp> CreateSsl(int) override { return std::make_unique<TicketSsl>(); }
+    std::unique_ptr<Udp> CreateUdp(int id = -1) override { return base_->CreateUdp(id); }
+    std::unique_ptr<Mqtt> CreateMqtt(int id = -1) override { return base_->CreateMqtt(id); }
+    std::unique_ptr<WebSocket> CreateWebSocket(int id = -1) override {
+        return std::make_unique<WebSocket>(this, id);
+    }
+
+private:
+    NetworkInterface* base_;
+};

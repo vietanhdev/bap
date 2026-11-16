@@ -1,5 +1,7 @@
 #include "gemini_live_protocol.h"
 
+#include "ticket_ssl.h"
+
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_netif_sntp.h>
@@ -218,8 +220,9 @@ GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Conf
     pending_audio_.clear();
     use_paid_ = paid;
 
-    auto network = Board::GetInstance().GetNetwork();
-    websocket_ = network->CreateWebSocket(1);
+    // TLS session tickets: reconnects skip the full handshake (see ticket_ssl.h).
+    static TicketNetwork ticket_network(Board::GetInstance().GetNetwork());
+    websocket_ = ticket_network.CreateWebSocket(1);
     if (websocket_ == nullptr) {
         ESP_LOGE(TAG, "Failed to create websocket");
         return OpenResult::kConnectFailed;
