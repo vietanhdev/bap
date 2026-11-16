@@ -54,6 +54,7 @@ if mode == "gemini":
             "CONFIG_LV_DEF_REFR_PERIOD=40",
             "CONFIG_FATFS_API_ENCODING_UTF_8=y",  # Vietnamese file names on the SD card
             "CONFIG_LWIP_MAX_SOCKETS=16",  # web UI + Gemini + music + mDNS ran out at 10
+            "CONFIG_MBEDTLS_ECP_FIXED_POINT_OPTIM=y",  # faster ECDHE/ECDSA in TLS handshakes
             # Only MP3/AAC/TS (music, radio) and Opus/OGG (sounds) are used: the rest cost ~300 KB
             # of a 4 MB OTA slot.
             "CONFIG_AUDIO_DECODER_G711_SUPPORT=n",
