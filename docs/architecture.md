@@ -251,6 +251,13 @@ is no authentication: the UI is meant for a trusted LAN only.
 - **Tools** validate their input (impossible dates, unknown leagues, out-of-range numbers) and
   answer with a short sentence instead of failing; `memory.forget` removes only the matching memory
   unless asked to forget everything.
+- **Signed OTA**: `CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT` with the RSA-3072 Secure Boot V2
+  scheme and `SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT`: `esp_ota_end()` checks the new image against
+  the public key in the running app's signature block, so an update must be signed with the same
+  key. `build.sh` signs `xiaozhi.bin` on the host with `secrets/ota_signing_key.pem`; CI builds stay
+  unsigned. The bootloader does not check signatures (no eFuses), so USB flashing remains the
+  recovery path. Tested on a device: unsigned, tampered and wrong-key images are refused and the
+  device keeps running; a correctly signed image installs.
 - **End-to-end test**: `firmware/tests/e2e_device.py HOST --log SERIAL_LOG` exercises the web API,
   every tool directly, and a real conversation per tool, and fails on a reboot or a crash in the
   serial log.

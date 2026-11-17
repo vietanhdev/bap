@@ -53,3 +53,23 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$SRC":/project -w /proje
   espressif/idf:release-v6.1 \
   bash -c "git config --global --add safe.directory '*'; python scripts/build.py sensecap-watcher -c config.home.json --language ${LANG_CODE} --wake-word ${WAKE_WORD} ${EXTRA_ARGS:-}"
 echo "Built MODE=${MODE}"
+
+# Sign the app for verified OTA updates (see firmware/sdkconfig.gemini). Signing happens on the
+# host, so the private key is never mounted into the container.
+BIN="$SRC/build/xiaozhi.bin"
+SIGN_KEY="$HERE/../secrets/ota_signing_key.pem"
+if [[ "$MODE" == "gemini" && -f "$BIN" ]]; then
+  if [[ -f "$SIGN_KEY" ]]; then
+    if uv run -q --with esptool espsecure verify-signature --version 2 --keyfile "$SIGN_KEY" "$BIN" >/dev/null 2>&1; then
+      echo "xiaozhi.bin is already signed"
+    else
+      uv run -q --with esptool espsecure sign-data --version 2 --keyfile "$SIGN_KEY" --output "$BIN.signed" "$BIN" >/dev/null
+      mv "$BIN.signed" "$BIN"
+      uv run -q --with esptool espsecure verify-signature --version 2 --keyfile "$SIGN_KEY" "$BIN" >/dev/null
+      echo "Signed xiaozhi.bin for verified OTA updates"
+    fi
+  else
+    echo "WARNING: secrets/ota_signing_key.pem not found: xiaozhi.bin is UNSIGNED and a device running"
+    echo "         signed firmware will refuse it over Wi-Fi (create a key with firmware/scripts/ota_key.sh)."
+  fi
+fi

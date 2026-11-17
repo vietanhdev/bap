@@ -445,7 +445,7 @@ esp_err_t HandleOta(httpd_req_t* req) {
         auto cfg = LoadConfig();
         ApplyVision(cfg.greet || cfg.presence);
         Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
-        return Reject(req, "Firmware không hợp lệ");
+        return Reject(req, "Firmware không hợp lệ hoặc không có chữ ký đúng");
     }
     httpd_resp_sendstr(req, "{\"ok\":true}");
     auto& app = Application::GetInstance();

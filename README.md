@@ -315,6 +315,10 @@ camera paused. `GET /api/perf` reports per-task CPU, stack headroom, heap, uptim
 - **The settings page is LAN-only**, with an optional password (HTTP Basic, salted and iterated
   SHA-256). Every change needs an `X-Bap` header, which blocks cross-site form posts. Do not expose
   port 80 to the internet.
+- **Signed updates.** Builds are signed with your own RSA-3072 key (`firmware/scripts/ota_key.sh`
+  creates `secrets/ota_signing_key.pem`; `build.sh` signs on the host). A device running signed
+  firmware refuses any Wi-Fi update that is unsigned, modified or signed with another key. No eFuses
+  are burned: USB flashing still works, which is also how a lost key is replaced. Back the key up.
 - **Audio goes to Gemini only during a conversation**; the session closes after 30 s of silence.
   Camera images leave the device only when the assistant calls the photo tool.
 - **`nvsfactory` at `0x9000`** (Seeed's device keys) is never written: the flash scripts only touch

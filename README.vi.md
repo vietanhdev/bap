@@ -316,6 +316,11 @@ gian chạy và sóng Wi-Fi.
 - **Trang cài đặt chỉ dùng trong mạng LAN**, có thể đặt mật khẩu (HTTP Basic, lưu dạng băm SHA-256
   có salt và lặp nhiều vòng). Mọi thay đổi phải có header `X-Bap`, chặn được trang web lạ gửi form
   sang máy. Đừng mở cổng 80 ra Internet.
+- **Cập nhật có chữ ký.** Firmware được ký bằng khóa RSA-3072 của riêng bạn
+  (`firmware/scripts/ota_key.sh` tạo `secrets/ota_signing_key.pem`; `build.sh` ký ngay trên máy
+  tính). Máy đang chạy firmware có chữ ký sẽ từ chối mọi bản cập nhật qua Wi-Fi không ký, bị sửa
+  hoặc ký bằng khóa khác. Không đốt eFuse nên vẫn nạp qua USB được (cũng là cách thay khóa nếu lỡ
+  mất). Hãy sao lưu khóa.
 - **Âm thanh chỉ gửi lên Gemini khi đang trò chuyện**; phiên tự đóng sau 30 giây im lặng. Ảnh camera
   chỉ rời máy khi trợ lý gọi công cụ chụp ảnh.
 - **`nvsfactory` ở `0x9000`** (khóa thiết bị của Seeed) không bao giờ bị ghi: các script chỉ ghi
