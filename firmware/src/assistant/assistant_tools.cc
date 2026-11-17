@@ -2,6 +2,7 @@
 // timers/alarms, notes and long-term memory. Everything runs on the device; data sources are
 // public endpoints that need no API key.
 #include <esp_log.h>
+#include <esp_pm.h>
 #include <cJSON.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/idf_additions.h>
@@ -257,6 +258,10 @@ std::atomic<bool> g_night_dim_now{false};
 constexpr int kScreenRestS = 5 * 60;  // dim
 constexpr int kScreenOffS = 15 * 60;  // backlight off
 
+std::mutex g_busy_mutex;
+esp_pm_lock_handle_t g_busy_lock = nullptr;
+bool g_busy = false;
+
 void ApplyScreenRest() {
     static int dim_level = -1;  // backlight cap in force, -1 = none
     static bool calm = false;
@@ -264,6 +269,7 @@ void ApplyScreenRest() {
     bool idle = app.GetDeviceState() == kDeviceStateIdle;
     if (!idle)
         NoteActivity();
+    SetBusy(!idle || OtaInProgress());
     static bool enabled = true;
     static int checks = 0;
     if (checks++ % 15 == 0)  // the setting is read from NVS, so only every 15 s
@@ -273,8 +279,10 @@ void ApplyScreenRest() {
     bool off = rest && quiet_s >= kScreenOffS;
     bool night = idle && g_night_dim_now;
     int want = off ? 0 : rest ? 6 : night ? 20 : -1;
-    if (off != ScreenIsOff())
-        SetScreenOff(off);
+    if (off && !ScreenIsOff()) {
+        SetScreenOff(true);  // NoteActivity() turns the panel and the backlight back on
+        Board::GetInstance().GetDisplay()->SetPanelOn(false);
+    }
     if (!off && dim_level == 0)
         dim_level = -2;  // woken by NoteActivity(): re-apply whatever cap is due now
     auto backlight = Board::GetInstance().GetBacklight();
@@ -333,14 +341,14 @@ void SchedulerTask(void*) {
             // Do-not-disturb boundaries (22:00 / 06:00): re-apply the wake word state while
             // resting.
             {
-                static int last_quiet = -1;
-                int quiet = QuietHours() ? 1 : 0;
-                if (idle && quiet != last_quiet) {
-                    last_quiet = quiet;
-                    Application::GetInstance().Schedule([quiet]() {
+                static int last_allowed = -1;
+                int allowed = WakeWordAllowed() ? 1 : 0;
+                if (idle && allowed != last_allowed) {
+                    last_allowed = allowed;
+                    Application::GetInstance().Schedule([allowed]() {
                         auto& app = Application::GetInstance();
                         if (app.GetDeviceState() == kDeviceStateIdle)
-                            app.GetAudioService().EnableWakeWordDetection(!quiet);
+                            app.GetAudioService().EnableWakeWordDetection(allowed);
                     });
                 }
             }
@@ -542,11 +550,37 @@ bool SyncClock() {
     return true;
 }
 
+void InitPowerManagement() {
+#if CONFIG_PM_ENABLE
+    // No light sleep: the microphone must keep feeding the wake-word engine.
+    esp_pm_config_t pm = {};
+    pm.max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+    pm.min_freq_mhz = 80;
+    pm.light_sleep_enable = false;
+    if (esp_pm_configure(&pm) != ESP_OK ||
+        esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "bap_busy", &g_busy_lock) != ESP_OK) {
+        ESP_LOGW(TAG, "Power management unavailable");
+        g_busy_lock = nullptr;
+        return;
+    }
+    SetBusy(true);  // until the first idle tick of the scheduler
+#endif
+}
+
+void SetBusy(bool busy) {
+    std::lock_guard<std::mutex> lock(g_busy_mutex);
+    if (g_busy_lock == nullptr || busy == g_busy)
+        return;
+    g_busy = busy;
+    busy ? esp_pm_lock_acquire(g_busy_lock) : esp_pm_lock_release(g_busy_lock);
+}
+
 void StartScheduler() {
     static bool started = false;
     if (started)
         return;
     started = true;
+    InitPowerManagement();
     {
         std::lock_guard<std::mutex> lock(g_alarm_mutex);
         LoadAlarms();

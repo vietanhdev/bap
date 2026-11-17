@@ -155,6 +155,8 @@ GeminiLiveProtocol::KeyStats GeminiLiveProtocol::GetKeyStats() const {
 }
 
 bool GeminiLiveProtocol::OpenAudioChannel() {
+    assistant::SetBusy(
+        true);  // full speed for the TLS handshake; the scheduler lowers it when idle
     auto cfg = assistant::LoadConfig();
     idle_timeout_s_ = cfg.idle_s;
     // Free key first. The paid key (a separate billing-enabled project) only takes over when the

@@ -67,7 +67,7 @@ Quay trực tiếp từ màn hình của máy (`GET /screen.jpg`), đúng tốc 
 
 ### 🗣️ Nói chuyện tự nhiên
 Âm thanh hai chiều thời gian thực với Gemini Live: ngắt lời lúc nào cũng được, phụ đề hiện trên
-màn hình tròn. Nói **"Hi Lili"**, chạm đúp màn hình hoặc nhấn núm xoay.
+màn hình tròn. Chạm đúp màn hình hoặc nhấn núm xoay (hoặc nói **"Hi Lili"** sau khi bật gọi bằng giọng nói trong cài đặt).
 
 </td>
 <td width="50%" valign="top">
@@ -221,7 +221,8 @@ firmware/flash.sh                   # nạp lần đầu qua USB
    nhà bạn (hoặc mở `http://192.168.4.1`).
 2. Mở **`http://bap-xxxx.local`** (địa chỉ cũng hiện trên màn hình), chọn thành phố, ngôn ngữ và
    nhân vật.
-3. Nói **"Hi Lili"**, chạm đúp màn hình hoặc nhấn núm xoay.
+3. Chạm đúp màn hình hoặc nhấn núm xoay rồi nói. Gọi bằng giọng nói ("Hi Lili") mặc định tắt cho đỡ
+   tốn điện; bật trong trang cài đặt hoặc menu núm xoay.
 
 Những lần sau cập nhật qua Wi-Fi trong khoảng 30 giây: `firmware/ota.sh bap-xxxx.local`.
 Đổi Wi-Fi: giữ núm xoay → **Thiết lập → Cài Wi-Fi**.

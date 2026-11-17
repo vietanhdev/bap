@@ -46,3 +46,6 @@ CONFIG_AUDIO_ENCODER_LC3_SUPPORT=n
 CONFIG_AUDIO_ENCODER_G722_SUPPORT=n
 # Requests up to this size always use internal RAM; 1 KB sent every small string there.
 CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=256
+# Dynamic frequency scaling: 80 MHz while resting, 240 MHz while busy (assistant::SetBusy).
+# No light sleep (the wake-word engine needs the microphone all the time).
+CONFIG_PM_ENABLE=y

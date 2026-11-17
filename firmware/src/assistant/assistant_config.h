@@ -37,6 +37,7 @@ struct Config {
     bool presence;         // camera wakes the screen and the character reacts when someone comes
     bool morning;          // first person seen 6:00-10:00: morning briefing (needs presence)
     bool quiet;            // do not disturb 22:00-06:00: wake word off
+    bool wake_word;        // listen for "Hi Lili" while resting (off: tap or wheel to talk)
     bool rest;             // dim the screen after a few quiet minutes with nobody around
     std::string language;  // id from assistant.json "languages" (vi, en, ko, zh)
 };

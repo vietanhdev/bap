@@ -2,9 +2,12 @@
 // the audio pipeline (choppy voice, mic ring buffer overflows).
 #include <esp_heap_caps.h>
 #include <esp_http_server.h>
+#include <esp_pm.h>
+#include <esp_private/esp_clk.h>
 #include <esp_timer.h>
 #include <esp_wifi.h>
 #include <cJSON.h>
+#include <cstdio>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -65,6 +68,21 @@ esp_err_t HandlePerf(httpd_req_t* req) {
                             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "free_psram", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     cJSON_AddNumberToObject(r, "uptime_s", (double)(esp_timer_get_time() / 1000000));
+    cJSON_AddNumberToObject(r, "cpu_mhz", esp_clk_cpu_freq() / 1000000);  // 80 resting, 240 busy
+#if CONFIG_PM_ENABLE
+    {
+        // Which power-management locks are held (diagnoses a CPU stuck at full speed).
+        char* buf = nullptr;
+        size_t len = 0;
+        FILE* f = open_memstream(&buf, &len);
+        if (f != nullptr) {
+            esp_pm_dump_locks(f);
+            fclose(f);
+            cJSON_AddStringToObject(r, "pm_locks", buf != nullptr ? buf : "");
+            free(buf);
+        }
+    }
+#endif
     wifi_ap_record_t ap = {};
     if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK)
         cJSON_AddNumberToObject(r, "rssi", ap.rssi);

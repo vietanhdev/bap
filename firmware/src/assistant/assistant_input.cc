@@ -67,6 +67,7 @@ void NoteActivity() {
     g_activity_us = esp_timer_get_time();
     // Wake the backlight at once (the scheduler only checks once a second).
     if (g_screen_off.exchange(false)) {
+        Board::GetInstance().GetDisplay()->SetPanelOn(true);
         if (auto backlight = Board::GetInstance().GetBacklight())
             backlight->RestoreBrightness();
     }
@@ -389,9 +390,34 @@ bool QuietHours() {
 }
 
 namespace {
+std::atomic<int> g_wake_word{-1};  // -1 = not read from NVS yet
+}
+
+bool WakeWordAllowed() {
+    if (g_wake_word < 0)
+        g_wake_word = LoadConfig().wake_word ? 1 : 0;
+    return g_wake_word == 1 && !QuietHours();
+}
+
+void ApplyWakeWord(bool enabled) {
+    int want = enabled ? 1 : 0;
+    if (g_wake_word.exchange(want) == want)
+        return;
+    Application::GetInstance().Schedule([]() {
+        auto& app = Application::GetInstance();
+        if (app.GetDeviceState() == kDeviceStateIdle)
+            app.GetAudioService().EnableWakeWordDetection(WakeWordAllowed());
+    });
+}
+
+namespace {
 std::atomic<bool> g_ota_busy{false};
 }
 bool OtaInProgress() { return g_ota_busy; }
-void SetOtaInProgress(bool busy) { g_ota_busy = busy; }
+void SetOtaInProgress(bool busy) {
+    g_ota_busy = busy;
+    if (busy)
+        SetBusy(true);
+}
 
 }  // namespace assistant

@@ -66,6 +66,7 @@ Config LoadConfig() {
     c.morning = s.GetBool("morning", false);
     c.quiet = s.GetBool("quiet", false);
     c.rest = s.GetBool("rest", true);
+    c.wake_word = s.GetBool("wake_word", false);
     c.language = s.GetString("language", "vi");
     return c;
 }
@@ -89,6 +90,7 @@ void SaveConfig(const Config& c) {
         s.SetBool("morning", c.morning);
         s.SetBool("quiet", c.quiet);
         s.SetBool("rest", c.rest);
+        s.SetBool("wake_word", c.wake_word);
         s.SetString("language", c.language);
         std::lock_guard<std::mutex> lock(g_language_mutex);
         language_changed = g_language != c.language;
@@ -103,6 +105,7 @@ void SaveConfig(const Config& c) {
     // Redraw the resting screen now: face for a new character, text for a new language.
     if (language_changed || character_changed)
         RefreshIdleScreen();
+    ApplyWakeWord(c.wake_word);
     // The Watcher's on-chip person detector reads these at boot.
     Settings model("model", true);
     model.SetInt("enable", (c.greet || c.presence) ? 1 : 0);

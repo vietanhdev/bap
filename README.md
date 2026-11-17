@@ -67,7 +67,7 @@ Recorded from the device's own screen (`GET /screen.jpg`), in real time.
 
 ### 🗣️ Talk naturally
 Real-time two-way audio with Gemini Live: interrupt anytime, live subtitles on the round screen.
-Say **"Hi Lili"**, double-tap the screen or press the wheel.
+Double-tap the screen or press the wheel (or say **"Hi Lili"** once voice wake-up is on in the settings).
 
 </td>
 <td width="50%" valign="top">
@@ -220,7 +220,8 @@ firmware/flash.sh                   # first flash over USB
    your Wi-Fi (or browse to `http://192.168.4.1`).
 2. Open **`http://bap-xxxx.local`** (the address is also shown on screen), then choose a city,
    language and character.
-3. Say **"Hi Lili"**, double-tap the screen or press the wheel.
+3. Double-tap the screen or press the wheel and start talking. Voice wake-up ("Hi Lili") is off by
+   default to save power; turn it on in the settings page or the wheel menu.
 
 Later updates go over Wi-Fi in about 30 seconds: `firmware/ota.sh bap-xxxx.local`.
 To change Wi-Fi, hold the wheel → **Settings → Wi-Fi setup**.

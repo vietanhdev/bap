@@ -35,6 +35,10 @@ void SetOtaInProgress(bool busy);
 void InstallFontFallback();  // Korean/Chinese glyphs from the assets partition
 // True between 22:00 and 06:00 when "do not disturb" is on: no wake word (touch/wheel still work).
 bool QuietHours();
+// "Hi Lili" runs only when the user enabled it in the settings and it is not a quiet night. Off,
+// the microphone powers down while resting and the CPU can slow down.
+bool WakeWordAllowed();
+void ApplyWakeWord(bool enabled);  // remembers the setting and re-applies it while resting
 // Screen rest: any touch, wheel, menu, web action or person in view counts as activity. After a
 // few quiet minutes the scheduler dims the backlight and stills the face (saves power and SPI
 // traffic); the next activity brings it back.
@@ -42,6 +46,10 @@ void NoteActivity();
 int SecondsSinceActivity();
 // After a longer quiet spell the backlight goes off; the first touch or wheel turn only wakes it.
 void SetScreenOff(bool off);
+// Power: the CPU runs at 80 MHz while resting and at 240 MHz whenever the device is busy
+// (a session, music, an update). SetBusy() is cheap and idempotent.
+void InitPowerManagement();
+void SetBusy(bool busy);
 bool ScreenIsOff();
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none

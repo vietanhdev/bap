@@ -327,6 +327,7 @@ Level SettingsMenu() {
     m.items.push_back(Toggle("Nhận biết có người", &Config::presence));
     m.items.push_back(Toggle("Chào buổi sáng", &Config::morning));
     m.items.push_back(Toggle("Không làm phiền đêm", &Config::quiet));
+    m.items.push_back(Toggle("Gọi bằng giọng nói", &Config::wake_word));
     m.items.push_back(Toggle("Nghỉ màn hình", &Config::rest));
     m.items.push_back(Toggle("Thấy người thì chào", &Config::greet));
     m.items.push_back({"Thông tin máy", []() {

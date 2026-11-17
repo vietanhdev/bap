@@ -304,7 +304,7 @@ index 866c2a7..59900a8 100644
      ~Application();
  
 diff --git a/main/audio/audio_service.cc b/main/audio/audio_service.cc
-index 358a094..632b769 100644
+index 358a094..11d33e8 100644
 --- a/main/audio/audio_service.cc
 +++ b/main/audio/audio_service.cc
 @@ -1,4 +1,9 @@
@@ -416,7 +416,7 @@ index 358a094..632b769 100644
  
  void AudioService::EnableWakeWordDetection(bool enable) {
 +#if CONFIG_USE_GEMINI_LIVE
-+    if (enable && assistant::QuietHours()) enable = false;  // "do not disturb" nights
++    if (enable && !assistant::WakeWordAllowed()) enable = false;  // setting off or a quiet night
 +#endif
      ESP_LOGD(TAG, "%s wake word detection", enable ? "Enabling" : "Disabling");
      if (enable) {
@@ -861,6 +861,18 @@ index d2d11f6..0bd7d89 100644
      // 翻转控制函数
      virtual bool SetHMirror(bool enabled) override;
      virtual bool SetVFlip(bool enabled) override;
+diff --git a/main/display/display.h b/main/display/display.h
+index c5b0c42..b5fa906 100644
+--- a/main/display/display.h
++++ b/main/display/display.h
+@@ -56,6 +56,7 @@ public:
+     virtual Theme* GetTheme() { return current_theme_; }
+     virtual void UpdateStatusBar(bool update_all = false);
+     virtual void SetPowerSaveMode(bool on);
++    virtual void SetPanelOn(bool on) {}  // sleep the panel itself while the backlight is off
+     virtual bool AddTextGlyphs(const std::vector<TextGlyph>& glyphs, uint8_t bpp) { return false; }
+     virtual void ClearTextGlyphs() {}
+     virtual void SetEmojiCollection(std::shared_ptr<EmojiCollection>) {}
 diff --git a/main/display/lcd_display.cc b/main/display/lcd_display.cc
 index 7be9bad..53f7df7 100644
 --- a/main/display/lcd_display.cc
@@ -934,6 +946,25 @@ index 7be9bad..53f7df7 100644
      auto image = emoji_collection != nullptr ? emoji_collection->GetEmojiImage(emotion) : nullptr;
      if (image == nullptr) {
          auto lvgl_theme = static_cast<LvglTheme*>(current_theme_);
+diff --git a/main/display/lcd_display.h b/main/display/lcd_display.h
+index a10988e..9db318a 100644
+--- a/main/display/lcd_display.h
++++ b/main/display/lcd_display.h
+@@ -16,6 +16,14 @@ protected:
+     esp_lcd_panel_io_handle_t panel_io_ = nullptr;
+     esp_lcd_panel_handle_t panel_ = nullptr;
+ 
++public:
++    void SetPanelOn(bool on) override {
++        if (panel_ != nullptr)
++            esp_lcd_panel_disp_on_off(panel_, on);
++    }
++
++protected:
++
+     lv_draw_buf_t draw_buf_;
+     lv_obj_t* top_bar_ = nullptr;
+     lv_obj_t* status_bar_ = nullptr;
 diff --git a/main/display/lvgl_display/lvgl_display.cc b/main/display/lvgl_display/lvgl_display.cc
 index 12a887e..fca5f6b 100644
 --- a/main/display/lvgl_display/lvgl_display.cc
