@@ -288,7 +288,8 @@
         "Ông Công Ông Táo": "Kitchen Gods Day",
         "bấm để mở": "press to open",
         "Đang cập nhật phần mềm...": "Updating firmware…",
-        "Đang cắm điện: rút cáp để tắt hẳn": "Plugged in: unplug the cable to power off"
+        "Đang cắm điện: rút cáp để tắt hẳn": "Plugged in: unplug the cable to power off",
+        "Nghỉ màn hình": "Screen rest"
       }
     },
     {
@@ -360,7 +361,8 @@
         "Ông Công Ông Táo": "조왕신의 날",
         "bấm để mở": "눌러서 열기",
         "Đang cập nhật phần mềm...": "펌웨어 업데이트 중…",
-        "Đang cắm điện: rút cáp để tắt hẳn": "전원 연결됨: 케이블을 뽑아야 꺼집니다"
+        "Đang cắm điện: rút cáp để tắt hẳn": "전원 연결됨: 케이블을 뽑아야 꺼집니다",
+        "Nghỉ màn hình": "화면 휴식"
       }
     },
     {
@@ -432,7 +434,8 @@
         "Ông Công Ông Táo": "灶君节",
         "bấm để mở": "按下打开",
         "Đang cập nhật phần mềm...": "正在更新固件…",
-        "Đang cắm điện: rút cáp để tắt hẳn": "正在充电：拔掉数据线才能关机"
+        "Đang cắm điện: rút cáp để tắt hẳn": "正在充电：拔掉数据线才能关机",
+        "Nghỉ màn hình": "屏幕休息"
       }
     }
   ]

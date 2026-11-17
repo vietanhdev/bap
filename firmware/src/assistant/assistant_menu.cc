@@ -327,6 +327,7 @@ Level SettingsMenu() {
     m.items.push_back(Toggle("Nhận biết có người", &Config::presence));
     m.items.push_back(Toggle("Chào buổi sáng", &Config::morning));
     m.items.push_back(Toggle("Không làm phiền đêm", &Config::quiet));
+    m.items.push_back(Toggle("Nghỉ màn hình", &Config::rest));
     m.items.push_back(Toggle("Thấy người thì chào", &Config::greet));
     m.items.push_back({"Thông tin máy", []() {
                            Level l{.title = "Thông tin máy"};
@@ -409,12 +410,14 @@ bool MenuIsOpen() {
 }
 
 void MenuOpen() {
+    NoteActivity();
     if (MenuIsOpen())
         return;
     Push(MainMenu());
 }
 
 void MenuBack() {
+    NoteActivity();
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
         if (!g_stack.empty())
@@ -425,6 +428,7 @@ void MenuBack() {
 }
 
 void MenuRotate(bool forward) {
+    NoteActivity();
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
         if (g_stack.empty())
@@ -444,6 +448,7 @@ void MenuRotate(bool forward) {
 }
 
 void MenuClick() {
+    NoteActivity();
     std::function<void()> action;
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);

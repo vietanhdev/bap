@@ -65,6 +65,7 @@ Config LoadConfig() {
     c.presence = s.GetBool("presence", false);
     c.morning = s.GetBool("morning", false);
     c.quiet = s.GetBool("quiet", false);
+    c.rest = s.GetBool("rest", true);
     c.language = s.GetString("language", "vi");
     return c;
 }
@@ -87,6 +88,7 @@ void SaveConfig(const Config& c) {
         s.SetBool("presence", c.presence);
         s.SetBool("morning", c.morning);
         s.SetBool("quiet", c.quiet);
+        s.SetBool("rest", c.rest);
         s.SetString("language", c.language);
         std::lock_guard<std::mutex> lock(g_language_mutex);
         language_changed = g_language != c.language;

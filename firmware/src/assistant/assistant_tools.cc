@@ -9,6 +9,7 @@
 
 #include <sys/time.h>
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <cstring>
 #include <ctime>
@@ -245,6 +246,46 @@ std::string DescribeAlarms() {
     return out;
 }
 
+// Backlight and face while resting, checked every second:
+//   - night (22:00-06:00, "night mode" on): backlight at most 20 %, still face;
+//   - nobody around for kScreenRestS (no touch, wheel, menu, web action or person in view):
+//     backlight at most 6 %, still face. The clock and date stay readable.
+// Any activity or a conversation restores the user's brightness through the backlight's own fade.
+std::atomic<bool> g_night_dim_now{false};
+constexpr int kScreenRestS = 5 * 60;
+
+void ApplyScreenRest() {
+    static int dim_level = -1;  // backlight cap in force, -1 = none
+    static bool calm = false;
+    auto& app = Application::GetInstance();
+    bool idle = app.GetDeviceState() == kDeviceStateIdle;
+    if (!idle)
+        NoteActivity();
+    static bool enabled = true;
+    static int checks = 0;
+    if (checks++ % 15 == 0)  // the setting is read from NVS, so only every 15 s
+        enabled = LoadConfig().rest;
+    bool rest = enabled && idle && SecondsSinceActivity() >= kScreenRestS && !OtaInProgress();
+    bool night = idle && g_night_dim_now;
+    int want = rest ? 6 : night ? 20 : -1;
+    auto backlight = Board::GetInstance().GetBacklight();
+    if (backlight != nullptr && want != dim_level) {
+        if (want < 0)
+            backlight->RestoreBrightness();
+        else if (dim_level >= 0 || backlight->brightness() > want)
+            backlight->SetBrightness(want, false);
+        dim_level = want;
+    }
+    bool want_calm = rest || night;
+    if (want_calm != calm) {
+        calm = want_calm;
+        app.Schedule([want_calm]() {
+            DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+            FaceSetCalm(want_calm);
+        });
+    }
+}
+
 void SchedulerTask(void*) {
     int ticks = 0;
     while (true) {
@@ -268,27 +309,18 @@ void SchedulerTask(void*) {
                 });
             }
         }
+        ApplyScreenRest();
         // Retry every 20 s until the clock is set, then refresh every 6 hours.
         if ((now < 1700000000 && ticks % 20 == 1) || ticks % 21600 == 0)
             SyncClock();
         if (now < 1700000000)
             continue;
         if (ticks % 60 == 5) {  // dim the screen and lower the speaker at night
-            static int saved_brightness = -1;
             struct tm tm_now;
             localtime_r(&now, &tm_now);
             bool night = tm_now.tm_hour >= 22 || tm_now.tm_hour < 6;
-            auto backlight = Board::GetInstance().GetBacklight();
             bool idle = Application::GetInstance().GetDeviceState() == kDeviceStateIdle;
-            if (backlight != nullptr && LoadConfig().night_dim) {
-                if (night && idle && saved_brightness < 0 && backlight->brightness() > 25) {
-                    saved_brightness = backlight->brightness();
-                    backlight->SetBrightness(20, false);
-                } else if ((!night || !idle) && saved_brightness >= 0) {
-                    backlight->SetBrightness(saved_brightness, false);
-                    saved_brightness = -1;
-                }
-            }
+            g_night_dim_now = night && LoadConfig().night_dim;
             // Do-not-disturb boundaries (22:00 / 06:00): re-apply the wake word state while
             // resting.
             {
@@ -302,15 +334,6 @@ void SchedulerTask(void*) {
                             app.GetAudioService().EnableWakeWordDetection(!quiet);
                     });
                 }
-            }
-            // Calm face at night while resting (no breathing motion): idempotent, checked every
-            // minute.
-            {
-                bool calm = night && idle && LoadConfig().night_dim;
-                Application::GetInstance().Schedule([calm]() {
-                    DisplayLockGuard lock(Board::GetInstance().GetDisplay());
-                    FaceSetCalm(calm);
-                });
             }
             // Quiet nights: cap the speaker for the whole night (conversations included) and give
             // the old volume back in the morning.

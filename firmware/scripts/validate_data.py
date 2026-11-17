@@ -44,6 +44,7 @@ def ui_strings():
         keys |= set(re.findall(r'Localize\("((?:[^"\\]|\\.)*)"\)', src))
         keys |= set(re.findall(r'items\.push_back\(\{"((?:[^"\\]|\\.)*)"', src))
         keys |= set(re.findall(r'Confirm\("((?:[^"\\]|\\.)*)"', src))
+        keys |= set(re.findall(r'Toggle\("((?:[^"\\]|\\.)*)"', src))
     return keys
 
 

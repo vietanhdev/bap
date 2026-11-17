@@ -30,10 +30,15 @@ void SetVisionHandler(void (*handler)(bool enabled));  // board: start/stop on-c
 void ApplyVision(bool enabled);
 // True while a firmware upload writes flash: pollers back off (I2C reads time out meanwhile).
 bool OtaInProgress();
-void SetOtaInProgress(bool busy);  // screen pixels; called from the touch task
-void InstallFontFallback();
+void SetOtaInProgress(bool busy);
+void InstallFontFallback();  // Korean/Chinese glyphs from the assets partition
 // True between 22:00 and 06:00 when "do not disturb" is on: no wake word (touch/wheel still work).
-bool QuietHours();  // Korean/Chinese glyphs from the assets partition
+bool QuietHours();
+// Screen rest: any touch, wheel, menu, web action or person in view counts as activity. After a
+// few quiet minutes the scheduler dims the backlight and stills the face (saves power and SPI
+// traffic); the next activity brings it back.
+void NoteActivity();
+int SecondsSinceActivity();
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none
 void RegisterNotifyRoutes(void* server);  // httpd_handle_t

@@ -1,6 +1,7 @@
 // Scroll wheel behaviour:
-//   resting: rotate = pick a character, double click = app launcher (rotate to choose, click to
-//   start) in a conversation: rotate = volume (handled by the board), click = stop/start listening
+//   resting     : rotate = pick a character, double click = app launcher (rotate to choose,
+//                 click to start)
+//   conversation: rotate = volume (handled by the board), click = stop / start listening
 // Touch screen:
 //   resting: tap = the character giggles, double tap = talk, swipe sideways = next character,
 //            hold = menu
@@ -32,6 +33,7 @@ std::mutex g_mutex;
 bool g_apps_menu = false;
 int g_app_index = 0;
 int64_t g_last_input_us = 0;
+std::atomic<int64_t> g_activity_us{0};
 bool g_preview_shown = false;  // a character/app preview is on screen and must be cleared later
 
 void Show(const std::string& status, const std::string& line, const char* emotion) {
@@ -55,7 +57,12 @@ void ShowApp() {
 
 }  // namespace
 
+void NoteActivity() { g_activity_us = esp_timer_get_time(); }
+
+int SecondsSinceActivity() { return (int)((esp_timer_get_time() - g_activity_us) / 1000000); }
+
 bool OnWheelRotate(bool clockwise) {
+    NoteActivity();
     auto& app = Application::GetInstance();
     std::lock_guard<std::mutex> lock(g_mutex);
     g_last_input_us = esp_timer_get_time();
@@ -83,6 +90,7 @@ bool OnWheelRotate(bool clockwise) {
 }
 
 bool OnWheelClick() {
+    NoteActivity();
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_apps_menu)
         return false;
@@ -98,6 +106,7 @@ bool OnWheelClick() {
 }
 
 void OnWheelDoubleClick() {
+    NoteActivity();
     std::lock_guard<std::mutex> lock(g_mutex);
     if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle)
         return;
@@ -151,6 +160,7 @@ void Giggle() {
 }  // namespace
 
 void OnTouch(TouchEvent event, int x, int y) {
+    NoteActivity();
     constexpr int64_t kHoldUs = 700 * 1000, kDoubleTapUs = 380 * 1000;
     constexpr int kSwipe = 60, kSlop = 25;
     auto& app = Application::GetInstance();
@@ -263,6 +273,7 @@ static bool NightNow() {
 }
 
 void OnPersonPresent() {
+    NoteActivity();
     int64_t now = esp_timer_get_time();
     if (now - g_last_present_us < 2000000)
         return;  // at most every 2 s
