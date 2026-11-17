@@ -289,7 +289,7 @@ gian chạy và sóng Wi-Fi.
 | Trạng thái | Núm xoay | Cảm ứng |
 | --- | --- | --- |
 | Đang nghỉ | xoay: đổi nhân vật · nhấn đúp: ứng dụng | chạm: cười khúc khích · chạm đúp: trò chuyện · vuốt: đổi nhân vật |
-| Đang trò chuyện | xoay: âm lượng · nhấn: dừng / tiếp tục | chạm: ngắt lời |
+| Đang trò chuyện | xoay: âm lượng · nhấn: dừng / tiếp tục | chạm: ngắt lời · chạm đúp: kết thúc |
 | Đang phát nhạc | — | chạm đúp: dừng nhạc |
 | Bất kỳ | giữ 1 giây: menu · giữ 20 giây: xóa cài đặt | giữ: menu |
 | Trong menu | xoay / nhấn: di chuyển / mở | vuốt hoặc chạm trên / dưới: di chuyển · chạm giữa: mở |
@@ -328,6 +328,7 @@ gian chạy và sóng Wi-Fi.
 python3 firmware/scripts/validate_data.py      # dữ liệu, tên công cụ, lệnh gọi từ web, bản dịch
 for t in firmware/tests/test_*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t; done
 firmware/scripts/export_patch.sh               # sau khi sửa vendor/, cập nhật bản vá
+python3 firmware/tests/e2e_device.py bap-xxxx.local --log serial.log   # test toàn bộ: API web, mọi công cụ, hội thoại thật
 ```
 
 <details>

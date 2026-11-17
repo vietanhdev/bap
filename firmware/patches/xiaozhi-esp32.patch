@@ -773,7 +773,7 @@ index 31ee1e4..eee9e7b 100644
  
      virtual AudioCodec* GetAudioCodec() override {
 diff --git a/main/boards/sensecap-watcher/sscma_camera.cc b/main/boards/sensecap-watcher/sscma_camera.cc
-index 6abd9ee..18b5830 100644
+index 6abd9ee..6b7c8ed 100644
 --- a/main/boards/sensecap-watcher/sscma_camera.cc
 +++ b/main/boards/sensecap-watcher/sscma_camera.cc
 @@ -1,4 +1,10 @@
@@ -808,7 +808,7 @@ index 6abd9ee..18b5830 100644
                      Application::GetInstance().WakeWordInvoke(wake_word);
  
                      // 进入冷却状态，标记需要开始冷却期；如下变量将在会话结束后被使用，等待回调恢复后开始计时
-@@ -670,6 +683,17 @@ bool SscmaCamera::SetVFlip(bool enabled) { return false; }
+@@ -670,6 +683,25 @@ bool SscmaCamera::SetVFlip(bool enabled) { return false; }
   * @warning 如果摄像头缓冲区为空或网络连接失败，将返回错误信息
   */
  std::expected<std::string, std::string> SscmaCamera::Explain(const std::string& question) {
@@ -818,10 +818,18 @@ index 6abd9ee..18b5830 100644
 +    if (gemini == nullptr || jpeg_data_.buf == nullptr || jpeg_data_.len == 0) {
 +        return std::unexpected("Camera chưa chụp được ảnh");
 +    }
-+    if (!gemini->SendImage(jpeg_data_.buf, jpeg_data_.len)) {
-+        return std::unexpected("Không gửi được ảnh");
++    // The photo travels inside this tool's response (see AttachImageToNextToolResponse).
++    if (!gemini->AttachImageToNextToolResponse(jpeg_data_.buf, jpeg_data_.len)) {
++        return std::unexpected("Chỉ xem ảnh được khi đang trò chuyện");
 +    }
-+    return std::string("{\"success\":true,\"note\":\"Ảnh vừa chụp đã được gửi kèm trong luồng hình. Hãy nhìn ảnh đó và trả lời câu hỏi: ") + question + "\"}";
++    std::string q;
++    for (char c : question) {
++        if (c == '"' || c == '\\')
++            q += '\\';
++        if ((unsigned char)c >= 0x20)
++            q += c;
++    }
++    return std::string("{\"success\":true,\"note\":\"Ảnh camera vừa chụp được đính kèm trong kết quả này. Hãy nhìn ảnh và trả lời câu hỏi: ") + q + "\"}";
 +#endif
      return Explain(question, explain_url_, explain_token_);
  }

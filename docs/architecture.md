@@ -63,7 +63,7 @@ All changes are guarded by `CONFIG_USE_GEMINI_LIVE`:
 | `main/audio/audio_service.cc` | Raw PCM16 in both directions instead of Opus (`frame_duration == 0` downlink, resampled 24 kHz to codec rate) |
 | `main/boards/common/wifi_board.cc` | Hotspot prefix `Bap`, hide the OTA URL field |
 | `main/boards/sensecap-watcher/sensecap_watcher.cc` | Route wheel events to `assistant::OnWheel*()` |
-| `main/boards/sensecap-watcher/sscma_camera.cc` | `Explain()` sends the JPEG into the Gemini session |
+| `main/boards/sensecap-watcher/sscma_camera.cc` | `Explain()` attaches the JPEG to the photo tool's own functionResponse (Gemini Live ignores a lone video frame sent during a tool call); presence hooks; inference paused during sessions and OTA |
 | `main/display/lcd_display.cc` | Dark theme, `SetEmotion()` calls `assistant::FaceShow()` instead of GIF emoji |
 | `main/display/lvgl_display/lvgl_display.cc` | Snapshot byte order fix for `/screen.jpg` |
 
@@ -232,6 +232,28 @@ namespace `model`.
 Every `POST` requires an `X-Bap` header (`SameOrigin()`); browsers cannot add custom headers to a
 cross-site form post, so another website cannot drive the device from a visitor's browser. There
 is no authentication: the UI is meant for a trusted LAN only.
+
+### Robustness
+
+- **Dropped links**: when the WebSocket closes on its own in the middle of an answer or a tool
+  call (a transport error, not a close we requested and not one Gemini explained with a close
+  frame), `ResumeAfterDrop()` reopens the session with the resumption handle and asks the model to
+  finish its answer. At most once a minute. Close frames are logged with code and reason.
+- **Camera photos** travel inside the photo tool's `functionResponse` as an inline JPEG part. A
+  lone `realtimeInput.video` frame sent while Gemini waits for a tool result is ignored by the
+  model (checked on 2026-11-17 against gemini-3.8-live: four ways of sending a photo, only the
+  photo inside the tool response or a client turn after it was seen).
+- **Touch**: fingers resting on the rim of the glass (more than 165 px from the centre) while the
+  Watcher is held in a hand do not count as taps or holds; one tap during a conversation only
+  interrupts the answer, two taps end it.
+- **Screenshots** (`/screen.jpg`) render in a short-lived task with a 16 KB PSRAM stack, one at a
+  time, instead of on the 6 KB HTTP server stack.
+- **Tools** validate their input (impossible dates, unknown leagues, out-of-range numbers) and
+  answer with a short sentence instead of failing; `memory.forget` removes only the matching memory
+  unless asked to forget everything.
+- **End-to-end test**: `firmware/tests/e2e_device.py HOST --log SERIAL_LOG` exercises the web API,
+  every tool directly, and a real conversation per tool, and fails on a reboot or a crash in the
+  serial log.
 
 ## Flash layout
 

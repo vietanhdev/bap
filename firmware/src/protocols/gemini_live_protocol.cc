@@ -210,7 +210,12 @@ bool GeminiLiveProtocol::OpenAudioChannel() {
 GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Config& cfg,
                                                            bool paid) {
     error_occurred_ = false;
+    closing_ = false;
     setup_done_ = false;
+    {
+        std::lock_guard<std::mutex> lock(calls_mutex_);
+        std::string().swap(pending_image_b64_);  // never carry a photo into a new session
+    }
     speaking_ = false;
     drop_audio_ = false;
     close_after_turn_ = false;
@@ -237,6 +242,15 @@ GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Conf
             ESP_LOGI(TAG, "Disconnected");
         else
             ESP_LOGW(TAG, "Disconnected by Gemini: %s", reason.c_str());
+        // The link dropped in the middle of an answer or a tool call (not a close we asked for,
+        // not one Gemini explained): reopen and let the model finish what it was saying.
+        bool mid_turn = speaking_;
+        {
+            std::lock_guard<std::mutex> lock(calls_mutex_);
+            mid_turn = mid_turn || !pending_calls_.empty();
+        }
+        if (!closing_ && setup_done_ && reason.empty() && mid_turn)
+            ResumeAfterDrop();
         xEventGroupSetBits(event_group_, kSetupFailedBit);
         if (channel_open_.exchange(false) && on_audio_channel_closed_ != nullptr) {
             on_audio_channel_closed_();
@@ -271,7 +285,34 @@ GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Conf
     return OpenResult::kOpened;
 }
 
+void GeminiLiveProtocol::ResumeAfterDrop() {
+    int64_t now = esp_timer_get_time();
+    if (now - last_auto_resume_us_ < 60LL * 1000 * 1000)
+        return;  // at most once a minute, so a dead network cannot loop
+    last_auto_resume_us_ = now;
+    ESP_LOGW(TAG, "Connection lost mid-answer; reopening the session to finish it");
+    static esp_timer_handle_t timer = nullptr;
+    if (timer == nullptr) {
+        esp_timer_create_args_t args = {};
+        args.callback = [](void*) {
+            Application::GetInstance().Schedule([]() {
+                if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle)
+                    return;
+                assistant::Say(
+                    "<hệ thống>Kết nối vừa bị gián đoạn giữa chừng. Hãy nói tiếp phần câu trả lời "
+                    "còn dang dở thật ngắn gọn, không chào lại.</hệ thống>");
+            });
+        };
+        args.name = "gl_resume";
+        if (esp_timer_create(&args, &timer) != ESP_OK)
+            return;
+    }
+    esp_timer_stop(timer);
+    esp_timer_start_once(timer, 800 * 1000);  // after the closed channel has settled to idle
+}
+
 void GeminiLiveProtocol::CloseAudioChannel(bool) {
+    closing_ = true;
     std::shared_ptr<WebSocket> ws;
     {
         std::lock_guard<std::recursive_mutex> lock(send_mutex_);
@@ -372,6 +413,16 @@ bool GeminiLiveProtocol::SendImage(const uint8_t* jpeg, size_t len) {
     msg += R"("}}})";
     return SendText(msg);
 }
+bool GeminiLiveProtocol::AttachImageToNextToolResponse(const uint8_t* jpeg, size_t len) {
+    // Only during a session: otherwise the photo would ride on an unrelated later response.
+    if (!setup_done_ || jpeg == nullptr || len == 0)
+        return false;
+    std::string b64 = Base64Encode(jpeg, len);
+    std::lock_guard<std::mutex> lock(calls_mutex_);
+    pending_image_b64_ = std::move(b64);
+    return true;
+}
+
 void GeminiLiveProtocol::SendStartListening(ListeningMode) {
     last_activity_ = std::chrono::steady_clock::now();
 }
@@ -830,6 +881,20 @@ void GeminiLiveProtocol::SendToolResponse(const std::string& call_id, const std:
     cJSON_AddStringToObject(fr, "name", name.c_str());
     cJSON* resp = cJSON_Parse(result_json.c_str());
     cJSON_AddItemToObject(fr, "response", resp ? resp : cJSON_CreateObject());
+    std::string image;
+    {
+        std::lock_guard<std::mutex> lock(calls_mutex_);
+        image.swap(pending_image_b64_);
+    }
+    if (!image.empty()) {
+        cJSON* inline_data = cJSON_CreateObject();
+        cJSON_AddStringToObject(inline_data, "mimeType", "image/jpeg");
+        cJSON_AddStringToObject(inline_data, "data", image.c_str());
+        cJSON* part = cJSON_CreateObject();
+        cJSON_AddItemToObject(part, "inlineData", inline_data);
+        cJSON_AddItemToArray(cJSON_AddArrayToObject(fr, "parts"), part);
+        std::string().swap(image);
+    }
     cJSON_AddItemToArray(cJSON_AddArrayToObject(tr, "functionResponses"), fr);
     char* s = cJSON_PrintUnformatted(root);
     SendText(s);

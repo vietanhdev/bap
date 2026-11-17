@@ -46,6 +46,10 @@ public:
     bool SendUserText(const std::string& text);
     // Send one JPEG frame for the model to look at.
     bool SendImage(const uint8_t* jpeg, size_t len);
+    // Attaches a JPEG to the next tool response (a multimodal function response). Gemini Live
+    // ignores a lone video frame sent while it waits for a tool, but sees an image inside the
+    // functionResponse itself.
+    bool AttachImageToNextToolResponse(const uint8_t* jpeg, size_t len);
 
     // Sessions use the free key; the paid key only while the free one rests after a rejection.
     // Free-tier Live quota is tokens per minute, so a rest is minutes, not the rest of the day.
@@ -96,6 +100,9 @@ private:
     std::atomic<bool> drop_audio_{false};
     std::atomic<bool> close_after_turn_{false};
     std::atomic<bool> channel_open_{false};
+    std::atomic<bool> closing_{false};  // we are closing on purpose (timeout, user, new session)
+    int64_t last_auto_resume_us_ = 0;
+    void ResumeAfterDrop();
 
     // Key choice (see KeyStats). Touched from the main task and the websocket task.
     std::atomic<bool> use_paid_{false};
@@ -119,6 +126,7 @@ private:
     // MCP bridge: gemini function name <-> MCP tool name, pending calls by MCP request id
     std::map<std::string, std::string> fn_to_tool_;
     std::mutex calls_mutex_;
+    std::string pending_image_b64_;                                     // guarded by calls_mutex_
     std::map<int, std::pair<std::string, std::string>> pending_calls_;  // id -> (call_id, fn)
     int next_mcp_id_ = 1000;
 };

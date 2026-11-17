@@ -134,6 +134,7 @@ struct Gesture {
     int64_t down_us = 0, last_tap_us = 0;
     int x0 = 0, y0 = 0, x = 0, y = 0;
     bool held = false;
+    bool edge = false;  // started on the outer rim of the round glass
 };
 Gesture g_touch;
 esp_timer_handle_t g_giggle_timer = nullptr;
@@ -160,8 +161,12 @@ void Giggle() {
 }  // namespace
 
 void OnTouch(TouchEvent event, int x, int y) {
-    NoteActivity();
     constexpr int64_t kHoldUs = 700 * 1000, kDoubleTapUs = 380 * 1000;
+    // Holding the Watcher in a hand rests fingers on the rim of the glass: on device logs every
+    // such contact sat 165-200 px from the centre of the 412x412 screen, while deliberate taps
+    // land on the face. Still touches and holds that start on the rim are ignored; swipes from
+    // the rim still count.
+    constexpr int kCenter = 206, kRimRadius = 165;
     constexpr int kSwipe = 60, kSlop = 25;
     auto& app = Application::GetInstance();
     const int64_t now = esp_timer_get_time();
@@ -171,12 +176,19 @@ void OnTouch(TouchEvent event, int x, int y) {
         t.x0 = t.x = x;
         t.y0 = t.y = y;
         t.held = false;
+        t.edge =
+            (x - kCenter) * (x - kCenter) + (y - kCenter) * (y - kCenter) > kRimRadius * kRimRadius;
+        if (!t.edge)
+            NoteActivity();
         return;
     }
     t.x = x;
     t.y = y;
     const int dx = t.x - t.x0, dy = t.y - t.y0;
     const bool still = abs(dx) < kSlop && abs(dy) < kSlop;
+    if (t.edge && still)
+        return;  // a finger resting on the rim
+    NoteActivity();
     if (event == TouchEvent::kMove) {
         if (!t.held && still && now - t.down_us > kHoldUs) {
             t.held = true;
@@ -224,8 +236,24 @@ void OnTouch(TouchEvent event, int x, int y) {
             break;
         case kDeviceStateListening:
         case kDeviceStateSpeaking:
-            if (still)
+            // A stray touch must not end the conversation: one tap interrupts the answer (the
+            // session keeps listening), two taps end the session.
+            if (!still)
+                break;
+            if (now - t.last_tap_us < kDoubleTapUs) {
+                t.last_tap_us = 0;
                 app.Schedule([]() { Application::GetInstance().ToggleChatState(); });
+            } else {
+                t.last_tap_us = now;
+                bool speaking = app.GetDeviceState() == kDeviceStateSpeaking;
+                app.Schedule([speaking]() {
+                    auto& a = Application::GetInstance();
+                    if (speaking && a.GetDeviceState() == kDeviceStateSpeaking)
+                        a.AbortSpeaking(kAbortReasonNone);
+                    Board::GetInstance().GetDisplay()->ShowNotification(
+                        Localize("Chạm 2 lần để kết thúc"), 1500);
+                });
+            }
             break;
         case kDeviceStateNotifying:
             // Music: a stray touch should not stop it; double tap does.

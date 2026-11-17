@@ -289,7 +289,8 @@
         "bấm để mở": "press to open",
         "Đang cập nhật phần mềm...": "Updating firmware…",
         "Đang cắm điện: rút cáp để tắt hẳn": "Plugged in: unplug the cable to power off",
-        "Nghỉ màn hình": "Screen rest"
+        "Nghỉ màn hình": "Screen rest",
+        "Chạm 2 lần để kết thúc": "Tap twice to end"
       }
     },
     {
@@ -362,7 +363,8 @@
         "bấm để mở": "눌러서 열기",
         "Đang cập nhật phần mềm...": "펌웨어 업데이트 중…",
         "Đang cắm điện: rút cáp để tắt hẳn": "전원 연결됨: 케이블을 뽑아야 꺼집니다",
-        "Nghỉ màn hình": "화면 휴식"
+        "Nghỉ màn hình": "화면 휴식",
+        "Chạm 2 lần để kết thúc": "두 번 탭하면 종료"
       }
     },
     {
@@ -435,7 +437,8 @@
         "bấm để mở": "按下打开",
         "Đang cập nhật phần mềm...": "正在更新固件…",
         "Đang cắm điện: rút cáp để tắt hẳn": "正在充电：拔掉数据线才能关机",
-        "Nghỉ màn hình": "屏幕休息"
+        "Nghỉ màn hình": "屏幕休息",
+        "Chạm 2 lần để kết thúc": "双击结束对话"
       }
     }
   ]

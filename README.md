@@ -288,7 +288,7 @@ camera paused. `GET /api/perf` reports per-task CPU, stack headroom, heap, uptim
 | State | Wheel | Touch |
 | --- | --- | --- |
 | Resting | rotate: character · double press: apps | tap: giggle · double tap: talk · swipe: character |
-| Talking | rotate: volume · press: pause / resume | tap: interrupt |
+| Talking | rotate: volume · press: pause / resume | tap: interrupt · double tap: end |
 | Music | — | double tap: stop |
 | Anywhere | hold 1 s: menu · hold 20 s: factory reset | hold: menu |
 | Menu | rotate / press: move / open | swipe or tap top / bottom: move · tap centre: open |
@@ -327,6 +327,7 @@ camera paused. `GET /api/perf` reports per-task CPU, stack headroom, heap, uptim
 python3 firmware/scripts/validate_data.py      # data, tool names, web tool calls, translations
 for t in firmware/tests/test_*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t; done
 firmware/scripts/export_patch.sh               # after editing vendor/, refresh the patch
+python3 firmware/tests/e2e_device.py bap-xxxx.local --log serial.log   # end-to-end: web API, every tool, real conversations
 ```
 
 <details>

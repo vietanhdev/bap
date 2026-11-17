@@ -30,6 +30,7 @@
 #include "mcp_server.h"
 #include "protocols/gemini_live_protocol.h"
 #include "protocols/ticket_ssl.h"
+#include "text_fold.h"
 #include "vn_lunar.h"
 
 #define TAG "AssistantTools"
@@ -568,6 +569,11 @@ void RegisterTools() {
             } else if (y == 0) {
                 y = has_now ? t.tm_year + 1900 : 2026;
             }
+            static const int kDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+            bool leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+            if (m < 1 || m > 12 || d < 1 || d > kDays[m - 1] + (m == 2 && leap ? 1 : 0))
+                return "Ngày " + std::to_string(d) + "/" + std::to_string(m) + "/" +
+                       std::to_string(y) + " không có trong lịch.";
             auto l = vn_lunar::FromSolar(d, m, y);
             char buf[320];
             snprintf(
@@ -815,9 +821,12 @@ void RegisterTools() {
                             {"ligue_1", "fra.1", "Ligue 1"}};
             std::string want = props["league"].value<std::string>();
             auto league = &kLeagues[0];
+            bool known = want.empty();
             for (auto& l : kLeagues)
-                if (want == l.id)
+                if (want == l.id) {
                     league = &l;
+                    known = true;
+                }
             // ESPN's public scoreboard feed (plain HTTP: public data).
             auto body =
                 HttpGet(std::string("http://site.api.espn.com/apis/site/v2/sports/soccer/") +
@@ -827,7 +836,10 @@ void RegisterTools() {
             cJSON* root = cJSON_Parse(body->c_str());
             body->clear();
             body->shrink_to_fit();
-            std::string out = std::string(league->name) + " (giờ Việt Nam):\n";
+            std::string out =
+                known ? std::string()
+                      : "Không có giải " + want + ", đây là lịch " + league->name + ". ";
+            out += std::string(league->name) + " (giờ Việt Nam):\n";
             int n = 0;
             cJSON* ev = nullptr;
             cJSON_ArrayForEach (ev, cJSON_GetObjectItem(root, "events")) {
@@ -1475,10 +1487,28 @@ void RegisterTools() {
             StoreItems("memory", items);
             return std::string("Đã nhớ.");
         });
-    mcp.AddTool("memory.forget", "Quên toàn bộ những điều đã ghi nhớ về người dùng.",
-                PropertyList(), [](const PropertyList&) -> ReturnValue {
-                    StoreItems("memory", {});
-                    return std::string("Đã quên hết.");
+    mcp.AddTool("memory.forget",
+                "Quên điều đã ghi nhớ về người dùng. fact là điều cần quên (vài từ khóa là đủ); "
+                "để trống fact để quên tất cả, chỉ khi người dùng nói rõ là quên hết.",
+                PropertyList({Property("fact", kPropertyTypeString, std::string(""))}),
+                [](const PropertyList& p) -> ReturnValue {
+                    std::string want = Fold(p["fact"].value<std::string>());
+                    auto items = ListItems("memory");
+                    if (want.find_first_not_of(' ') == std::string::npos) {
+                        StoreItems("memory", {});
+                        return "Đã quên hết " + std::to_string(items.size()) + " điều.";
+                    }
+                    size_t before = items.size();
+                    items.erase(std::remove_if(items.begin(), items.end(),
+                                               [&want](const std::string& item) {
+                                                   return Fold(item).find(want) !=
+                                                          std::string::npos;
+                                               }),
+                                items.end());
+                    if (items.size() == before)
+                        return std::string("Không tìm thấy điều đó trong trí nhớ.");
+                    StoreItems("memory", items);
+                    return "Đã quên " + std::to_string(before - items.size()) + " điều.";
                 });
 }
 
