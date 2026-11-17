@@ -23,6 +23,7 @@
 #include "assistant_config.h"
 #include "assistant_menu.h"
 #include "board.h"
+#include "boards/common/backlight.h"
 #include "display/display.h"
 
 namespace assistant {
@@ -57,11 +58,27 @@ void ShowApp() {
 
 }  // namespace
 
-void NoteActivity() { g_activity_us = esp_timer_get_time(); }
+std::atomic<bool> g_screen_off{false};
+
+void SetScreenOff(bool off) { g_screen_off = off; }
+bool ScreenIsOff() { return g_screen_off; }
+
+void NoteActivity() {
+    g_activity_us = esp_timer_get_time();
+    // Wake the backlight at once (the scheduler only checks once a second).
+    if (g_screen_off.exchange(false)) {
+        if (auto backlight = Board::GetInstance().GetBacklight())
+            backlight->RestoreBrightness();
+    }
+}
 
 int SecondsSinceActivity() { return (int)((esp_timer_get_time() - g_activity_us) / 1000000); }
 
 bool OnWheelRotate(bool clockwise) {
+    if (ScreenIsOff()) {
+        NoteActivity();  // the first turn or press only wakes the screen
+        return true;
+    }
     NoteActivity();
     auto& app = Application::GetInstance();
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -90,6 +107,10 @@ bool OnWheelRotate(bool clockwise) {
 }
 
 bool OnWheelClick() {
+    if (ScreenIsOff()) {
+        NoteActivity();  // the first turn or press only wakes the screen
+        return true;
+    }
     NoteActivity();
     std::lock_guard<std::mutex> lock(g_mutex);
     if (!g_apps_menu)
@@ -188,6 +209,10 @@ void OnTouch(TouchEvent event, int x, int y) {
     const bool still = abs(dx) < kSlop && abs(dy) < kSlop;
     if (t.edge && still)
         return;  // a finger resting on the rim
+    if (event == TouchEvent::kUp && ScreenIsOff()) {
+        NoteActivity();  // a dark screen: this touch only wakes it
+        return;
+    }
     NoteActivity();
     if (event == TouchEvent::kMove) {
         if (!t.held && still && now - t.down_us > kHoldUs) {

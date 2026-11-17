@@ -122,7 +122,7 @@ Vietnamese, English, Korean and Chinese: the conversation, on-screen text, menu 
 
 ### 🌙 Calm at night
 Night mode dims the screen and caps the volume, do-not-disturb mutes the wake word, and the screen
-rests when nobody is around.
+dims, then switches off, when nobody is around.
 
 </td>
 </tr>

@@ -122,7 +122,7 @@ Trung dùng phông Noto Sans).
 
 ### 🌙 Êm ái về đêm
 Chế độ đêm làm dịu màn hình và giới hạn âm lượng, không làm phiền thì tắt nghe từ đánh thức, vắng
-người thì màn hình tự nghỉ.
+người thì màn hình dịu dần rồi tắt hẳn.
 
 </td>
 </tr>

@@ -247,13 +247,15 @@ std::string DescribeAlarms() {
     return out;
 }
 
-// Backlight and face while resting, checked every second:
+// Backlight and face while resting, checked every second (after 15 quiet minutes the backlight
+// switches off; NoteActivity() switches it back on):
 //   - night (22:00-06:00, "night mode" on): backlight at most 20 %, still face;
 //   - nobody around for kScreenRestS (no touch, wheel, menu, web action or person in view):
 //     backlight at most 6 %, still face. The clock and date stay readable.
 // Any activity or a conversation restores the user's brightness through the backlight's own fade.
 std::atomic<bool> g_night_dim_now{false};
-constexpr int kScreenRestS = 5 * 60;
+constexpr int kScreenRestS = 5 * 60;  // dim
+constexpr int kScreenOffS = 15 * 60;  // backlight off
 
 void ApplyScreenRest() {
     static int dim_level = -1;  // backlight cap in force, -1 = none
@@ -266,9 +268,15 @@ void ApplyScreenRest() {
     static int checks = 0;
     if (checks++ % 15 == 0)  // the setting is read from NVS, so only every 15 s
         enabled = LoadConfig().rest;
-    bool rest = enabled && idle && SecondsSinceActivity() >= kScreenRestS && !OtaInProgress();
+    int quiet_s = SecondsSinceActivity();
+    bool rest = enabled && idle && quiet_s >= kScreenRestS && !OtaInProgress();
+    bool off = rest && quiet_s >= kScreenOffS;
     bool night = idle && g_night_dim_now;
-    int want = rest ? 6 : night ? 20 : -1;
+    int want = off ? 0 : rest ? 6 : night ? 20 : -1;
+    if (off != ScreenIsOff())
+        SetScreenOff(off);
+    if (!off && dim_level == 0)
+        dim_level = -2;  // woken by NoteActivity(): re-apply whatever cap is due now
     auto backlight = Board::GetInstance().GetBacklight();
     if (backlight != nullptr && want != dim_level) {
         if (want < 0)
@@ -477,6 +485,11 @@ std::string IdleLine() {
 }
 
 std::string AlarmsText() { return DescribeAlarms(); }
+
+bool HasPendingAlarms() {
+    std::lock_guard<std::mutex> lock(g_alarm_mutex);
+    return !g_alarms.empty();
+}
 
 void RefreshIdleScreen() {
     Application::GetInstance().Schedule([]() {

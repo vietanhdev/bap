@@ -12,6 +12,7 @@ void LogTurn(const char* role, const std::string& text);  // conversation log fo
 std::string LogJson();
 std::string IdleLine();  // "Thứ hai 16/11\n8/10 âm lịch" for the resting screen
 std::string AlarmsText();
+bool HasPendingAlarms();   // a timer or alarm is waiting to ring
 void RefreshIdleScreen();  // redraws the resting status and date line (e.g. after a language
                            // change)
 // Scroll wheel (see assistant_input.cc). Rotate/Click return true when they consumed the event.
@@ -39,6 +40,9 @@ bool QuietHours();
 // traffic); the next activity brings it back.
 void NoteActivity();
 int SecondsSinceActivity();
+// After a longer quiet spell the backlight goes off; the first touch or wheel turn only wakes it.
+void SetScreenOff(bool off);
+bool ScreenIsOff();
 // Status cards pushed from the LAN (assistant_notify.cc).
 std::string LatestCard();                 // text of a recent card, "" if none
 void RegisterNotifyRoutes(void* server);  // httpd_handle_t

@@ -1,5 +1,6 @@
 // Settings UI served by the device itself on port 80 (LAN only, no cloud).
 #include <esp_app_desc.h>
+#include <esp_heap_caps.h>
 #include <esp_http_server.h>
 #include <esp_log.h>
 #include <esp_mac.h>
@@ -517,6 +518,15 @@ std::atomic<bool> g_screen_busy{false};
 
 esp_err_t HandleScreen(httpd_req_t* req) {
     auto display = Board::GetInstance().GetDisplay();
+    // The JPEG encoder takes ~13 KB of internal RAM for its working buffers (measured: one
+    // screenshot moved the internal-RAM low-water mark from 33 KB to 20 KB). Internal RAM is what
+    // TLS and audio need, so only take a screenshot when there is room for it.
+    if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL) < 40 * 1024 ||
+        heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) < 24 * 1024) {
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        httpd_resp_set_hdr(req, "Retry-After", "2");
+        return httpd_resp_sendstr(req, "low memory, try again");
+    }
     if (display == nullptr || g_screen_busy.exchange(true)) {
         httpd_resp_set_status(req, "503 Service Unavailable");
         return httpd_resp_sendstr(req, "snapshot busy");
