@@ -616,9 +616,7 @@ void RegisterTools() {
             } else if (y == 0) {
                 y = has_now ? t.tm_year + 1900 : 2026;
             }
-            static const int kDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-            bool leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
-            if (m < 1 || m > 12 || d < 1 || d > kDays[m - 1] + (m == 2 && leap ? 1 : 0))
+            if (!vn_lunar::IsValidSolarDate(d, m, y))
                 return "Ngày " + std::to_string(d) + "/" + std::to_string(m) + "/" +
                        std::to_string(y) + " không có trong lịch.";
             auto l = vn_lunar::FromSolar(d, m, y);

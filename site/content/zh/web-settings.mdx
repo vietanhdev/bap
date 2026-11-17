@@ -43,6 +43,13 @@ firmware/ota.sh bap-xxxx.local
 一次更新约 **30 秒**。上传期间唤醒词、摄像头推理和触摸轮询会暂停，把 Wi-Fi 和 CPU 都留给传输；镜像校验通过后
 设备重启进入新分区。Bắp 只在你要求时更新，绝不会打断对话。
 
+### 签名更新
+
+固件使用你自己的 RSA-3072 密钥签名（`firmware/scripts/ota_key.sh` 生成
+`secrets/ota_signing_key.pem`，`build.sh` 在电脑上签名）。设备运行签名固件后，会拒绝任何未签名、
+被篡改或用其他密钥签名的 Wi-Fi 更新，并继续运行当前版本。不烧录 eFuse，所以仍可通过 USB 刷写，
+丢失密钥时也用这种方式更换。请备份密钥。
+
 ## JSON API
 
 | 路径 | 用途 |

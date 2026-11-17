@@ -50,6 +50,14 @@ An update takes about **30 seconds**. While it uploads, the wake word, camera in
 polling pause so the whole radio and CPU go to the transfer; the device reboots into the new slot
 when the image is verified. Bắp only updates when you ask, so it never interrupts a conversation.
 
+### Signed updates
+
+Builds are signed with your own RSA-3072 key (`firmware/scripts/ota_key.sh` creates
+`secrets/ota_signing_key.pem`; `build.sh` signs on your computer). Once a device runs signed
+firmware it refuses any Wi-Fi update that is unsigned, modified or signed with another key, and
+keeps running the current version. No eFuses are burned, so a USB flash still works: that is also
+how you replace a lost key. Back the key up.
+
 ## JSON API
 
 | Route | Purpose |

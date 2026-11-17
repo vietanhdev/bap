@@ -11,5 +11,12 @@ int main(){
   chk(25,7,2025,1,6,2025,true);    // leap 6th month 2025 starts 25 Jul
   chk(6,10,2025,15,8,2025,false);  // Trung thu 2025
   chk(1,1,2000,25,11,1999,false);
+  struct { int d, m, y; bool ok; } dates[] = {{31,2,2026,false},{29,2,2026,false},{29,2,2024,true},
+      {29,2,1900,false},{29,2,2000,true},{31,4,2026,false},{31,12,2026,true},{0,1,2026,false},{1,13,2026,false}};
+  for (auto& t : dates) {
+    bool ok = IsValidSolarDate(t.d, t.m, t.y) == t.ok;
+    printf("%s valid(%d/%d/%d) == %s\n", ok ? "ok  " : "FAIL", t.d, t.m, t.y, t.ok ? "true" : "false");
+    if (!ok) fails++;
+  }
   return fails;
 }

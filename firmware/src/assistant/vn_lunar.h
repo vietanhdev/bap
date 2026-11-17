@@ -14,6 +14,15 @@ struct SolarDate {
     int day, month, year;
 };
 
+// True for a real Gregorian date (rejects 31/2, 29/2 in a common year, month 13...).
+inline bool IsValidSolarDate(int dd, int mm, int yy) {
+    static const int kDays[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    if (yy < 1 || mm < 1 || mm > 12 || dd < 1)
+        return false;
+    bool leap = (yy % 4 == 0 && yy % 100 != 0) || yy % 400 == 0;
+    return dd <= kDays[mm - 1] + (mm == 2 && leap ? 1 : 0);
+}
+
 inline long JdFromDate(int dd, int mm, int yy) {
     int a = (14 - mm) / 12, y = yy + 4800 - a, m = mm + 12 * a - 3;
     return dd + (153 * m + 2) / 5 + 365L * y + y / 4 - y / 100 + y / 400 - 32045;
