@@ -22,10 +22,10 @@ Tools live in `assistant::RegisterTools()` in `firmware/src/assistant/assistant_
 `mcp.AddTool(...)` call next to the related tools:
 
 ```cpp
-    mcp.AddTool("vn.gia_xang",
+    mcp.AddTool("vn.fuel_price",
                 "Xem giá xăng dầu bán lẻ hôm nay tại Việt Nam (RON 95, E5, dầu DO). Dùng khi người "
                 "dùng hỏi giá xăng.",
-                PropertyList({Property("loai", kPropertyTypeString, std::string(""))}),
+                PropertyList({Property("grade", kPropertyTypeString, std::string(""))}),
                 [](const PropertyList& p) -> ToolResult {
                     auto body = HttpGet("https://example.vn/gia-xang.json");
                     if (!body) return std::unexpected(body.error());
@@ -38,7 +38,7 @@ Reference for the pieces (upstream `main/mcp_server.h`):
 
 | Piece | Notes |
 | --- | --- |
-| Name | `group.action`, lowercase ASCII, for example `vn.weather`, `timer.set`. Dots become `_` for Gemini (`ToFunctionName()` in `gemini_live_protocol.cc`), so names must stay unique after that and within 64 characters. Keep the existing Vietnamese naming style. |
+| Name | `group.action`, lowercase ASCII, for example `vn.weather`, `timer.set`. Dots become `_` for Gemini (`ToFunctionName()` in `gemini_live_protocol.cc`), so names must stay unique after that and within 64 characters. Names and parameters are English snake_case; `validate_data.py` rejects anything else, a prompt that mentions an unknown tool, and a web page call with a wrong parameter name. |
 | Description | Vietnamese, one or two sentences. Say **when** to use it with example phrases a user would say. This is the only thing the model sees, so it decides whether the tool is called. |
 | `Property(name, kPropertyTypeString)` | Required string argument |
 | `Property(name, kPropertyTypeString, std::string(""))` | Optional string with a default |
@@ -90,21 +90,22 @@ area, add a few words there so every character knows to use it rather than guess
    firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap-xxxx.local
    ```
 
-3. Check the serial log for `Add tool: vn.gia_xang` and `Exposed N device tools to Gemini`
+3. Check the serial log for `Add tool: vn.fuel_price` and `Exposed N device tools to Gemini`
    (N should have increased by one).
 4. Call the tool directly, without the model, from the web UI's API:
 
    ```bash
    curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
-     -d '{"name":"vn.gia_xang","arguments":{"loai":"RON 95"}}'
+     -d '{"name":"vn.fuel_price","arguments":{"grade":"RON 95"}}'
    ```
 
 5. Ask the assistant with natural phrases ("giá xăng hôm nay bao nhiêu?") and check the log for
-   `Tool call: vn_gia_xang`.
+   `Tool call: vn_fuel_price`.
 
 ## 4. Checklist for the PR
 
 - [ ] `clang-format -i firmware/src/assistant/assistant_tools.cc`
+- [ ] `python3 firmware/scripts/validate_data.py` passes (English tool and parameter names)
 - [ ] Description says when to use the tool, in Vietnamese
 - [ ] Errors return `std::unexpected(...)` with a short Vietnamese message
 - [ ] No API keys or personal URLs in the code

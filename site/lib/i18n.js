@@ -44,6 +44,9 @@ const en = {
     ['⚙️', 'Web settings and OTA', 'A settings page on bap-xxxx.local, optional password, firmware updates over Wi-Fi in about 30 s.'],
     ['🌏', 'Four languages', 'Vietnamese, English, Korean and Chinese, for the voice and the on-screen UI.']
   ],
+  demoTitle: "See it in action",
+  demoLead: "Recorded from the device's own screen, in real time.",
+  demo: ["On the real device", "Ask, and it answers with subtitles", "Swipe or turn the wheel", "Hold for the round menu"],
   galleryTitle: 'Real screenshots',
   galleryLead: 'Captured from the device and its settings page.',
   gallery: {
@@ -99,6 +102,9 @@ const vi = {
     ['⚙️', 'Cài đặt web và OTA', 'Trang cài đặt tại bap-xxxx.local, mật khẩu tùy chọn, cập nhật firmware qua Wi-Fi trong khoảng 30 giây.'],
     ['🌏', 'Bốn ngôn ngữ', 'Tiếng Việt, Anh, Hàn và Trung cho cả giọng nói lẫn giao diện trên màn hình.']
   ],
+  demoTitle: "Xem thực tế",
+  demoLead: "Quay trực tiếp từ màn hình của máy, đúng tốc độ thật.",
+  demo: ["Trên máy thật", "Hỏi là trả lời, có phụ đề", "Vuốt hoặc xoay núm", "Giữ để mở menu tròn"],
   galleryTitle: 'Ảnh chụp thật',
   galleryLead: 'Chụp từ màn hình thiết bị và trang cài đặt.',
   gallery: {
@@ -154,6 +160,9 @@ const ko = {
     ['⚙️', '웹 설정과 OTA', 'bap-xxxx.local 설정 페이지, 선택적 비밀번호, Wi-Fi로 약 30초 만에 펌웨어 업데이트.'],
     ['🌏', '네 가지 언어', '베트남어, 영어, 한국어, 중국어로 음성과 화면 UI를 모두 지원합니다.']
   ],
+  demoTitle: "실제로 보기",
+  demoLead: "기기 화면을 실시간으로 녹화했어요.",
+  demo: ["실제 기기에서", "물어보면 자막과 함께 대답해요", "스와이프하거나 휠을 돌려요", "길게 눌러 원형 메뉴"],
   galleryTitle: '실제 화면',
   galleryLead: '기기 화면과 설정 페이지에서 캡처했습니다.',
   gallery: {
@@ -209,6 +218,9 @@ const zh = {
     ['⚙️', '网页设置与 OTA', '在 bap-xxxx.local 设置，可选密码，通过 Wi-Fi 约 30 秒完成固件更新。'],
     ['🌏', '四种语言', '越南语、英语、韩语和中文，语音和屏幕界面都支持。']
   ],
+  demoTitle: "实际效果",
+  demoLead: "直接录制设备屏幕，真实速度。",
+  demo: ["真机运行", "提问即答，附带字幕", "滑动或转动滚轮", "长按打开圆形菜单"],
   galleryTitle: '真实截图',
   galleryLead: '截取自设备屏幕和设置页面。',
   gallery: {

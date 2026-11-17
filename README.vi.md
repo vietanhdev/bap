@@ -1,14 +1,10 @@
 <div align="center">
 
-<img src="docs/images/photos/in-hand.jpg" alt="Bắp chạy trên SenseCAP Watcher" width="300">
-<img src="docs/images/screens/family.png" alt="Bông, Bắp, Bơ, Mochi, Tí" width="860">
+<a href="https://bap.nrl.ai/vi"><img src="docs/images/banner.png" alt="Bắp: người bạn biết nghe, biết nói, chạm vào được, chạy trên SenseCAP Watcher" width="100%"></a>
 
-# Bắp
+<h3>Firmware trợ lý giọng nói dễ thương, nhanh nhạy cho Seeed SenseCAP Watcher</h3>
 
-**Trợ lý giọng nói dễ thương, nhanh nhạy cho Seeed SenseCAP Watcher, nói chuyện thẳng với Google Gemini Live.**
-
-Không máy chủ trung gian, không đám mây riêng. Năm nhân vật, ứng dụng bằng giọng nói, nhạc, radio và
-các tiện ích đời sống Việt Nam, tất cả chạy trên một con ESP32-S3.
+Thiết bị nói chuyện thẳng với Google Gemini Live. Không máy chủ trung gian, không đám mây riêng.
 
 [![CI](https://github.com/vietanhdev/bap/actions/workflows/ci.yml/badge.svg)](https://github.com/vietanhdev/bap/actions/workflows/ci.yml)
 ![ESP32-S3](https://img.shields.io/badge/ESP32--S3-ESP--IDF%206.1-7c5cff)
@@ -16,148 +12,188 @@ các tiện ích đời sống Việt Nam, tất cả chạy trên một con ESP
 ![LVGL 9](https://img.shields.io/badge/LVGL-9.5-8bc34a)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f5c84b)](LICENSE)
 
-[English](README.md) · **Tiếng Việt** · [Tài liệu](https://bap.nrl.ai/vi)
+[English](README.md) · **Tiếng Việt**
+
+[**Tài liệu**](https://bap.nrl.ai/vi) ·
+[Demo](#-xem-thực-tế) ·
+[Tính năng](#-tính-năng) ·
+[Bắt đầu nhanh](#-bắt-đầu-nhanh) ·
+[Cách hoạt động](#-cách-hoạt-động) ·
+[Điều khiển](#-điều-khiển)
 
 </div>
 
----
+## 🎬 Xem thực tế
 
-## Mục lục
-
-- [Hình ảnh](#hình-ảnh)
-- [So với firmware gốc](#so-với-firmware-gốc)
-- [Tính năng](#tính-năng)
-- [Nhân vật](#nhân-vật)
-- [Cách hoạt động](#cách-hoạt-động)
-- [Hiệu năng](#hiệu-năng)
-- [Bắt đầu nhanh](#bắt-đầu-nhanh)
-- [Điều khiển](#điều-khiển)
-- [Trang cài đặt](#trang-cài-đặt)
-- [An toàn và quyền riêng tư](#an-toàn-và-quyền-riêng-tư)
-- [Phát triển](#phát-triển)
-- [Giấy phép](#giấy-phép)
-
-## Hình ảnh
-
-<p align="center"><img src="docs/images/screens/emotions.gif" alt="Năm nhân vật, mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL" width="760"><br><sub>Năm nhân vật, mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL</sub></p>
+Quay trực tiếp từ màn hình của máy (`GET /screen.jpg`), đúng tốc độ thật.
 
 <table>
 <tr>
-<td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="240"><br><sub>Hỏi là trả lời, có phụ đề, rồi mở bài hát</sub></td>
-<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="240"><br><sub>Vuốt hoặc xoay núm để đổi nhân vật</sub></td>
-<td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="240"><br><sub>Giữ núm xoay để mở menu tròn</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="260" alt="Trò chuyện"><br><b>Hỏi gì cũng được</b><br><sub>Trả lời bằng giọng nói, có phụ đề, rồi mở bài hát</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="260" alt="Đổi nhân vật"><br><b>Năm nhân vật</b><br><sub>Vuốt màn hình hoặc xoay núm</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="260" alt="Menu tròn"><br><b>Menu tròn</b><br><sub>Giữ núm xoay hoặc giữ màn hình</sub></td>
 </tr>
 </table>
 
-Mọi ảnh màn hình đều chụp trực tiếp từ thiết bị (`GET /screen.jpg`).
+<p align="center">
+<img src="docs/images/screens/emotions.gif" alt="Năm nhân vật, mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL" width="760"><br>
+<sub>Mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL, nhép miệng khi nói</sub>
+</p>
+
+<details>
+<summary><b>Thêm ảnh màn hình</b>: nhạc, radio, menu, tiếng Hàn và tiếng Trung</summary>
+<br>
+<table>
+<tr>
+<td align="center"><img src="docs/images/screens/listening.png" width="180"><br><sub>Đang lắng nghe</sub></td>
+<td align="center"><img src="docs/images/screens/talking.png" width="180"><br><sub>Đang nói, có phụ đề</sub></td>
+<td align="center"><img src="docs/images/screens/music-lyrics.png" width="180"><br><sub>Zing MP3, lời chạy theo nhạc</sub></td>
+<td align="center"><img src="docs/images/screens/radio.png" width="180"><br><sub>Radio (VOV, FM Hà Nội)</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/screens/menu.png" width="180"><br><sub>Menu tròn</sub></td>
+<td align="center"><img src="docs/images/screens/menu-settings.png" width="180"><br><sub>Thiết lập bằng núm xoay</sub></td>
+<td align="center"><img src="docs/images/screens/korean.png" width="180"><br><sub>Tiếng Hàn</sub></td>
+<td align="center"><img src="docs/images/screens/chinese.png" width="180"><br><sub>Tiếng Trung</sub></td>
+</tr>
+</table>
+</details>
+
+## ✨ Tính năng
 
 <table>
 <tr>
-<td align="center"><img src="docs/images/screens/listening.png" width="190"><br><sub>Đang lắng nghe</sub></td>
-<td align="center"><img src="docs/images/screens/talking.png" width="190"><br><sub>Đang nói, có phụ đề</sub></td>
-<td align="center"><img src="docs/images/screens/music-lyrics.png" width="190"><br><sub>Zing MP3 kèm lời chạy theo nhạc</sub></td>
-<td align="center"><img src="docs/images/screens/radio.png" width="190"><br><sub>Radio (VOV, FM Hà Nội)</sub></td>
+<td width="50%" valign="top">
+
+### 🗣️ Nói chuyện tự nhiên
+Âm thanh hai chiều thời gian thực với Gemini Live: ngắt lời lúc nào cũng được, phụ đề hiện trên
+màn hình tròn. Nói **"Hi Lili"**, chạm đúp màn hình hoặc nhấn núm xoay.
+
+</td>
+<td width="50%" valign="top">
+
+### 👆 Sinh ra để được chạm vào
+Chạm là cười khúc khích, chạm đúp để nói chuyện, vuốt để đổi nhân vật, giữ để mở menu. Núm xoay
+làm được y như vậy, thêm cả chỉnh âm lượng.
+
+</td>
 </tr>
 <tr>
-<td align="center"><img src="docs/images/screens/menu.png" width="190"><br><sub>Menu tròn (giữ núm xoay)</sub></td>
-<td align="center"><img src="docs/images/screens/menu-settings.png" width="190"><br><sub>Thiết lập bằng núm xoay</sub></td>
-<td align="center"><img src="docs/images/screens/korean.png" width="190"><br><sub>Tiếng Hàn</sub></td>
-<td align="center"><img src="docs/images/screens/chinese.png" width="190"><br><sub>Tiếng Trung</sub></td>
+<td valign="top">
+
+### 👀 Nhận ra bạn
+Chip AI ngay trong camera nhận ra có người, màn hình sáng lên và nhân vật chào bạn, mỗi sáng còn
+đọc bản tin ngắn. Không gửi ảnh đi đâu, không tốn lượt Gemini.
+
+</td>
+<td valign="top">
+
+### 🎭 Năm nhân vật
+Bông, Bắp, Bơ, Mochi và Tí, mỗi nhân vật có giọng, tính cách và gương mặt riêng. Nhân vật, ứng
+dụng và ngôn ngữ đều là dữ liệu, thêm mới không cần viết C++.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🛠️ 29 công cụ trên máy
+Lịch âm, thời tiết và chất lượng không khí, tin tức, giá vàng, tỷ giá, chứng khoán, bóng đá, xổ
+số, hẹn giờ, báo thức, ghi chú, ghi nhớ lâu dài. Không cần thêm API key.
+
+</td>
+<td valign="top">
+
+### 🎵 Nhạc và radio
+Zing MP3 kèm lời chạy theo nhạc, VOV và FM Hà Nội, nhạc trong thẻ SD không cần mạng, tìm theo tên
+không dấu.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### 🌏 Bốn ngôn ngữ
+Việt, Anh, Hàn, Trung: cả hội thoại, chữ trên màn hình, menu lẫn dòng ngày tháng (phụ đề Hàn và
+Trung dùng phông Noto Sans).
+
+</td>
+<td valign="top">
+
+### 🌙 Êm ái về đêm
+Chế độ đêm làm dịu màn hình và giới hạn âm lượng, không làm phiền thì tắt nghe từ đánh thức, vắng
+người thì màn hình tự nghỉ.
+
+</td>
 </tr>
 </table>
 
-## So với firmware gốc
+<details>
+<summary><b>Còn nữa</b>: ứng dụng bằng giọng nói, tiện ích mở rộng, trang cài đặt</summary>
 
-|  | SenseCraft gốc / xiaozhi upstream | **Bắp** |
-| --- | --- | --- |
-| Xử lý giọng nói | Âm thanh đi qua máy chủ của hãng hoặc máy chủ tự dựng | **Thiết bị ↔ Gemini Live trực tiếp** (WebSocket + TLS) |
-| Từ lúc gọi đến lúc nghe | tùy máy chủ trung gian | **1,4–2,3 giây** (trước khi tối ưu là 2,9 giây), TLS nối lại trong 0,1 giây |
-| Gương mặt | Emoji GIF | **5 nhân vật vẽ bằng LVGL**, 23 biểu cảm, nhép miệng theo lời |
-| Ngôn ngữ | do máy chủ quyết định | **Việt, Anh, Hàn, Trung** (giao diện, lời nhắc, phụ đề, ngày tháng) |
-| Công cụ | Chung chung | **29 công cụ**: lịch âm, thời tiết, tin tức, vàng, tỷ giá, chứng khoán, bóng đá, xổ số, hẹn giờ, ghi chú, ghi nhớ, nhạc, radio |
-| Màn hình cảm ứng | Chưa dùng | **Chạm, chạm đúp, vuốt, giữ** (driver SPD2010) |
-| AI camera | Luồng tác vụ SenseCraft | **Nhận biết người ngay trên chip**: chào khi thấy người, bản tin sáng |
-| Cài đặt | Ứng dụng hoặc trang quản trị của hãng | **Trang web trong mạng nhà**, có mật khẩu, tình trạng máy, OTA 30 giây |
-| Ban đêm | Như ban ngày | **Chế độ đêm**: màn hình dịu, loa tối đa 35%, tùy chọn không làm phiền |
-
-Phân vùng `nvsfactory` (khóa thiết bị) không bao giờ bị ghi, và có thể khôi phục firmware gốc bất
-cứ lúc nào.
-
-## Tính năng
-
-- **Trò chuyện tự nhiên** qua Gemini Live: âm thanh hai chiều theo thời gian thực, ngắt lời được,
-  phụ đề trên màn hình.
-- **Năm nhân vật**, mỗi nhân vật có giọng, tính cách và gương mặt riêng. Đổi bằng núm xoay, vuốt màn
-  hình hoặc bằng lời ("gọi Bắp ra đây").
 - **Ứng dụng bằng giọng nói**: bản tin sáng, kể chuyện cho bé, luyện nói tiếng Anh, học tiếng Hàn,
   nhật ký cuối ngày, tử vi vui, đố vui, hít thở thư giãn, hôm nay ăn gì, tập trung 25 phút, nhìn và
   kể (camera).
-- **Công cụ chạy trên thiết bị** (không cần thêm API key): lịch âm, thời tiết và chất lượng không
-  khí (Open-Meteo), tin tức (VnExpress), tỷ giá Vietcombank, giá vàng (PNJ, tiệm vàng Hải Hồng),
-  VN-Index / VN30 / HNX / UPCoM, lịch và tỷ số bóng đá (Ngoại hạng Anh, C1, La Liga, Serie A,
-  Bundesliga, Ligue 1), xổ số, hẹn giờ, báo thức, ghi chú, ghi nhớ lâu dài, chụp ảnh, âm lượng và độ
-  sáng.
-- **Nhạc và radio**: tìm bài trên Zing MP3 kèm lời chạy theo nhạc, VOV và FM Hà Nội (HLS và MP3),
-  nhạc trong thẻ SD (không cần mạng, tìm theo tên không dấu).
-- **Bốn ngôn ngữ**: đổi trong trang cài đặt hoặc menu trên máy. Phụ đề Hàn/Trung dùng phông Noto
-  Sans KR/SC trong phân vùng assets. Thêm ngôn ngữ chỉ là thêm dữ liệu.
-- **Nhận biết có người**: chip AI Himax trong camera nhận ra người ngay trên chip, màn hình sáng lên
-  và nhân vật chào bạn. Không gửi ảnh đi đâu, không tốn lượt Gemini.
-- **Tiện ích mở rộng**: khai báo webhook (Home Assistant, n8n, máy chủ riêng) trong trang cài đặt, trợ
-  lý sẽ gọi qua công cụ `extension.call`.
+- **Tiện ích mở rộng**: khai báo webhook (Home Assistant, n8n, máy chủ riêng) trong trang cài đặt,
+  trợ lý sẽ gọi qua công cụ `extension.call`.
 - **Trang cài đặt** tại `http://bap-xxxx.local` (mỗi máy một tên): API key, model, ngôn ngữ, thành
-  phố, nhân vật, sửa tính cách, nhật ký hội thoại, Wi-Fi, mật khẩu, tình trạng máy và OTA.
+  phố, nhân vật, sửa tính cách, nhật ký hội thoại, Wi-Fi, mật khẩu, tình trạng máy và cập nhật
+  firmware qua Wi-Fi trong 30 giây.
+- **Nguồn dữ liệu**: Open-Meteo, VnExpress, Vietcombank, PNJ và tiệm vàng Hải Hồng, CafeF, ESPN,
+  Zing MP3, VOV. Tất cả đều được gọi thẳng từ máy.
 
-## Nhân vật
+</details>
 
-| | Mã | Tên | Là gì | Giọng Gemini | Tính cách |
-| :-: | --- | --- | --- | --- | --- |
-| <img src="docs/images/screens/idle-bong.png" width="64"> | `bong` | Bông | bé mây bông | Leda | Dịu dàng, ấm áp, hay động viên (mặc định) |
-| <img src="docs/images/screens/idle-bap.png" width="64"> | `bap` | Bắp | trái bắp vàng | Puck | Vui nhộn, năng lượng, nói chuyện giòn tan |
-| <img src="docs/images/screens/idle-bo.png" width="64"> | `bo` | Bơ | quả bơ sáp | Achird | Điềm đạm, thư thái, quan tâm sức khỏe |
-| <img src="docs/images/screens/idle-mochi.png" width="64"> | `mochi` | Mochi | viên bánh mochi hồng | Aoede | Ngọt ngào, kể chuyện hay, hợp với trẻ nhỏ |
-| <img src="docs/images/screens/idle-ti.png" width="64"> | `ti` | Tí | chú robot tí hon | Kore | Gọn gàng, rành công nghệ |
+### So với firmware gốc
 
-Nhân vật, ứng dụng, đài radio và ngôn ngữ đều là **dữ liệu** trong
-[`firmware/data/assistant.json`](firmware/data/assistant.json). Xem
+|  | SenseCraft gốc / xiaozhi upstream | **Bắp** |
+| --- | --- | --- |
+| Xử lý giọng nói | Âm thanh đi qua máy chủ của hãng hoặc tự dựng | **Thiết bị ↔ Gemini Live trực tiếp** (WebSocket + TLS) |
+| Gọi → bắt đầu nghe | Tùy máy chủ trung gian | **1,4–2,3 giây**, TLS nối lại trong 0,1 giây |
+| Gương mặt | Emoji GIF | **5 nhân vật vẽ bằng LVGL**, 23 biểu cảm, nhép miệng |
+| Ngôn ngữ | Do máy chủ quyết định | **Việt, Anh, Hàn, Trung** |
+| Màn hình cảm ứng | Chưa dùng | **Chạm, chạm đúp, vuốt, giữ** |
+| AI camera | Luồng tác vụ SenseCraft | **Nhận biết người ngay trên chip** để chào |
+| Cài đặt | Ứng dụng hoặc trang quản trị của hãng | **Trang web trong mạng nhà**, mật khẩu, tình trạng máy, OTA |
+| Ban đêm | Như ban ngày | **Chế độ đêm**, không làm phiền, nghỉ màn hình |
+
+Phân vùng `nvsfactory` (khóa thiết bị) không bao giờ bị ghi, có thể khôi phục firmware gốc bất cứ
+lúc nào.
+
+## 🎭 Nhân vật
+
+| | Tên | Là gì | Giọng | Tính cách |
+| :-: | --- | --- | --- | --- |
+| <img src="docs/images/screens/idle-bong.png" width="72"> | **Bông** `bong` | bé mây bông | Leda | Dịu dàng, ấm áp, hay động viên (mặc định) |
+| <img src="docs/images/screens/idle-bap.png" width="72"> | **Bắp** `bap` | trái bắp vàng | Puck | Vui nhộn, năng lượng, nói chuyện giòn tan |
+| <img src="docs/images/screens/idle-bo.png" width="72"> | **Bơ** `bo` | quả bơ sáp | Achird | Điềm đạm, thư thái, quan tâm sức khỏe |
+| <img src="docs/images/screens/idle-mochi.png" width="72"> | **Mochi** `mochi` | viên bánh mochi hồng | Aoede | Ngọt ngào, kể chuyện hay, hợp với trẻ nhỏ |
+| <img src="docs/images/screens/idle-ti.png" width="72"> | **Tí** `ti` | chú robot tí hon | Kore | Gọn gàng, rành công nghệ |
+
+Tên, giọng và tính cách sửa được trong trang cài đặt. Muốn thêm nhân vật riêng, xem
 [docs/adding-a-character.md](docs/adding-a-character.md).
 
-<p align="center"><img src="docs/images/diagrams/data-driven.svg" alt="assistant.json và cài đặt trong NVS tạo ra lời nhắc, chữ trên màn hình và gương mặt" width="900"></p>
+## 🚀 Bắt đầu nhanh
 
-## Cách hoạt động
+<table>
+<tr>
+<td width="42%"><img src="docs/images/photos/hardware.jpg" alt="SenseCAP Watcher trên tay"></td>
+<td valign="top">
 
-<p align="center"><img src="docs/images/diagrams/architecture.svg" alt="Kiến trúc: mọi thứ chạy trên Watcher, âm thanh đi thẳng tới Gemini Live" width="900"></p>
+**Cần có**
 
-Bắp là một lớp mỏng trên [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32): một `Protocol` mới
-nói chuyện với Gemini Live API, cùng các module `assistant::` cho cấu hình, công cụ, trang web, gương
-mặt, menu và điều khiển. Thay đổi với upstream gói gọn trong một bản vá nhỏ,
-[`firmware/patches/xiaozhi-esp32.patch`](firmware/patches/xiaozhi-esp32.patch).
+- **Seeed SenseCAP Watcher** (W1-A, W1-B hoặc bản "for XiaoZhi"): ESP32-S3, flash 32 MB, PSRAM
+  8 MB, màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI Himax, micro và loa
+- cáp USB-C có truyền dữ liệu
+- máy Linux có Docker và [uv](https://docs.astral.sh/uv/)
+- Gemini API key từ [Google AI Studio](https://aistudio.google.com/apikey)
 
-<p align="center"><img src="docs/images/diagrams/session-flow.svg" alt="Một lượt trò chuyện từng bước, thời gian đo trên thiết bị" width="900"></p>
+</td>
+</tr>
+</table>
 
-Chi tiết: [docs/architecture.md](docs/architecture.md) ·
-[thêm công cụ](docs/adding-a-tool.md) · [thêm nhân vật](docs/adding-a-character.md).
-
-## Hiệu năng
-
-<p align="center"><img src="docs/images/diagrams/performance.svg" alt="Trước và sau tối ưu: độ trễ, CPU, dung lượng" width="900"></p>
-
-Các thay đổi chính: dùng lại phiên TLS (session ticket) cho mọi kết nối, tối ưu ECP fixed-point,
-chuyển stack của tác vụ sang PSRAM, giảm số khung hình hoạt ảnh, bỏ bớt codec, xóa flash trước khi
-ghi khi OTA, tạm dừng từ đánh thức và AI camera trong lúc cập nhật. `GET /api/perf` cho biết CPU từng
-tác vụ, stack còn trống, heap, thời gian chạy và sóng Wi-Fi.
-
-<p align="center"><img src="docs/images/diagrams/flash-layout.svg" alt="Bố cục flash 32 MB và ngân sách RAM" width="900"></p>
-
-## Bắt đầu nhanh
-
-<p align="center"><img src="docs/images/photos/hardware.jpg" alt="Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa" width="360"> <img src="docs/images/photos/unboxing.jpg" alt="Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa" width="480"><br><sub>Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa</sub></p>
-
-**Cần có:** SenseCAP Watcher (W1-A/W1-B hoặc bản "for XiaoZhi"), cáp USB-C dữ liệu, máy Linux có
-Docker và [uv](https://docs.astral.sh/uv/), một Gemini API key từ
-[Google AI Studio](https://aistudio.google.com/apikey).
-
-### 0. Sao lưu firmware gốc (làm một lần)
+**1. Sao lưu firmware gốc** (làm một lần). Bản sao lưu chứa khóa riêng của máy: không bao giờ commit
+hay chia sẻ thư mục `backup/`.
 
 ```bash
 mkdir -p backup
@@ -166,53 +202,87 @@ uv run --with esptool esptool --chip esp32s3 --port /dev/serial/by-id/usb-1a86_U
 ( cd backup && sha256sum watcher-w1a-esp32s3-full-32MB.bin > watcher-w1a-esp32s3-full-32MB.bin.sha256 )
 ```
 
-Bản sao lưu chứa khóa riêng của thiết bị. **Không bao giờ commit hay chia sẻ thư mục `backup/`.**
-
-### 1. Lấy mã upstream và áp bản vá
+**2. Lấy mã upstream, build và nạp**
 
 ```bash
-firmware/scripts/apply_patch.sh   # clone xiaozhi-esp32 @ aaf1eb7 vào vendor/ rồi áp bản vá
-```
+firmware/scripts/apply_patch.sh     # clone xiaozhi-esp32 @ aaf1eb7 vào vendor/ rồi áp bản vá
 
-### 2. Build
-
-```bash
 mkdir -p secrets && chmod 700 secrets
 printf '%s' 'YOUR_GEMINI_API_KEY' > secrets/GEMINI_API_KEY && chmod 600 secrets/GEMINI_API_KEY
 
-firmware/build.sh          # firmware (Docker espressif/idf:release-v6.1) → vendor/xiaozhi-esp32/build/xiaozhi.bin
-firmware/build_assets.sh   # phông chữ, gương mặt, từ đánh thức → firmware/build/assets.bin
+firmware/build.sh                   # firmware, build trong Docker (espressif/idf:release-v6.1)
+firmware/build_assets.sh            # phông chữ, gương mặt, từ đánh thức
+firmware/flash.sh                   # nạp lần đầu qua USB
 ```
 
-Để trống `secrets/GEMINI_API_KEY` nếu muốn nhập key sau trong trang cài đặt (firmware do CI build
-không bao giờ có key). Tùy chọn: `secrets/GEMINI_API_KEY_PAID` là key của một project đã bật thanh
-toán, chỉ dùng khi key miễn phí bị từ chối; key miễn phí được thử lại sau 1, 2, 4… tối đa 15 phút.
+**3. Kết nối và trò chuyện**
 
-Biến khi build: `GEMINI_MODEL`, `GEMINI_VOICE`, `WAKE_WORD` (mặc định `wn9_hilili_tts`, tức "Hi
-Lili"), `LANG_CODE`.
+1. Lần đầu khởi động, Watcher phát Wi-Fi tên **`Bap-XXXX`**. Kết nối điện thoại vào rồi chọn Wi-Fi
+   nhà bạn (hoặc mở `http://192.168.4.1`).
+2. Mở **`http://bap-xxxx.local`** (địa chỉ cũng hiện trên màn hình), chọn thành phố, ngôn ngữ và
+   nhân vật.
+3. Nói **"Hi Lili"**, chạm đúp màn hình hoặc nhấn núm xoay.
 
-### 3. Nạp firmware
+Những lần sau cập nhật qua Wi-Fi trong khoảng 30 giây: `firmware/ota.sh bap-xxxx.local`.
+Đổi Wi-Fi: giữ núm xoay → **Thiết lập → Cài Wi-Fi**.
 
-```bash
-firmware/flash.sh               # lần đầu: bootloader, bảng phân vùng, otadata, ứng dụng, assets
-firmware/flash_app.sh           # những lần sau: chỉ ứng dụng
-firmware/ota.sh bap-xxxx.local  # qua Wi-Fi, không cần cáp (khoảng 30 giây)
-```
+<details>
+<summary><b>Tùy chọn build</b>: API key, model, từ đánh thức, script nạp</summary>
 
-Các script tự tìm Watcher trên cổng USB; nếu cắm nhiều máy, chọn một máy bằng
-`PORT=/dev/serial/by-id/...`.
+- Để trống `secrets/GEMINI_API_KEY` nếu muốn nhập key sau trong trang cài đặt (firmware do CI build
+  không bao giờ có key).
+- Tùy chọn `secrets/GEMINI_API_KEY_PAID`: key của project đã bật thanh toán, chỉ dùng khi key miễn
+  phí bị từ chối. Key miễn phí được thử lại sau 1, 2, 4… tối đa 15 phút.
+- Biến khi build: `GEMINI_MODEL`, `GEMINI_VOICE`, `WAKE_WORD` (mặc định `wn9_hilili_tts`, tức "Hi
+  Lili"), `LANG_CODE`.
+- `firmware/flash_app.sh` chỉ ghi ứng dụng, `firmware/flash_assets.sh` chỉ ghi phân vùng assets. Các
+  script tự tìm Watcher trên USB; nếu cắm nhiều máy, chọn bằng `PORT=/dev/serial/by-id/...`.
+- Khôi phục firmware gốc bằng `firmware/restore_stock.sh` (kiểm tra SHA-256 của bản sao lưu rồi ghi
+  lại toàn bộ 32 MB). Không có bản sao lưu thì cài lại SenseCraft bằng công cụ của Seeed: khóa thiết
+  bị trong `nvsfactory` vẫn còn nguyên.
 
-### 4. Wi-Fi và lần trò chuyện đầu tiên
+</details>
 
-1. Lần đầu khởi động, Watcher phát Wi-Fi tên **`Bap-XXXX`**. Kết nối điện thoại vào mạng đó, chọn
-   Wi-Fi nhà bạn và nhập mật khẩu (hoặc mở `http://192.168.4.1`).
-2. Mở **`http://bap-xxxx.local`** (địa chỉ cũng hiện trên màn hình).
-3. Nhập Gemini API key nếu chưa build kèm, chọn thành phố, ngôn ngữ và nhân vật.
-4. Nói **"Hi Lili"**, chạm đúp màn hình hoặc nhấn núm xoay rồi bắt đầu nói chuyện.
+## 🧠 Cách hoạt động
 
-Đổi Wi-Fi sau này: giữ núm xoay → **Thiết lập → Cài Wi-Fi**, hoặc bấm nút trong trang cài đặt.
+<p align="center"><img src="docs/images/diagrams/architecture.svg" alt="Kiến trúc: mọi thứ chạy trên Watcher, âm thanh đi thẳng tới Gemini Live" width="900"></p>
 
-## Điều khiển
+Bắp là một lớp mỏng trên [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32): một `Protocol` mới
+nói chuyện với Gemini Live API, cùng các module `assistant::` cho cấu hình, công cụ, trang web,
+gương mặt, menu và điều khiển. Thay đổi với upstream gói gọn trong một bản vá nhỏ,
+[`firmware/patches/xiaozhi-esp32.patch`](firmware/patches/xiaozhi-esp32.patch).
+
+<details>
+<summary><b>Một lượt trò chuyện, từng bước</b></summary>
+<br>
+<p align="center"><img src="docs/images/diagrams/session-flow.svg" alt="Một lượt trò chuyện từng bước, thời gian đo trên thiết bị" width="900"></p>
+</details>
+
+<details>
+<summary><b>Nhân vật, ứng dụng và ngôn ngữ là dữ liệu</b></summary>
+<br>
+<p align="center"><img src="docs/images/diagrams/data-driven.svg" alt="assistant.json và cài đặt trong NVS tạo ra lời nhắc, chữ trên màn hình và gương mặt" width="900"></p>
+</details>
+
+Xem thêm: [kiến trúc](docs/architecture.md) · [thêm công cụ](docs/adding-a-tool.md) ·
+[thêm nhân vật](docs/adding-a-character.md).
+
+### ⚡ Hiệu năng
+
+<p align="center"><img src="docs/images/diagrams/performance.svg" alt="Trước và sau tối ưu: độ trễ, CPU, dung lượng" width="900"></p>
+
+Các thay đổi chính: dùng lại phiên TLS cho mọi kết nối, ECC dạng fixed-point, stack của tác vụ đặt
+trong PSRAM, giảm khung hình hoạt ảnh, bỏ bớt codec, và khi OTA thì xóa flash trước khi ghi, tạm
+dừng từ đánh thức và camera. `GET /api/perf` cho biết CPU từng tác vụ, stack còn trống, heap, thời
+gian chạy và sóng Wi-Fi.
+
+<details>
+<summary><b>Bố cục flash và ngân sách RAM</b></summary>
+<br>
+<p align="center"><img src="docs/images/diagrams/flash-layout.svg" alt="Bố cục flash 32 MB và ngân sách RAM" width="900"></p>
+</details>
+
+## 🎛️ Điều khiển
 
 <p align="center"><img src="docs/images/diagrams/controls.svg" alt="Thao tác núm xoay và cảm ứng" width="900"></p>
 
@@ -222,9 +292,9 @@ Các script tự tìm Watcher trên cổng USB; nếu cắm nhiều máy, chọn
 | Đang trò chuyện | xoay: âm lượng · nhấn: dừng / tiếp tục | chạm: ngắt lời |
 | Đang phát nhạc | — | chạm đúp: dừng nhạc |
 | Bất kỳ | giữ 1 giây: menu · giữ 20 giây: xóa cài đặt | giữ: menu |
-| Trong menu | xoay / nhấn: di chuyển / mở | vuốt hoặc chạm trên/dưới: di chuyển · chạm giữa: mở |
+| Trong menu | xoay / nhấn: di chuyển / mở | vuốt hoặc chạm trên / dưới: di chuyển · chạm giữa: mở |
 
-## Trang cài đặt
+## ⚙️ Trang cài đặt
 
 <table>
 <tr>
@@ -235,53 +305,58 @@ Các script tự tìm Watcher trên cổng USB; nếu cắm nhiều máy, chọn
 </tr>
 </table>
 
-Ảnh chụp dùng dữ liệu mẫu.
+<sub>Ảnh chụp dùng dữ liệu mẫu.</sub>
 
-## An toàn và quyền riêng tư
+## 🔒 An toàn và quyền riêng tư
 
 - **API key nằm trên thiết bị** (NVS, hoặc nhúng lúc build từ `secrets/`). Trình duyệt chỉ thấy key
-  đã che, và thiết bị chỉ gửi key tới Google qua TLS. Ai có quyền truy cập vật lý vào máy hoặc file
-  `xiaozhi.bin` bạn tự build đều đọc được key, vì vậy hãy dùng key riêng có giới hạn quota và không
-  chia sẻ file đã build.
-- **Trang cài đặt chỉ dùng trong mạng LAN**, có thể đặt mật khẩu (HTTP Basic, lưu dạng băm SHA-256 có
-  salt và lặp nhiều vòng). Mọi thay đổi (POST) phải có header `X-Bap`, chặn được việc trang web lạ
-  gửi form sang thiết bị. Đừng mở cổng 80 của máy ra Internet.
+  đã che, và máy chỉ gửi key tới Google qua TLS. Ai có máy hoặc file `xiaozhi.bin` bạn tự build đều
+  đọc được key, vì vậy hãy dùng key riêng có giới hạn quota và không chia sẻ file đã build.
+- **Trang cài đặt chỉ dùng trong mạng LAN**, có thể đặt mật khẩu (HTTP Basic, lưu dạng băm SHA-256
+  có salt và lặp nhiều vòng). Mọi thay đổi phải có header `X-Bap`, chặn được trang web lạ gửi form
+  sang máy. Đừng mở cổng 80 ra Internet.
+- **Âm thanh chỉ gửi lên Gemini khi đang trò chuyện**; phiên tự đóng sau 30 giây im lặng. Ảnh camera
+  chỉ rời máy khi trợ lý gọi công cụ chụp ảnh.
 - **`nvsfactory` ở `0x9000`** (khóa thiết bị của Seeed) không bao giờ bị ghi: các script chỉ ghi
   `0x0`, `0x8000`, `0x10d000`, `0x200000` và `0xa00000`.
-- Âm thanh chỉ gửi lên Gemini khi đang trò chuyện (sau từ đánh thức, chạm hoặc nhấn núm); phiên tự
-  đóng sau 30 giây im lặng. Ảnh camera chỉ gửi đi khi trợ lý gọi công cụ chụp ảnh. Nhận biết người
-  chạy ngay trên chip AI của camera.
 - Không bao giờ commit `secrets/`, `backup/`, `server/.env`, `vendor/`, `firmware/build/` hay file
   log build. Xem [CONTRIBUTING.md](CONTRIBUTING.md).
 
-### Khôi phục firmware gốc
+## 🧑‍💻 Phát triển
 
 ```bash
-firmware/restore_stock.sh   # kiểm tra SHA-256 của bản sao lưu rồi ghi lại toàn bộ 32 MB từ 0x0
-```
-
-Nếu không có bản sao lưu riêng, cài lại firmware SenseCraft chính thức bằng công cụ của Seeed; khóa
-thiết bị trong `nvsfactory` vẫn còn nguyên.
-
-## Phát triển
-
-```bash
-python3 firmware/scripts/validate_data.py      # kiểm tra assistant.json và mọi công cụ được nhắc tới
+python3 firmware/scripts/validate_data.py      # dữ liệu, tên công cụ, lệnh gọi từ web, bản dịch
 for t in firmware/tests/test_*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t; done
 firmware/scripts/export_patch.sh               # sau khi sửa vendor/, cập nhật bản vá
 ```
 
-CI (`.github/workflows/ci.yml`) chạy kiểm thử, kiểm tra dữ liệu, clang-format, build firmware với
-API key rỗng và quét bí mật bằng gitleaks.
+<details>
+<summary><b>Cấu trúc thư mục</b></summary>
 
-## Giấy phép
+```
+firmware/
+  src/assistant/       module của Bắp: cấu hình, công cụ, web server, gương mặt, menu, điều khiển, radio, Zing, SD
+  src/protocols/       GeminiLiveProtocol và TicketSsl (dùng lại phiên TLS)
+  data/assistant.json  nhân vật, ứng dụng, đài radio, ngôn ngữ
+  web/index.html       trang cài đặt do máy phục vụ
+  patches/             bản vá trên xiaozhi-esp32 upstream
+  scripts/ tests/      công cụ bản vá, kiểm tra dữ liệu, kiểm thử trên máy tính
+docs/                  kiến trúc, hướng dẫn, ảnh và sơ đồ
+site/                  trang tài liệu (Next.js + Nextra), chạy tại bap.nrl.ai
+tools/                 ứng dụng desktop (Rust) và công cụ quản lý Gemini key
+```
 
-- Mã nguồn Bắp: [MIT](LICENSE).
-- [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32): MIT, bản quyền các tác giả upstream.
-- `TicketSsl` dựa trên [esp-ml307](https://github.com/78/esp-ml307) (Apache-2.0).
-- Phông chữ [Nunito](https://github.com/googlefonts/nunito) và
-  [Noto Sans KR/SC](https://github.com/notofonts/noto-cjk): SIL Open Font License 1.1
-  (`firmware/assets/fonts/`).
-- Thuật toán lịch âm theo công bố của Hồ Ngọc Đức.
-- Bắp không liên kết với Seeed Studio hay Google. "SenseCAP" và "Gemini" là nhãn hiệu của chủ sở hữu
-  tương ứng.
+</details>
+
+CI chạy kiểm thử, kiểm tra dữ liệu, clang-format, build firmware với API key rỗng và quét bí mật
+bằng gitleaks.
+
+## 📄 Giấy phép
+
+Mã nguồn Bắp: [MIT](LICENSE). Xây dựng trên [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)
+(MIT); `TicketSsl` dựa trên [esp-ml307](https://github.com/78/esp-ml307) (Apache-2.0). Phông chữ:
+[Nunito](https://github.com/googlefonts/nunito) và [Noto Sans KR/SC](https://github.com/notofonts/noto-cjk)
+(SIL OFL 1.1). Thuật toán lịch âm theo công bố của Hồ Ngọc Đức.
+
+<sub>Bắp không liên kết với Seeed Studio hay Google. "SenseCAP" và "Gemini" là nhãn hiệu của chủ sở
+hữu tương ứng.</sub>

@@ -16,7 +16,7 @@ code is generic.
 | --- | --- |
 | `firmware/src/protocols/gemini_live_protocol.{h,cc}` | `GeminiLiveProtocol : Protocol`. WebSocket session with Gemini Live, audio up/down, transcripts, tool-call bridge |
 | `firmware/src/assistant/assistant_config.{h,cc}` | `Config`, `Character`, `Look`, `App`. Built-in data from `assistant.json` layered with NVS overrides. `SystemPrompt()` |
-| `firmware/src/assistant/assistant_tools.cc` | `RegisterTools()`: Vietnamese tools on the MCP server. Scheduler (timers, alarms), clock sync, conversation log, `Say()` |
+| `firmware/src/assistant/assistant_tools.cc` | `RegisterTools()`: the device tools on the MCP server (English names such as `vn.weather`, `music.play`). Scheduler: timers, alarms, night dim, screen rest (`ApplyScreenRest()`), clock sync, conversation log, `Say()`, localized `IdleLine()` |
 | `firmware/src/assistant/assistant_web.cc` | `StartWebServer()`: settings UI and JSON API on port 80, mDNS `bap-xxxx.local` (last 4 hex digits of the MAC) |
 | `firmware/src/assistant/assistant_face.{h,cc}` | `FaceShow()`, `FaceSetTalking()`: characters drawn natively with LVGL |
 | `firmware/src/protocols/ticket_ssl.{h,cc}` | `TicketSsl`/`TicketNetwork`/`FastNetwork()`: TLS with session-ticket resumption for every outgoing connection (derived from esp-ml307's `EspSsl`, Apache-2.0) |
@@ -59,7 +59,7 @@ All changes are guarded by `CONFIG_USE_GEMINI_LIVE`:
 | `main/Kconfig.projbuild` | `USE_GEMINI_LIVE`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_VOICE`, `GEMINI_IDLE_TIMEOUT_S`, `GEMINI_GOOGLE_SEARCH` |
 | `main/CMakeLists.txt` | Compile `protocols/gemini_live_protocol.cc` and `assistant/*.cc`; link `esp_http_server` |
 | `main/idf_component.yml` | Add `espressif/mdns` |
-| `main/application.cc` | Create `GeminiLiveProtocol`; forward synthetic wake words (`<say>`, `<detect>`); backpressure on the decode queue; resting face and `IdleLine()` |
+| `main/application.cc` | Create `GeminiLiveProtocol`; forward synthetic wake words (`<say>`, `<detect>`); backpressure on the decode queue; resting face and `IdleLine()`; no upstream wake-word hint |
 | `main/audio/audio_service.cc` | Raw PCM16 in both directions instead of Opus (`frame_duration == 0` downlink, resampled 24 kHz to codec rate) |
 | `main/boards/common/wifi_board.cc` | Hotspot prefix `Bap`, hide the OTA URL field |
 | `main/boards/sensecap-watcher/sensecap_watcher.cc` | Route wheel events to `assistant::OnWheel*()` |
@@ -227,7 +227,7 @@ namespace `model`.
 | `POST /api/tool` | Call an MCP tool directly |
 | `POST /api/app` | Start an app |
 | `POST /api/ota` | Upload a new `xiaozhi.bin` (used by `firmware/ota.sh`) |
-| `GET /face`, `GET /screen.jpg` | Face GIF preview, screenshot |
+| `GET /face`, `GET /screen.jpg` | Face GIF preview, screenshot (rendered in a short-lived task with a 16 KB PSRAM stack, one at a time) |
 
 Every `POST` requires an `X-Bap` header (`SameOrigin()`); browsers cannot add custom headers to a
 cross-site form post, so another website cannot drive the device from a visitor's browser. There

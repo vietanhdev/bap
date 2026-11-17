@@ -65,6 +65,19 @@ export function Landing({ lang }) {
       </section>
 
       <section className="bap-section">
+        <h2>{d.demoTitle}</h2>
+        <p className="bap-sub">{d.demoLead}</p>
+        <div className="bap-demo">
+          {[['photo', '/photos/in-hand.jpg'], ['gif', '/demo/conversation.gif'], ['gif', '/demo/characters.gif'], ['gif', '/demo/menu.gif']].map(([kind, src], i) => (
+            <figure key={src} className={kind === 'photo' ? 'bap-demo-photo' : undefined}>
+              <img src={src} alt={d.demo[i]} />
+              <figcaption>{d.demo[i]}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <section className="bap-section">
         <h2>{d.featuresTitle}</h2>
         <div className="bap-features">
           {d.features.map(([icon, title, body]) => (
