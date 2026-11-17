@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="docs/images/screens/family.png" alt="Bông, Bắp, Bơ, Mochi and Tí on the SenseCAP Watcher" width="860">
+<img src="docs/images/photos/in-hand.jpg" alt="Bắp running on a SenseCAP Watcher" width="300">
+<img src="docs/images/screens/family.png" alt="Bông, Bắp, Bơ, Mochi, Tí" width="860">
 
 # Bắp
 
@@ -147,6 +148,8 @@ uptime and Wi-Fi signal.
 <p align="center"><img src="docs/images/diagrams/flash-layout.svg" alt="32 MB flash layout and RAM budget" width="900"></p>
 
 ## Quick start
+
+<p align="center"><img src="docs/images/photos/hardware.jpg" alt="The Watcher: round 412×412 touch screen, scroll wheel, camera with an AI chip, mic and speaker" width="360"> <img src="docs/images/photos/unboxing.jpg" alt="The Watcher: round 412×412 touch screen, scroll wheel, camera with an AI chip, mic and speaker" width="480"><br><sub>The Watcher: round 412×412 touch screen, scroll wheel, camera with an AI chip, mic and speaker</sub></p>
 
 **You need:** a SenseCAP Watcher (W1-A/W1-B or the "for XiaoZhi" edition), a USB-C data cable, a
 Linux machine with Docker and [uv](https://docs.astral.sh/uv/), and a Gemini API key from

@@ -1,6 +1,7 @@
 <div align="center">
 
-<img src="docs/images/screens/family.png" alt="Bông, Bắp, Bơ, Mochi và Tí trên SenseCAP Watcher" width="860">
+<img src="docs/images/photos/in-hand.jpg" alt="Bắp chạy trên SenseCAP Watcher" width="300">
+<img src="docs/images/screens/family.png" alt="Bông, Bắp, Bơ, Mochi, Tí" width="860">
 
 # Bắp
 
@@ -149,6 +150,8 @@ tác vụ, stack còn trống, heap, thời gian chạy và sóng Wi-Fi.
 <p align="center"><img src="docs/images/diagrams/flash-layout.svg" alt="Bố cục flash 32 MB và ngân sách RAM" width="900"></p>
 
 ## Bắt đầu nhanh
+
+<p align="center"><img src="docs/images/photos/hardware.jpg" alt="Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa" width="360"> <img src="docs/images/photos/unboxing.jpg" alt="Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa" width="480"><br><sub>Watcher: màn hình tròn cảm ứng 412×412, núm xoay, camera có chip AI, micro và loa</sub></p>
 
 **Cần có:** SenseCAP Watcher (W1-A/W1-B hoặc bản "for XiaoZhi"), cáp USB-C dữ liệu, máy Linux có
 Docker và [uv](https://docs.astral.sh/uv/), một Gemini API key từ
