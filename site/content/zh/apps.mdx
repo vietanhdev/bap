@@ -1,0 +1,51 @@
+---
+title: 语音应用
+description: 用 assistant.json 中的数据定义的引导式语音体验。
+---
+
+import { Callout } from 'nextra/components'
+
+# 语音应用
+
+应用是写给模型的一段简短脚本：一个日常流程、一个游戏或一段引导练习。应用是
+`firmware/data/assistant.json` 中的数据，添加新应用不需要写 C++。
+
+| 应用 | id | 功能 |
+| --- | --- | --- |
+| 早间简报 | `morning_news` | 一分钟左右的天气、农历和几条要闻 |
+| 睡前故事 | `bedtime_story` | 越南民间故事，分小段讲 |
+| 英语口语练习 | `english_practice` | 慢速英语对话，用越南语纠错 |
+| 猜谜 | `quiz` | 民间谜语和常识题，带计分 |
+| 呼吸放松 | `breathing` | 一分钟跟随节奏呼吸，缓解紧张 |
+| 今天吃什么 | `what_to_eat` | 根据现有食材推荐越南菜，附做法 |
+| 专注 25 分钟 | `pomodoro` | 25 分钟工作计时，然后提醒休息 |
+| 看图说话 | `look_and_tell` | 用摄像头描述物品、读文字、给出评价 |
+| 晚间日记 | `evening_journal` | 讲讲今天，它帮你总结并保存 |
+| 趣味星座 | `fun_horoscope` | 按星座送上积极的祝福，仅供娱乐 |
+| 学韩语 | `learn_korean` | 每次三个韩语单词，慢慢说并重复 |
+
+## 打开应用
+
+- **滚轮：**休息时双击打开应用列表；转动选择，按下打开。
+- **菜单：**长按滚轮 → 应用。
+- **语音：**"打开猜谜"、"讲个睡前故事"。`app.open` 工具会载入脚本。
+- **网页设置：**聊天标签页列出所有应用，点一下就在设备上启动。
+
+<Callout type="info">
+**早间简报**也会自动运行：打开*早安问候*后，早上 6 点到 10 点之间摄像头第一次看到人时，角色会问早安并播报
+简报（每天一次）。见[摄像头与智能功能](/zh/smart-features)。
+</Callout>
+
+## 编写应用
+
+```json
+{
+  "id": "riddles",
+  "title": "Riddles",
+  "desc": "Short riddles for kids, with hints.",
+  "prompt": "Ask one short riddle at a time. Wait for the answer, give a hint if needed..."
+}
+```
+
+`id` 使用小写 `[a-z0-9_]`；`title` 和 `desc` 显示在菜单和网页设置中；`prompt` 在应用打开时发送给模型。
+运行 `python3 firmware/scripts/validate_data.py` 检查文件。

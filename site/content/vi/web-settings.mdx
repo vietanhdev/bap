@@ -1,0 +1,76 @@
+---
+title: Cài đặt web và OTA
+description: Trang cài đặt do thiết bị phục vụ, JSON API, mật khẩu và cập nhật qua Wi-Fi.
+---
+
+import { Callout } from 'nextra/components'
+
+# Cài đặt web và OTA
+
+Mỗi máy Bắp có trang cài đặt tại **`http://bap-xxxx.local`**, với `xxxx` là 4 ký tự cuối địa chỉ MAC
+(IP hiện trên màn hình cũng dùng được). Đó là một trang có ba thẻ, dùng tốt trên điện thoại.
+
+<div className="bap-shots" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+  <figure><img src="/web/web-chat.png" alt="Thẻ Trò chuyện" /><figcaption>Trò chuyện</figcaption></figure>
+  <figure><img src="/web/web-me.png" alt="Thẻ Cá nhân hóa" /><figcaption>Cá nhân hóa</figcaption></figure>
+  <figure><img src="/web/web-sys.png" alt="Thẻ Hệ thống" /><figcaption>Hệ thống</figcaption></figure>
+  <figure><img src="/web/web-health.png" alt="Tình trạng máy" /><figcaption>Tình trạng máy</figcaption></figure>
+</div>
+
+## Có thể chỉnh gì
+
+- **Trò chuyện:** nhật ký hội thoại, ô gõ chữ để nói chuyện, các câu hỏi nhanh, kênh radio, danh sách
+  ứng dụng, hẹn giờ và báo thức, ghi chú, thanh đang phát kèm nút Dừng.
+- **Cá nhân hóa:** nhân vật, tên, giọng và tính cách; những điều trợ lý ghi nhớ; ngôn ngữ; thành
+  phố (dùng cho thời tiết và chất lượng không khí).
+- **Hệ thống:** âm lượng và độ sáng (áp dụng ngay), nhận biết có người, chào buổi sáng, không làm
+  phiền ban đêm, chế độ đêm, thời gian tự nghỉ, Gemini key và model, tìm kiếm Google, tiện ích mở
+  rộng (webhook), các mạng Wi-Fi đã lưu, mật khẩu trang cài đặt, tình trạng máy (thời gian chạy, CPU,
+  RAM trong chip, PSRAM, sóng Wi-Fi, tác vụ bận nhất), cập nhật firmware và khởi động lại.
+
+Thanh **Lưu** chỉ trượt lên khi có thay đổi. Phần lớn thiết lập có hiệu lực ở lần trò chuyện kế tiếp.
+
+## Mật khẩu
+
+Ai trong cùng mạng Wi-Fi cũng mở được trang cho đến khi bạn đặt mật khẩu (thẻ Hệ thống). Khi đó
+trình duyệt sẽ hỏi mật khẩu (tên đăng nhập gõ gì cũng được). Thiết bị chỉ lưu dạng băm SHA-256 có
+salt và lặp nhiều vòng. Quên mật khẩu? Giữ núm xoay 20 giây để đưa máy về mặc định.
+
+## Cập nhật firmware qua Wi-Fi (OTA)
+
+Chọn file `xiaozhi.bin` trong thẻ Hệ thống, hoặc từ máy tính:
+
+```bash
+firmware/ota.sh bap-xxxx.local
+```
+
+Mỗi lần cập nhật mất khoảng **30 giây**. Trong lúc tải lên, từ đánh thức, nhận diện của camera và
+việc quét cảm ứng tạm dừng để dành Wi-Fi và CPU cho việc truyền; ảnh firmware được kiểm tra rồi máy
+khởi động vào phân vùng mới. Bắp chỉ cập nhật khi bạn yêu cầu, nên không bao giờ cắt ngang cuộc trò
+chuyện.
+
+## JSON API
+
+| Đường dẫn | Công dụng |
+| --- | --- |
+| `GET /api/config`, `POST /api/config` | Đọc (key được che) và lưu thiết lập |
+| `GET /api/status` | Trạng thái, bài đang phát, thời gian chạy, nhật ký, báo thức, phiên bản |
+| `GET /api/perf` | CPU và stack còn trống của từng tác vụ, heap, thời gian chạy, RSSI |
+| `POST /api/say` | Gửi chữ như thể nói |
+| `POST /api/action` | Thao tác máy (nói chuyện, dừng, sự kiện núm xoay, cài Wi-Fi, khởi động lại) |
+| `POST /api/tool` | Gọi trực tiếp một công cụ |
+| `POST /api/app` | Mở ứng dụng |
+| `GET/POST /api/wifi` | Mạng Wi-Fi đã lưu |
+| `POST /api/ota` | Tải firmware lên |
+| `GET /face`, `GET /screen.jpg` | Ảnh xem trước gương mặt, ảnh chụp màn hình trực tiếp |
+
+<Callout type="warning">
+Mọi yêu cầu `POST` cần header `X-Bap`. Trình duyệt không thể thêm header tùy chỉnh khi một trang web lạ
+gửi form sang, nên trang lạ không điều khiển được máy của bạn. Dù vậy hãy chỉ dùng trong mạng tin
+cậy và đừng mở cổng 80 ra Internet. Muốn dùng từ xa, hãy dùng VPN như Tailscale hoặc WireGuard.
+</Callout>
+
+## Ứng dụng desktop (tùy chọn)
+
+`tools/bap-desktop` là chương trình Rust nhỏ gửi thẻ trạng thái lên máy (`POST /api/notify`). Chọn máy
+bằng `--device bap-xxxx.local` hoặc biến `BAP_DEVICE`; đặt `BAP_PASSWORD` nếu trang có mật khẩu.

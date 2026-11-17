@@ -1,0 +1,53 @@
+---
+title: Voice apps
+description: Guided voice experiences, defined as data in assistant.json.
+---
+
+import { Callout } from 'nextra/components'
+
+# Voice apps
+
+An app is a short script for the model: a routine, a game or a guided exercise. Apps are plain
+data in `firmware/data/assistant.json`, so adding one needs no C++.
+
+| App | id | What it does |
+| --- | --- | --- |
+| Morning briefing | `morning_news` | Weather, the lunar date and a few headlines in about a minute |
+| Bedtime story | `bedtime_story` | Vietnamese fairy tales, told in short parts |
+| English practice | `english_practice` | Slow English conversation with corrections in Vietnamese |
+| Quiz | `quiz` | Folk riddles and general knowledge, with a score |
+| Breathing | `breathing` | One minute of paced breathing to relax |
+| What to eat today | `what_to_eat` | Vietnamese dishes from what is in your fridge, with steps |
+| Focus 25 minutes | `pomodoro` | A 25-minute work timer, then a break reminder |
+| Look and tell | `look_and_tell` | Uses the camera to describe objects, read text and comment |
+| Evening journal | `evening_journal` | Tell it about your day; it summarizes and saves it |
+| Fun horoscope | `fun_horoscope` | Upbeat wishes by zodiac sign, just for fun |
+| Learn Korean | `learn_korean` | Three Korean words at a time, slowly, with repetition |
+
+## Opening an app
+
+- **Wheel:** double-press while resting to open the app list; rotate, then press to open.
+- **Menu:** hold the wheel → Apps.
+- **Voice:** "open the quiz", "tell me a bedtime story". The `app.open` tool loads the script.
+- **Web settings:** the Chat tab lists every app; click one to start it on the device.
+
+<Callout type="info">
+The **morning briefing** also runs by itself: with *Morning greeting* on, the first time the camera
+sees someone between 6:00 and 10:00, the character says good morning and reads the briefing (once a
+day). See [Camera and smart features](/en/smart-features).
+</Callout>
+
+## Writing an app
+
+```json
+{
+  "id": "riddles",
+  "title": "Riddles",
+  "desc": "Short riddles for kids, with hints.",
+  "prompt": "Ask one short riddle at a time. Wait for the answer, give a hint if needed..."
+}
+```
+
+`id` is lowercase `[a-z0-9_]`; `title` and `desc` are shown in the menu and the web settings;
+`prompt` is sent to the model when the app opens. Run `python3 firmware/scripts/validate_data.py`
+to check the file.

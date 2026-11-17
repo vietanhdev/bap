@@ -1,0 +1,48 @@
+---
+title: Hiệu năng
+description: Độ trễ, CPU và kích thước đo trên ESP32-S3, trước và sau tối ưu.
+---
+
+# Hiệu năng
+
+Mọi con số dưới đây đều đo trên một chiếc Watcher thật, trước và sau khi tối ưu.
+
+![Trước và sau](/diagrams/performance.svg)
+
+| Chỉ số | Trước | Sau |
+| --- | --- | --- |
+| Từ đánh thức đến lúc nghe | 2,9 giây | 1,4–2,3 giây |
+| Bắt tay TLS với Gemini | 1,36 giây | ~0,1 giây (dùng lại phiên) |
+| Tìm bài trên Zing MP3 | 2,5 giây | 1,0 giây |
+| Trả lời thời tiết | 6 giây | ~2,7 giây |
+| CPU khi gương mặt đang nghe | 19,5% | 6% |
+| CPU khi phát nhạc | 14,7% | 1,3% |
+| Kích thước firmware | 3,83 MB | 3,31 MB (79% phân vùng 4 MB) |
+| Tải OTA | 112 giây | ~30 giây |
+
+## Điều gì tạo nên khác biệt
+
+- **TLS session ticket.** `TicketSsl` lưu phiên theo từng máy chủ và đưa ra ở lần kết nối sau; mọi
+  yêu cầu ra ngoài (Gemini, thời tiết, Zing, radio) đều đi qua nó.
+- **ECC nhanh hơn.** `MBEDTLS_ECP_FIXED_POINT_OPTIM` tiết kiệm khoảng 330 ms mỗi lần bắt tay đầy đủ,
+  đổi lại khoảng 4 KB RAM.
+- **HTTP thường ở chỗ an toàn.** Dữ liệu thời tiết và tọa độ công khai dùng HTTP để khỏi bắt tay; mọi
+  thứ có key hoặc dữ liệu cá nhân vẫn đi HTTPS.
+- **Vẽ lại ít hơn.** Độ trong suốt được làm tròn về khoảng 11 mức, sóng âm khi nghe nhấp nhô 3 bước,
+  gương mặt ban đêm đứng yên. LVGL chạy 25 khung hình/giây.
+- **Firmware nhỏ hơn.** Các codec âm thanh không dùng (FLAC, Vorbis, AMR, ADPCM, ALAC, SBC, LC3,
+  G.711/722) được bỏ ra khỏi bản build.
+- **OTA.** Vùng flash được xóa trước khi ghi; từ đánh thức, nhận diện camera và quét cảm ứng tạm
+  dừng trong lúc tải.
+- **Nối tiếp phiên.** Resume handle chỉ được dùng lại khi prompt và giọng không đổi, nên câu hỏi tiếp
+  theo bỏ qua phần setup.
+
+## Tự kiểm tra
+
+```bash
+curl -s http://bap-xxxx.local/api/perf | python3 -m json.tool
+```
+
+Kết quả liệt kê CPU từng tác vụ, stack còn trống ít nhất của từng tác vụ, RAM trong chip còn trống
+hiện tại và thấp nhất, PSRAM còn trống, thời gian chạy và sóng Wi-Fi. Thẻ Hệ thống hiện cùng dữ liệu
+ở mục *Tình trạng máy*.

@@ -1,0 +1,57 @@
+---
+title: FAQ and troubleshooting
+description: Wi-Fi setup, resets, keys, audio and other common questions.
+---
+
+# FAQ and troubleshooting
+
+### How do I connect to a different Wi-Fi network?
+
+Hold the wheel to open the menu → **Settings → Wi-Fi setup**, or say "set up Wi-Fi again". The
+device opens the **`Bap-XXXX`** hotspot; join it with your phone and pick the new network at
+`http://192.168.4.1`. You can also add networks in the web settings (System tab) while still
+connected.
+
+### The screen says to check the network
+
+The device keeps retrying. Check that your router is on 2.4 GHz (the ESP32-S3 has no 5 GHz) and
+that the saved password is right.
+
+### "Gemini rejected the session"
+
+The key is missing, wrong or out of quota. Open `http://bap-xxxx.local` → System → Gemini and
+paste a new key. With a paid fallback key the device switches by itself.
+
+### It does not hear the wake word
+
+Say "Hi Lili" clearly, about a metre away. *Quiet nights* turns the wake word off from 22:00 to
+06:00; press the wheel or double-tap the screen instead.
+
+### It is too loud at night
+
+Night mode (on by default) caps the volume at 35% from 22:00 to 06:00. Turn the wheel while it
+talks, or set the volume in the menu or the web settings.
+
+### I forgot the settings password
+
+Hold the wheel for 20 seconds: the device resets all settings to defaults (Wi-Fi, key and password
+included).
+
+### How do I stop the music?
+
+Double-tap the screen, say "stop the music", or press Stop in the web settings.
+
+### Can I go back to the original firmware?
+
+Yes. `firmware/restore_stock.sh` writes back your full backup. Without one, reinstall SenseCraft
+with Seeed's tools; the factory keys at `0x9000` are untouched.
+
+### Can I use it away from home?
+
+The settings page is LAN-only by design. Use a VPN such as Tailscale or WireGuard to reach your
+home network; do not expose the device to the Internet.
+
+### Where are the logs?
+
+Connect USB and open the serial port at 115200 baud, or use the conversation log in the Chat tab.
+`/api/perf` shows CPU, memory and Wi-Fi health.

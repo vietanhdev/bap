@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 24 px
  * Bpp: 4
- * Opts: --no-compress --no-prefilter --force-fast-kern-format --font Nunito-SemiBold650.ttf --size 24 --bpp 4 --format lvgl -r 0x20-0x7E,0xA0-0xFF,0x100-0x17F,0x1A0-0x1B0,0x300-0x303,0x309,0x323,0x1EA0-0x1EF9,0x2010-0x2027,0x2030-0x203A,0x20AB,0x20AC,0x2122 --lv-include lvgl.h --lv-font-name font_chat_24 -o /home/vietanhdev/Workspaces/SenseCap/firmware/src/assistant/font_chat_24.c
+ * Opts: --no-compress --no-prefilter --force-fast-kern-format --font Nunito-SemiBold650.ttf --size 24 --bpp 4 --format lvgl -r 0x20-0x7E,0xA0-0xFF,0x100-0x17F,0x1A0-0x1B0,0x300-0x303,0x309,0x323,0x1EA0-0x1EF9,0x2010-0x2027,0x2030-0x203A,0x20AB,0x20AC,0x2122 --lv-include lvgl.h --lv-font-name font_chat_24 -o firmware/src/assistant/font_chat_24.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

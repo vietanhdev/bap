@@ -1,0 +1,28 @@
+{
+  "name": "bap-docs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Documentation site for B\u1eafp, the Vietnamese voice assistant firmware for the SenseCAP Watcher",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "15.5.29",
+    "nextra": "4.6.1",
+    "nextra-theme-docs": "4.6.1",
+    "react": "19.2.9",
+    "react-dom": "19.2.9"
+  },
+  "devDependencies": {
+    "pagefind": "1.5.2"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "pnpm": {
+    "overrides": {
+      "zod": "4.1.13"
+    }
+  }
+}

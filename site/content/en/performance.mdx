@@ -1,0 +1,47 @@
+---
+title: Performance
+description: Measured latency, CPU and size improvements on the ESP32-S3.
+---
+
+# Performance
+
+Every number below was measured on a real Watcher, before and after the optimization.
+
+![Before and after](/diagrams/performance.svg)
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Wake word to listening | 2.9 s | 1.4–2.3 s |
+| TLS handshake to Gemini | 1.36 s | ~0.1 s (resumed) |
+| Zing MP3 search | 2.5 s | 1.0 s |
+| Weather answer | 6 s | ~2.7 s |
+| CPU while the listening face animates | 19.5% | 6% |
+| CPU while music plays | 14.7% | 1.3% |
+| Firmware size | 3.83 MB | 3.31 MB (79% of a 4 MB slot) |
+| OTA upload | 112 s | ~30 s |
+
+## What made the difference
+
+- **TLS session tickets.** `TicketSsl` caches the session per host and offers it on the next
+  connection; every outgoing request (Gemini, weather, Zing, radio) goes through it.
+- **Faster ECC.** `MBEDTLS_ECP_FIXED_POINT_OPTIM` saves about 330 ms per full handshake for about
+  4 KB of RAM.
+- **Plain HTTP where it is safe.** Public weather and geocoding data use HTTP, which avoids a
+  handshake; anything with keys or personal data stays on HTTPS.
+- **Fewer redraws.** Opacity changes are quantized to about 11 levels, the listening wave pulses in
+  3 steps, and the night face is static. LVGL runs at 25 fps.
+- **Smaller image.** Unused audio codecs (FLAC, Vorbis, AMR, ADPCM, ALAC, SBC, LC3, G.711/722) are
+  compiled out.
+- **OTA.** The flash region is erased ahead of the write and the wake word, camera inference and
+  touch polling pause during the upload.
+- **Session resume.** A resume handle is reused only when the prompt and voice are unchanged, so a
+  follow-up question skips the setup work.
+
+## Check it yourself
+
+```bash
+curl -s http://bap-xxxx.local/api/perf | python3 -m json.tool
+```
+
+The response lists CPU per task, minimum free stack per task, free and minimum internal RAM, free
+PSRAM, uptime and Wi-Fi signal. The System tab shows the same data as *Device health*.

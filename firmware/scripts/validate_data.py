@@ -28,6 +28,40 @@ APP_ID_RE = re.compile(r"^[a-z0-9_]+$")
 RAW_STRING_END = ')BAPDATA"'
 API_KEY_RE = re.compile(r"AIza[0-9A-Za-z_-]{20,}")
 NVS_OVERRIDE_LIMIT = 3900  # SaveCharacterOverride() drops overrides at or above this size
+TOOLS_SOURCE = FIRMWARE / "src" / "assistant" / "assistant_tools.cc"
+# Tool names are English ("group.action"); Gemini function names allow [A-Za-z0-9_.-], max 64.
+TOOL_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+TOOL_GROUPS = ("vn", "alarm", "timer", "notes", "memory", "music", "radio", "sports", "app",
+               "character", "system", "extension")
+TOOL_REF_RE = re.compile(r"\b(?:%s)\.[a-z_]+\b" % "|".join(TOOL_GROUPS))
+
+
+def ui_strings():
+    """On-screen strings the firmware passes through Localize() (menu labels included)."""
+    keys = set()
+    for path in sorted((FIRMWARE / "src").rglob("*.cc")):
+        src = path.read_text(encoding="utf-8")
+        keys |= set(re.findall(r'Localize\("((?:[^"\\]|\\.)*)"\)', src))
+        keys |= set(re.findall(r'items\.push_back\(\{"((?:[^"\\]|\\.)*)"', src))
+        keys |= set(re.findall(r'Confirm\("((?:[^"\\]|\\.)*)"', src))
+    return keys
+
+
+def tool_params():
+    """{tool name: set of parameter names} for every mcp.AddTool(...) in assistant_tools.cc."""
+    if not TOOLS_SOURCE.is_file():
+        return {}
+    src = TOOLS_SOURCE.read_text(encoding="utf-8")
+    starts = [(m.start(), m.group(1)) for m in re.finditer(r'AddTool\(\s*"([^"]+)"', src)]
+    tools = {}
+    for k, (pos, name) in enumerate(starts):
+        end = starts[k + 1][0] if k + 1 < len(starts) else len(src)
+        tools[name] = set(re.findall(r'Property\("([^"]+)"', src[pos:end]))
+    return tools
+
+
+def tool_names():
+    return set(tool_params())
 
 
 def get(obj, dotted):
@@ -126,6 +160,39 @@ def validate(path):
             if aid in app_ids:
                 errors.append(f"{where}: duplicate id")
             app_ids.add(aid)
+
+    # Every tool mentioned in a prompt must exist, and every tool name must be English snake_case.
+    tools = tool_names()
+    for name in sorted(tools):
+        if not TOOL_NAME_RE.match(name) or len(name) > 64:
+            errors.append(f"tool '{name}': name must match {TOOL_NAME_RE.pattern}")
+    if tools:
+        for ref in sorted(set(TOOL_REF_RE.findall(text))):
+            if ref not in tools:
+                errors.append(f"prompt mentions tool '{ref}', which assistant_tools.cc does not register")
+
+    # Tool calls made by the settings page must use real tools and parameter names.
+    params = tool_params()
+    page = FIRMWARE / "web" / "index.html"
+    if params and page.is_file():
+        html = page.read_text(encoding="utf-8")
+        for name, args in re.findall(r"name:'([a-z_.]+)',arguments:\{([^}]*)\}", html):
+            if name not in params:
+                errors.append(f"index.html calls unknown tool '{name}'")
+                continue
+            for arg in re.findall(r"([A-Za-z_]\w*)\s*:", args):
+                if arg not in params[name]:
+                    errors.append(f"index.html passes '{arg}' to '{name}', which takes {sorted(params[name])}")
+
+    # Every on-screen string needs a translation in every non-Vietnamese language.
+    keys = ui_strings()
+    for lang in data.get("languages", []):
+        if not isinstance(lang, dict) or lang.get("id") == "vi":
+            continue
+        ui = lang.get("ui") or {}
+        missing = sorted(k for k in keys if k not in ui)
+        if missing:
+            errors.append(f"language '{lang.get('id')}': no translation for {missing}")
 
     return errors, warnings
 

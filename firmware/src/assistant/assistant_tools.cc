@@ -418,6 +418,19 @@ std::string LogJson() {
     return out;
 }
 
+// Replaces each "{key}" in a localized template with its value.
+static std::string FillTemplate(std::string text,
+                                std::initializer_list<std::pair<const char*, std::string>> values) {
+    for (auto& [key, value] : values) {
+        std::string token = std::string("{") + key + "}";
+        for (size_t pos; (pos = text.find(token)) != std::string::npos;)
+            text.replace(pos, token.size(), value);
+    }
+    return text;
+}
+
+// Two-line date under the resting face: weekday and solar date, then the lunar date or festival.
+// Templates and weekday names are UI strings, translated through the languages[].ui table.
 std::string IdleLine() {
     struct tm t{};
     if (!Now(&t))
@@ -425,22 +438,36 @@ std::string IdleLine() {
     static const char* wd[] = {"Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư",
                                "Thứ năm",  "Thứ sáu", "Thứ bảy"};
     auto l = vn_lunar::FromSolar(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
-    char buf[160];
+    std::string solar =
+        FillTemplate(Localize("{w} {d}/{m}"), {{"w", Localize(wd[t.tm_wday])},
+                                               {"d", std::to_string(t.tm_mday)},
+                                               {"m", std::to_string(t.tm_mon + 1)}});
     const char* festival = vn_lunar::Festival(l);
-    if (festival != nullptr) {
-        snprintf(buf, sizeof(buf), "%s %d/%d\n%s", wd[t.tm_wday], t.tm_mday, t.tm_mon + 1,
-                 festival);
-    } else if (l.day == 1 || l.day == 15) {
-        snprintf(buf, sizeof(buf), "%s %d/%d\n%s tháng %d âm lịch", wd[t.tm_wday], t.tm_mday,
-                 t.tm_mon + 1, l.day == 1 ? "Mùng một" : "Rằm", l.month);
-    } else {
-        snprintf(buf, sizeof(buf), "%s %d/%d\n%d/%d âm lịch", wd[t.tm_wday], t.tm_mday,
-                 t.tm_mon + 1, l.day, l.month);
-    }
-    return buf;
+    const char* lunar_template = festival != nullptr ? festival
+                                 : l.day == 1        ? "Mùng một tháng {lm} âm lịch"
+                                 : l.day == 15       ? "Rằm tháng {lm} âm lịch"
+                                                     : "{ld}/{lm} âm lịch";
+    std::string lunar = FillTemplate(
+        Localize(lunar_template), {{"ld", std::to_string(l.day)}, {"lm", std::to_string(l.month)}});
+    return solar + "\n" + lunar;
 }
 
 std::string AlarmsText() { return DescribeAlarms(); }
+
+void RefreshIdleScreen() {
+    Application::GetInstance().Schedule([]() {
+        if (Application::GetInstance().GetDeviceState() != kDeviceStateIdle)
+            return;
+        auto display = Board::GetInstance().GetDisplay();
+        display->SetStatus(Lang::Strings::STANDBY);
+        time_t now = time(nullptr);
+        struct tm t{};
+        localtime_r(&now, &t);
+        bool night = now > 1700000000 && (t.tm_hour >= 22 || t.tm_hour < 6);
+        display->SetEmotion(night ? "sleepy" : "relaxed");  // redraws the active character
+        display->SetChatMessage("system", IdleLine().c_str());
+    });
+}
 
 void Say(const std::string& text) {
     auto* gemini = GeminiLiveProtocol::instance();
@@ -498,17 +525,17 @@ void RegisterTools() {
     auto& mcp = McpServer::GetInstance();
 
     mcp.AddTool(
-        "vn.am_lich",
+        "vn.lunar_date",
         "Tra lịch âm (âm lịch Việt Nam): đổi ngày dương sang ngày âm, can chi, ngày lễ âm lịch. "
         "Bỏ trống ngày/tháng/năm để xem hôm nay. Dùng khi người dùng hỏi hôm nay mùng mấy, "
         "ngày rằm, mùng một, năm con gì.",
-        PropertyList({Property("ngay", kPropertyTypeInteger, 0, 0, 31),
-                      Property("thang", kPropertyTypeInteger, 0, 0, 12),
-                      Property("nam", kPropertyTypeInteger, 0, 0, 2100)}),
+        PropertyList({Property("day", kPropertyTypeInteger, 0, 0, 31),
+                      Property("month", kPropertyTypeInteger, 0, 0, 12),
+                      Property("year", kPropertyTypeInteger, 0, 0, 2100)}),
         [](const PropertyList& p) -> ReturnValue {
             struct tm t{};
             bool has_now = Now(&t);
-            int d = p["ngay"].value<int>(), m = p["thang"].value<int>(), y = p["nam"].value<int>();
+            int d = p["day"].value<int>(), m = p["month"].value<int>(), y = p["year"].value<int>();
             if (d == 0 || m == 0) {
                 if (!has_now)
                     return std::string("Chưa đồng bộ được giờ.");
@@ -531,23 +558,23 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.am_sang_duong",
+        "vn.lunar_to_solar",
         "Đổi ngày âm lịch sang dương lịch. Ví dụ: rằm tháng 7 năm nay là ngày nào, Tết năm sau "
         "rơi vào ngày nào (Tết là mùng 1 tháng 1 âm). Bỏ trống năm để dùng năm âm lịch hiện tại.",
-        PropertyList({Property("ngay_am", kPropertyTypeInteger, 1, 30),
-                      Property("thang_am", kPropertyTypeInteger, 1, 12),
-                      Property("nam_am", kPropertyTypeInteger, 0, 0, 2100),
-                      Property("thang_nhuan", kPropertyTypeBoolean, false)}),
+        PropertyList({Property("lunar_day", kPropertyTypeInteger, 1, 30),
+                      Property("lunar_month", kPropertyTypeInteger, 1, 12),
+                      Property("lunar_year", kPropertyTypeInteger, 0, 0, 2100),
+                      Property("leap_month", kPropertyTypeBoolean, false)}),
         [](const PropertyList& p) -> ReturnValue {
-            int y = p["nam_am"].value<int>();
+            int y = p["lunar_year"].value<int>();
             struct tm t{};
             if (y == 0) {
                 if (!Now(&t))
                     return std::string("Chưa đồng bộ được giờ.");
                 y = vn_lunar::FromSolar(t.tm_mday, t.tm_mon + 1, t.tm_year + 1900).year;
             }
-            auto s = vn_lunar::ToSolar(p["ngay_am"].value<int>(), p["thang_am"].value<int>(), y,
-                                       p["thang_nhuan"].value<bool>());
+            auto s = vn_lunar::ToSolar(p["lunar_day"].value<int>(), p["lunar_month"].value<int>(),
+                                       y, p["leap_month"].value<bool>());
             if (s.day == 0)
                 return std::string("Năm đó không có tháng nhuận này.");
             static const char* wd[] = {"Thứ hai", "Thứ ba",  "Thứ tư",  "Thứ năm",
@@ -556,21 +583,21 @@ void RegisterTools() {
             char buf[200];
             snprintf(buf, sizeof(buf),
                      "Ngày %d tháng %d năm %s âm lịch là %s, ngày %d/%d/%d dương lịch.",
-                     p["ngay_am"].value<int>(), p["thang_am"].value<int>(),
+                     p["lunar_day"].value<int>(), p["lunar_month"].value<int>(),
                      vn_lunar::YearName(y).c_str(), wd[jd % 7], s.day, s.month, s.year);
             return std::string(buf);
         });
 
     mcp.AddTool(
-        "vn.thoi_tiet",
+        "vn.weather",
         "Xem thời tiết hiện tại và dự báo 3 ngày tại Việt Nam hoặc bất kỳ đâu. Bỏ trống địa điểm "
         "để xem nơi người dùng đang ở.",
-        PropertyList({Property("dia_diem", kPropertyTypeString, std::string(""))}),
+        PropertyList({Property("place", kPropertyTypeString, std::string(""))}),
         [](const PropertyList& p) -> ToolResult {
             auto cfg = LoadConfig();
             std::string name = cfg.city;
             double lat = cfg.lat, lon = cfg.lon;
-            auto place = p["dia_diem"].value<std::string>();
+            auto place = p["place"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
                 auto geo = HttpGet(
                     "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
@@ -634,21 +661,21 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.tin_tuc",
-        "Đọc tin tức mới nhất từ báo VnExpress. chu_de là một trong: moi_nhat, thoi_su, the_gioi, "
-        "kinh_doanh, giai_tri, the_thao, phap_luat, giao_duc, suc_khoe, doi_song, du_lich, "
-        "khoa_hoc, so_hoa, xe. Trả về các tiêu đề và tóm tắt; hãy đọc ngắn gọn 3 đến 5 tin.",
-        PropertyList({Property("chu_de", kPropertyTypeString, std::string("moi_nhat"))}),
+        "vn.news",
+        "Đọc tin tức mới nhất từ báo VnExpress. topic là một trong: latest, news, world, business, "
+        "entertainment, sports, law, education, health, family, travel, science, tech, cars. Trả "
+        "về các tiêu đề và tóm tắt; hãy đọc ngắn gọn 3 đến 5 tin.",
+        PropertyList({Property("topic", kPropertyTypeString, std::string("latest"))}),
         [](const PropertyList& p) -> ToolResult {
-            std::string topic = p["chu_de"].value<std::string>();
+            std::string topic = p["topic"].value<std::string>();
             static const char* map[][2] = {
-                {"moi_nhat", "tin-moi-nhat"},     {"thoi_su", "thoi-su"},
-                {"the_gioi", "the-gioi"},         {"kinh_doanh", "kinh-doanh"},
-                {"giai_tri", "giai-tri"},         {"the_thao", "the-thao"},
-                {"phap_luat", "phap-luat"},       {"giao_duc", "giao-duc"},
-                {"suc_khoe", "suc-khoe"},         {"doi_song", "gia-dinh"},
-                {"du_lich", "du-lich"},           {"khoa_hoc", "khoa-hoc-cong-nghe"},
-                {"so_hoa", "khoa-hoc-cong-nghe"}, {"xe", "oto-xe-may"}};
+                {"latest", "tin-moi-nhat"},     {"news", "thoi-su"},
+                {"world", "the-gioi"},          {"business", "kinh-doanh"},
+                {"entertainment", "giai-tri"},  {"sports", "the-thao"},
+                {"law", "phap-luat"},           {"education", "giao-duc"},
+                {"health", "suc-khoe"},         {"family", "gia-dinh"},
+                {"travel", "du-lich"},          {"science", "khoa-hoc-cong-nghe"},
+                {"tech", "khoa-hoc-cong-nghe"}, {"cars", "oto-xe-may"}};
             const char* slug = "tin-moi-nhat";
             for (auto& m : map)
                 if (topic == m[0])
@@ -683,12 +710,12 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.ty_gia",
-        "Tra tỷ giá ngoại tệ của Vietcombank (đổi sang đồng Việt Nam). ma là mã tiền tệ như USD, "
+        "vn.exchange_rate",
+        "Tra tỷ giá ngoại tệ của Vietcombank (đổi sang đồng Việt Nam). code là mã tiền tệ như USD, "
         "EUR, JPY, KRW, CNY, THB, SGD, AUD, GBP.",
-        PropertyList({Property("ma", kPropertyTypeString, std::string("USD"))}),
+        PropertyList({Property("code", kPropertyTypeString, std::string("USD"))}),
         [](const PropertyList& p) -> ToolResult {
-            std::string code = p["ma"].value<std::string>();
+            std::string code = p["code"].value<std::string>();
             for (auto& c : code)
                 c = toupper(c);
             auto body =
@@ -706,9 +733,9 @@ void RegisterTools() {
                    " đồng. (Dấu phẩy là phân cách hàng nghìn.)";
         });
 
-    mcp.AddTool("vn.gia_vang",
+    mcp.AddTool("vn.gold_price",
                 "Tra giá vàng trong nước hôm nay (nguồn PNJ): vàng miếng SJC, nhẫn trơn 9999 và "
-                "các loại khác. Nếu người dùng nhắc tiệm Hải Hồng thì dùng vn.gia_vang_hai_hong. "
+                "các loại khác. Nếu người dùng nhắc tiệm Hải Hồng thì dùng vn.gold_price_hai_hong. "
                 "Người dùng có thể nói \"giá vàng\", \"vàng SJC\", \"vàng nhẫn\", \"vàng 9999\" "
                 "(hay bị nghe "
                 "thành \"vàng chín chín\", \"vàng đít xi\").",
@@ -745,25 +772,25 @@ void RegisterTools() {
                 });
 
     mcp.AddTool(
-        "the_thao.bong_da",
-        "Lịch thi đấu và tỷ số bóng đá gần đây (giờ Việt Nam). giai: ngoai_hang_anh (mặc định), "
-        "c1 (Champions League), la_liga, serie_a, bundesliga, ligue_1. Dùng khi người "
+        "sports.football",
+        "Lịch thi đấu và tỷ số bóng đá gần đây (giờ Việt Nam). league: premier_league (mặc định), "
+        "champions_league, la_liga, serie_a, bundesliga, ligue_1. Dùng khi người "
         "dùng "
         "hỏi \"tối nay có trận gì\", \"tỷ số MU\", \"Ngoại hạng Anh\" (hay bị nghe thành \"ngoại "
         "hạng ăng\", \"en pi en\").",
-        PropertyList({Property("giai", kPropertyTypeString, "ngoai_hang_anh")}),
+        PropertyList({Property("league", kPropertyTypeString, "premier_league")}),
         [](const PropertyList& props) -> ToolResult {
             static const struct {
                 const char* id;
                 const char* espn;
                 const char* name;
-            } kLeagues[] = {{"ngoai_hang_anh", "eng.1", "Ngoại hạng Anh"},
-                            {"c1", "uefa.champions", "Champions League"},
+            } kLeagues[] = {{"premier_league", "eng.1", "Ngoại hạng Anh"},
+                            {"champions_league", "uefa.champions", "Champions League"},
                             {"la_liga", "esp.1", "La Liga"},
                             {"serie_a", "ita.1", "Serie A"},
                             {"bundesliga", "ger.1", "Bundesliga"},
                             {"ligue_1", "fra.1", "Ligue 1"}};
-            std::string want = props["giai"].value<std::string>();
+            std::string want = props["league"].value<std::string>();
             auto league = &kLeagues[0];
             for (auto& l : kLeagues)
                 if (want == l.id)
@@ -835,7 +862,7 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.chung_khoan",
+        "vn.stocks",
         "Xem nhanh thị trường chứng khoán Việt Nam: chỉ số VN-Index, VN30, HNX-Index, UPCoM (điểm, "
         "tăng giảm, giá trị giao dịch). Dùng khi người dùng hỏi \"chứng khoán hôm nay\", "
         "\"VN-Index\", "
@@ -886,7 +913,7 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.gia_vang_hai_hong",
+        "vn.gold_price_hai_hong",
         "Tra bảng giá vàng, bạc hiện tại của tiệm vàng Hải Hồng (Hải Hồng Jewelry, 32A-48 Trần "
         "Hưng "
         "Đạo, Hải Dương): nhẫn tròn Hải Hồng 9999, trang sức 9999/999/995/980, bạc. Dùng khi người "
@@ -963,16 +990,16 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.chat_luong_khong_khi",
+        "vn.air_quality",
         "Xem chất lượng không khí (AQI, bụi mịn PM2.5) hiện tại và lời khuyên có nên đeo khẩu "
         "trang, "
         "mở cửa sổ. Bỏ trống địa điểm để xem nơi người dùng đang ở.",
-        PropertyList({Property("dia_diem", kPropertyTypeString, std::string(""))}),
+        PropertyList({Property("place", kPropertyTypeString, std::string(""))}),
         [](const PropertyList& p) -> ToolResult {
             auto cfg = LoadConfig();
             std::string name = cfg.city;
             double lat = cfg.lat, lon = cfg.lon;
-            auto place = p["dia_diem"].value<std::string>();
+            auto place = p["place"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
                 auto geo = HttpGet(
                     "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
@@ -1023,15 +1050,16 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "vn.xo_so",
-        "Xem kết quả xổ số kiến thiết mới nhất. mien là bac, trung hoặc nam. Người dùng hay nói "
+        "vn.lottery",
+        "Xem kết quả xổ số kiến thiết mới nhất. region là north, central hoặc south. Người dùng "
+        "hay nói "
         "\"xổ số\", \"sổ xố\", \"xsmb\", \"kết quả đề\", \"lô tô\" để hỏi xổ số miền Bắc.",
-        PropertyList({Property("mien", kPropertyTypeString, std::string("bac"))}),
+        PropertyList({Property("region", kPropertyTypeString, std::string("north"))}),
         [](const PropertyList& p) -> ToolResult {
-            std::string region = p["mien"].value<std::string>();
-            const char* slug = region == "nam"     ? "mien-nam-xsmn"
-                               : region == "trung" ? "mien-trung-xsmt"
-                                                   : "mien-bac-xsmb";
+            std::string region = p["region"].value<std::string>();
+            const char* slug = region == "south"     ? "mien-nam-xsmn"
+                               : region == "central" ? "mien-trung-xsmt"
+                                                     : "mien-bac-xsmb";
             auto body =
                 HttpGet(std::string("https://xosodaiphat.com/ket-qua-xo-so-") + slug + ".rss");
             if (!body)
@@ -1066,15 +1094,15 @@ void RegisterTools() {
         cJSON_Delete(hooks);
         if (!names.empty()) {
             mcp.AddTool(
-                "mo_rong.goi",
+                "extension.call",
                 "Gọi một tiện ích mở rộng do người dùng cài (nhà thông minh, dịch vụ riêng). "
                 "Các tiện ích hiện có:" +
                     names +
-                    "\nten phải đúng một trong các tên trên; noi_dung là yêu cầu cụ thể bằng lời.",
-                PropertyList({Property("ten", kPropertyTypeString),
-                              Property("noi_dung", kPropertyTypeString, std::string(""))}),
+                    "\nname phải đúng một trong các tên trên; text là yêu cầu cụ thể bằng lời.",
+                PropertyList({Property("name", kPropertyTypeString),
+                              Property("text", kPropertyTypeString, std::string(""))}),
                 [](const PropertyList& p) -> ToolResult {
-                    std::string want = p["ten"].value<std::string>(), url;
+                    std::string want = p["name"].value<std::string>(), url;
                     cJSON* hooks = cJSON_Parse(LoadList("hooks").c_str());
                     cJSON* h = nullptr;
                     cJSON_ArrayForEach (h, hooks) {
@@ -1088,8 +1116,7 @@ void RegisterTools() {
                         return std::unexpected("Không có tiện ích tên " + want);
                     cJSON* body = cJSON_CreateObject();
                     cJSON_AddStringToObject(body, "action", want.c_str());
-                    cJSON_AddStringToObject(body, "text",
-                                            p["noi_dung"].value<std::string>().c_str());
+                    cJSON_AddStringToObject(body, "text", p["text"].value<std::string>().c_str());
                     char* txt = cJSON_PrintUnformatted(body);
                     auto http = FastNetwork()->CreateHttp(2);
                     http->SetTimeout(10000);
@@ -1112,16 +1139,16 @@ void RegisterTools() {
     }
 
     mcp.AddTool(
-        "nhan_vat.doi",
+        "character.switch",
         "Đổi sang nhân vật trợ lý khác khi người dùng muốn nói chuyện với nhân vật đó, ví dụ: "
-        "\"gọi Bắp ra đây\", \"cho mình gặp Bơ\". ten là tên nhân vật. Nhận dạng giọng nói hay "
+        "\"gọi Bắp ra đây\", \"cho mình gặp Bơ\". name là tên nhân vật. Nhận dạng giọng nói hay "
         "nghe "
         "nhầm: Bắp có thể thành bắt/bát/báp; Bơ thành bờ/bở/bố; Bông thành bong/bống/buông; Tí "
         "thành "
         "ti/tý; Mochi thành mô chi/mộc chi.",
-        PropertyList({Property("ten", kPropertyTypeString)}),
+        PropertyList({Property("name", kPropertyTypeString)}),
         [](const PropertyList& p) -> ReturnValue {
-            std::string name = p["ten"].value<std::string>();
+            std::string name = p["name"].value<std::string>();
             if (!SetActiveCharacter(name))
                 return std::string("Không có nhân vật tên " + name);
             // Voice and persona are fixed per session: restart it as the new character.
@@ -1149,17 +1176,17 @@ void RegisterTools() {
         std::string list;
         for (auto& st : Stations())
             list += (list.empty() ? "" : ", ") + st.id + " (" + st.name + ")";
-        mcp.AddTool("nhac.the_nho",
-                    "Phát nhạc có sẵn trong thẻ nhớ SD của máy (không cần mạng). tu_khoa: tên bài, "
+        mcp.AddTool("music.sd_card",
+                    "Phát nhạc có sẵn trong thẻ nhớ SD của máy (không cần mạng). query: tên bài, "
                     "ca sĩ hoặc "
                     "thư mục cần tìm; để trống để phát ngẫu nhiên tất cả. Dùng khi người dùng nói "
                     "\"mở nhạc trong "
                     "thẻ nhớ\", \"nhạc offline\", \"nhạc trong máy\".",
-                    PropertyList({Property("tu_khoa", kPropertyTypeString, "")}),
+                    PropertyList({Property("query", kPropertyTypeString, "")}),
                     [](const PropertyList& props) -> ReturnValue {
                         if (!SdMounted())
                             return std::string("Máy chưa có thẻ nhớ SD (hoặc thẻ không đọc được).");
-                        std::string kw = props["tu_khoa"].value<std::string>();
+                        std::string kw = props["query"].value<std::string>();
                         auto songs = SdSongs(kw);
                         if (songs.empty())
                             return std::string(kw.empty() ? "Thẻ nhớ chưa có bài .mp3 nào."
@@ -1173,7 +1200,7 @@ void RegisterTools() {
                     });
 
         mcp.AddTool(
-            "nhac.dung",
+            "music.stop",
             "Tắt nhạc hoặc radio đang phát. Dùng khi người dùng nói \"tắt nhạc\", \"dừng radio\", "
             "\"thôi không nghe nữa\".",
             PropertyList(), [](const PropertyList&) -> ReturnValue {
@@ -1182,16 +1209,16 @@ void RegisterTools() {
             });
 
         mcp.AddTool(
-            "radio.mo",
+            "radio.play",
             "Mở radio trực tuyến. Các kênh: " + list +
                 ". Người dùng hay nói \"mở đài\", \"nghe radio\", \"VOV một\" (có thể bị nghe "
                 "thành "
                 "\"vê ô vê\", \"vô vê\", \"vốp\"), \"giao thông\" là VOV Giao thông. Sau khi gọi "
                 "công cụ "
                 "không cần nói gì thêm; radio sẽ phát ngay. Người dùng gọi từ đánh thức để tắt.",
-            PropertyList({Property("kenh", kPropertyTypeString)}),
+            PropertyList({Property("station", kPropertyTypeString)}),
             [](const PropertyList& p) -> ReturnValue {
-                std::string want = p["kenh"].value<std::string>();
+                std::string want = p["station"].value<std::string>();
                 for (auto& st : Stations()) {
                     if (st.id == want || st.name == want) {
                         Application::GetInstance().PlayStream("radio:" + st.url, "📻 " + st.name);
@@ -1203,7 +1230,7 @@ void RegisterTools() {
     }
 
     mcp.AddTool(
-        "he_thong.cai_wifi",
+        "system.wifi_setup",
         "Đưa máy vào chế độ cài Wi-Fi: máy phát mạng Wi-Fi tên Bap-xxxx, người dùng dùng điện "
         "thoại "
         "kết nối rồi mở 192.168.4.1 để chọn mạng mới. Chỉ dùng khi người dùng yêu cầu rõ ràng như "
@@ -1219,47 +1246,47 @@ void RegisterTools() {
             return std::string("Sắp vào chế độ cài Wi-Fi.");
         });
 
-    mcp.AddTool("nhac.tim",
-                "Tìm bài hát trên Zing MP3 và trả về danh sách để người dùng chọn (tên bài, ca sĩ, "
-                "độ dài, mã bài). "
-                "Dùng khi người dùng muốn tìm bài, hỏi có bài nào của ca sĩ nào, hoặc chưa rõ muốn "
-                "nghe bài nào. "
-                "Đọc ngắn gọn 3 đến 5 bài đầu kèm số thứ tự; khi người dùng chọn thì gọi nhac.mo "
-                "với ma_bai.",
-                PropertyList({Property("tu_khoa", kPropertyTypeString)}),
-                [](const PropertyList& p) -> ToolResult {
-                    auto songs = ZingSearch(p["tu_khoa"].value<std::string>(), 8);
-                    if (!songs)
-                        return std::unexpected(songs.error());
-                    if (songs->empty())
-                        return std::string("Không tìm thấy bài nào.");
-                    std::string out;
-                    int n = 0;
-                    for (auto& s : *songs) {
-                        char dur[16];
-                        snprintf(dur, sizeof(dur), "%d:%02d", s.duration_s / 60, s.duration_s % 60);
-                        out += std::to_string(++n) + ". " + s.title + " - " + s.artists + " (" +
-                               dur + ", mã " + s.id + (s.vip ? ", chỉ VIP, không phát được" : "") +
-                               ")\n";
-                    }
-                    return out;
-                });
+    mcp.AddTool(
+        "music.search",
+        "Tìm bài hát trên Zing MP3 và trả về danh sách để người dùng chọn (tên bài, ca sĩ, "
+        "độ dài, mã bài). "
+        "Dùng khi người dùng muốn tìm bài, hỏi có bài nào của ca sĩ nào, hoặc chưa rõ muốn "
+        "nghe bài nào. "
+        "Đọc ngắn gọn 3 đến 5 bài đầu kèm số thứ tự; khi người dùng chọn thì gọi music.play "
+        "với song_id.",
+        PropertyList({Property("query", kPropertyTypeString)}),
+        [](const PropertyList& p) -> ToolResult {
+            auto songs = ZingSearch(p["query"].value<std::string>(), 8);
+            if (!songs)
+                return std::unexpected(songs.error());
+            if (songs->empty())
+                return std::string("Không tìm thấy bài nào.");
+            std::string out;
+            int n = 0;
+            for (auto& s : *songs) {
+                char dur[16];
+                snprintf(dur, sizeof(dur), "%d:%02d", s.duration_s / 60, s.duration_s % 60);
+                out += std::to_string(++n) + ". " + s.title + " - " + s.artists + " (" + dur +
+                       ", mã " + s.id + (s.vip ? ", chỉ VIP, không phát được" : "") + ")\n";
+            }
+            return out;
+        });
 
     mcp.AddTool(
-        "nhac.mo",
-        "Phát một bài hát từ Zing MP3: theo tu_khoa (tên bài và/hoặc ca sĩ, ví dụ \"Hà Nội mùa "
+        "music.play",
+        "Phát một bài hát từ Zing MP3: theo query (tên bài và/hoặc ca sĩ, ví dụ \"Hà Nội mùa "
         "thu\", "
-        "\"nhạc Sơn Tùng\") hoặc theo ma_bai lấy từ nhac.tim (khi đó tu_khoa là tên bài để hiển "
+        "\"nhạc Sơn Tùng\") hoặc theo song_id lấy từ music.search (khi đó query là tên bài để hiển "
         "thị). "
         "Dùng khi người dùng muốn nghe nhạc, mở bài hát. "
         "Sau khi gọi công cụ, nói một câu thật ngắn giới thiệu bài rồi thôi; nhạc phát ngay. Người "
         "dùng "
         "gọi từ đánh thức để dừng nhạc. Bài chỉ dành cho tài khoản VIP sẽ được bỏ qua.",
-        PropertyList({Property("tu_khoa", kPropertyTypeString, std::string("")),
-                      Property("ma_bai", kPropertyTypeString, std::string(""))}),
+        PropertyList({Property("query", kPropertyTypeString, std::string("")),
+                      Property("song_id", kPropertyTypeString, std::string(""))}),
         [](const PropertyList& p) -> ToolResult {
-            auto query = p["tu_khoa"].value<std::string>();
-            auto picked = p["ma_bai"].value<std::string>();
+            auto query = p["query"].value<std::string>();
+            auto picked = p["song_id"].value<std::string>();
             std::expected<std::vector<ZingSong>, std::string> songs;
             if (!picked.empty()) {
                 songs = std::vector<ZingSong>{
@@ -1307,12 +1334,12 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "ung_dung.mo",
+        "app.open",
         "Mở một ứng dụng theo mã (xem danh sách ứng dụng trong hướng dẫn). Trả về kịch bản; hãy "
         "làm theo kịch bản đó ngay.",
-        PropertyList({Property("ma", kPropertyTypeString)}),
+        PropertyList({Property("id", kPropertyTypeString)}),
         [](const PropertyList& p) -> ReturnValue {
-            std::string id = p["ma"].value<std::string>();
+            std::string id = p["id"].value<std::string>();
             for (auto& a : Apps()) {
                 if (a.id == id)
                     return a.prompt;
@@ -1321,56 +1348,56 @@ void RegisterTools() {
         });
 
     mcp.AddTool(
-        "hen_gio.dat",
+        "timer.set",
         "Đặt hẹn giờ đếm ngược. Dùng khi người dùng nói: hẹn giờ 5 phút, nhắc mình sau 10 phút...",
-        PropertyList({Property("giay", kPropertyTypeInteger, 1, 86400),
-                      Property("noi_dung", kPropertyTypeString, std::string(""))}),
+        PropertyList({Property("seconds", kPropertyTypeInteger, 1, 86400),
+                      Property("text", kPropertyTypeString, std::string(""))}),
         [](const PropertyList& p) -> ReturnValue {
             time_t now = time(nullptr);
             if (now < 1700000000)
                 return std::string("Chưa đồng bộ được giờ nên chưa đặt được.");
             std::lock_guard<std::mutex> lock(g_alarm_mutex);
-            Alarm a{g_next_alarm_id++, now + p["giay"].value<int>(), false,
-                    p["noi_dung"].value<std::string>()};
+            Alarm a{g_next_alarm_id++, now + p["seconds"].value<int>(), false,
+                    p["text"].value<std::string>()};
             g_alarms.push_back(a);
             PersistAlarms();
             return "Đã đặt hẹn giờ số " + std::to_string(a.id);
         });
 
     mcp.AddTool(
-        "bao_thuc.dat",
+        "alarm.set",
         "Đặt báo thức hoặc lời nhắc vào giờ cụ thể trong ngày (giờ Việt Nam, 24 giờ). Nếu giờ đó "
-        "hôm nay đã qua thì báo vào ngày mai. hang_ngay=true để lặp lại mỗi ngày.",
-        PropertyList({Property("gio", kPropertyTypeInteger, 0, 23),
-                      Property("phut", kPropertyTypeInteger, 0, 59),
-                      Property("noi_dung", kPropertyTypeString, std::string("")),
-                      Property("hang_ngay", kPropertyTypeBoolean, false)}),
+        "hôm nay đã qua thì báo vào ngày mai. daily=true để lặp lại mỗi ngày.",
+        PropertyList({Property("hour", kPropertyTypeInteger, 0, 23),
+                      Property("minute", kPropertyTypeInteger, 0, 59),
+                      Property("text", kPropertyTypeString, std::string("")),
+                      Property("daily", kPropertyTypeBoolean, false)}),
         [](const PropertyList& p) -> ReturnValue {
             struct tm t{};
             time_t now;
             if (!Now(&t, &now))
                 return std::string("Chưa đồng bộ được giờ nên chưa đặt được.");
-            t.tm_hour = p["gio"].value<int>();
-            t.tm_min = p["phut"].value<int>();
+            t.tm_hour = p["hour"].value<int>();
+            t.tm_min = p["minute"].value<int>();
             t.tm_sec = 0;
             time_t at = mktime(&t);
             if (at <= now)
                 at += 86400;
             std::lock_guard<std::mutex> lock(g_alarm_mutex);
-            Alarm a{g_next_alarm_id++, at, p["hang_ngay"].value<bool>(),
-                    p["noi_dung"].value<std::string>()};
+            Alarm a{g_next_alarm_id++, at, p["daily"].value<bool>(),
+                    p["text"].value<std::string>()};
             g_alarms.push_back(a);
             PersistAlarms();
             return "Đã đặt báo thức số " + std::to_string(a.id);
         });
 
-    mcp.AddTool("hen_gio.xem", "Xem danh sách hẹn giờ và báo thức đang chạy.", PropertyList(),
+    mcp.AddTool("timer.list", "Xem danh sách hẹn giờ và báo thức đang chạy.", PropertyList(),
                 [](const PropertyList&) -> ReturnValue { return DescribeAlarms(); });
 
-    mcp.AddTool("hen_gio.huy", "Hủy hẹn giờ hoặc báo thức theo số. so=0 để hủy tất cả.",
-                PropertyList({Property("so", kPropertyTypeInteger, 0, 0, 100000)}),
+    mcp.AddTool("timer.cancel", "Hủy hẹn giờ hoặc báo thức theo số. number=0 để hủy tất cả.",
+                PropertyList({Property("number", kPropertyTypeInteger, 0, 0, 100000)}),
                 [](const PropertyList& p) -> ReturnValue {
-                    int id = p["so"].value<int>();
+                    int id = p["number"].value<int>();
                     std::lock_guard<std::mutex> lock(g_alarm_mutex);
                     size_t before = g_alarms.size();
                     g_alarms.erase(
@@ -1381,26 +1408,26 @@ void RegisterTools() {
                     return "Đã hủy " + std::to_string(before - g_alarms.size()) + " mục.";
                 });
 
-    mcp.AddTool("ghi_chu.them",
+    mcp.AddTool("notes.add",
                 "Thêm một mục vào danh sách ghi chú của người dùng (việc cần làm, đồ cần mua...).",
-                PropertyList({Property("noi_dung", kPropertyTypeString)}),
+                PropertyList({Property("text", kPropertyTypeString)}),
                 [](const PropertyList& p) -> ReturnValue {
                     auto items = ListItems("notes");
                     if (items.size() >= 30)
                         return std::string("Danh sách đã đầy 30 mục, hãy xóa bớt.");
-                    items.push_back(p["noi_dung"].value<std::string>());
+                    items.push_back(p["text"].value<std::string>());
                     StoreItems("notes", items);
                     return "Đã ghi. Hiện có " + std::to_string(items.size()) + " mục.";
                 });
-    mcp.AddTool("ghi_chu.xem", "Đọc danh sách ghi chú của người dùng.", PropertyList(),
+    mcp.AddTool("notes.list", "Đọc danh sách ghi chú của người dùng.", PropertyList(),
                 [](const PropertyList&) -> ReturnValue {
                     return Numbered(ListItems("notes"), "Chưa có ghi chú nào.");
                 });
-    mcp.AddTool("ghi_chu.xoa", "Xóa ghi chú theo số thứ tự. so=0 để xóa hết.",
-                PropertyList({Property("so", kPropertyTypeInteger, 0, 0, 30)}),
+    mcp.AddTool("notes.remove", "Xóa ghi chú theo số thứ tự. number=0 để xóa hết.",
+                PropertyList({Property("number", kPropertyTypeInteger, 0, 0, 30)}),
                 [](const PropertyList& p) -> ReturnValue {
                     auto items = ListItems("notes");
-                    int n = p["so"].value<int>();
+                    int n = p["number"].value<int>();
                     if (n == 0)
                         items.clear();
                     else if (n <= (int)items.size())
@@ -1412,21 +1439,21 @@ void RegisterTools() {
                 });
 
     mcp.AddTool(
-        "tri_nho.luu",
+        "memory.save",
         "Ghi nhớ lâu dài một điều về người dùng (tên, sở thích, người thân, thói quen) để các lần "
         "trò chuyện sau vẫn nhớ. Chỉ lưu khi người dùng chia sẻ thông tin đáng nhớ hoặc bảo hãy "
         "nhớ.",
-        PropertyList({Property("dieu_can_nho", kPropertyTypeString)}),
+        PropertyList({Property("fact", kPropertyTypeString)}),
         [](const PropertyList& p) -> ReturnValue {
             auto items = ListItems("memory");
             if (items.size() >= 20)
                 items.erase(items.begin());
-            items.push_back(p["dieu_can_nho"].value<std::string>());
+            items.push_back(p["fact"].value<std::string>());
             StoreItems("memory", items);
             return std::string("Đã nhớ.");
         });
-    mcp.AddTool("tri_nho.quen", "Quên toàn bộ những điều đã ghi nhớ về người dùng.", PropertyList(),
-                [](const PropertyList&) -> ReturnValue {
+    mcp.AddTool("memory.forget", "Quên toàn bộ những điều đã ghi nhớ về người dùng.",
+                PropertyList(), [](const PropertyList&) -> ReturnValue {
                     StoreItems("memory", {});
                     return std::string("Đã quên hết.");
                 });

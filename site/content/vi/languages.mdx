@@ -1,0 +1,45 @@
+---
+title: Ngôn ngữ
+description: Tiếng Việt, Anh, Hàn và Trung, cho cả giọng nói lẫn màn hình.
+---
+
+import { Shots } from '@/components/Characters'
+
+# Ngôn ngữ
+
+Bắp nói **tiếng Việt** (mặc định), **tiếng Anh**, **tiếng Hàn** và **tiếng Trung**. Chọn ngôn ngữ trong
+trang cài đặt (Cá nhân hóa) hoặc menu tròn → Thiết lập → Ngôn ngữ.
+
+Khi đổi ngôn ngữ:
+
+- **câu trả lời** đổi theo: system prompt yêu cầu nhân vật nói ngôn ngữ đó;
+- **màn hình** đổi theo: dòng trạng thái ("Đang lắng nghe..."), nhãn menu và dòng ngày dưới gương
+  mặt nghỉ (thứ, ngày dương, ngày âm và ngày lễ) đều được dịch;
+- **phụ đề** tiếng Hàn và tiếng Trung dùng tập con phông Noto Sans KR/SC trong phân vùng assets, nối
+  làm phông dự phòng.
+
+<Shots items={[['korean', 'Phụ đề tiếng Hàn'], ['chinese', 'Phụ đề tiếng Trung']]} />
+
+Nguồn dữ liệu vẫn là của Việt Nam (giá vàng, xổ số, VnExpress), nhưng nhân vật giải thích bằng ngôn
+ngữ bạn chọn.
+
+## Thêm ngôn ngữ
+
+Ngôn ngữ là dữ liệu trong `firmware/data/assistant.json`:
+
+```json
+{
+  "id": "ja",
+  "name": "日本語",
+  "prompt": "Always speak Japanese with the user...",
+  "ui": {
+    "Đang lắng nghe...": "聞いています…",
+    "Thứ hai": "月曜日",
+    "{w} {d}/{m}": "{m}月{d}日 {w}"
+  }
+}
+```
+
+`ui` ánh xạ từng chuỗi giao diện tiếng Việt sang bản dịch; chuỗi thiếu sẽ dùng tiếng Việt. Mẫu ngày
+dùng `{w}` (thứ), `{d}`, `{m}`, `{ld}` và `{lm}` (ngày và tháng âm). Với chữ viết chưa có trong phông
+tích hợp, hãy thêm glyph vào phông dự phòng trong phân vùng assets.

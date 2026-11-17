@@ -1,0 +1,65 @@
+---
+title: 添加工具
+description: 在设备的 MCP 服务器上注册一个函数，Gemini 会自动看到它。
+---
+
+import { Callout } from 'nextra/components'
+
+# 添加工具
+
+工具注册在设备的 MCP 服务器上，并自动作为函数声明提供给 Gemini；你不需要改协议代码。
+
+<Callout type="info">
+真的需要 C++ 吗？给模型的固定脚本是**应用**（只需数据）。调用你自己的服务，用网页设置中声明的 **Webhook**，通过
+`extension.call` 调用。
+</Callout>
+
+## 1. 注册
+
+在 `assistant::RegisterTools()`（`firmware/src/assistant/assistant_tools.cc`）中：
+
+```cpp
+mcp.AddTool("vn.fuel_price",
+            "Xem giá xăng dầu bán lẻ hôm nay tại Việt Nam (RON 95, E5, dầu DO). Dùng khi người "
+            "dùng hỏi giá xăng.",
+            PropertyList({Property("kind", kPropertyTypeString, std::string(""))}),
+            [](const PropertyList& p) -> ToolResult {
+                auto body = HttpGet("https://example.vn/fuel.json");
+                if (!body) return std::unexpected(body.error());
+                // ... parse with cJSON, build a short spoken answer ...
+                return std::string("Xăng RON 95 hôm nay 21.000 đồng một lít.");
+            });
+```
+
+| 组成 | 说明 |
+| --- | --- |
+| 名称 | 英文 `group.action`，小写 ASCII（`vn.weather`、`timer.set`）。在 Gemini 中点会变成 `_`，所以转换后仍须唯一且不超过 64 个字符。 |
+| 描述 | 一两句话说明**何时**使用，附上用户真实会说的话。模型只能看到这些。 |
+| `Property(name, kPropertyTypeString)` | 必填字符串 |
+| `Property(name, kPropertyTypeString, std::string(""))` | 带默认值的可选字符串 |
+| `Property(name, kPropertyTypeInteger, min, max)` | 有范围的必填整数 |
+| `Property(name, kPropertyTypeInteger, default, min, max)` | 可选整数 |
+| `Property(name, kPropertyTypeBoolean, false)` | 可选布尔值 |
+| 返回 | `ReturnValue`（字符串、bool、int 或 `cJSON*`）或 `ToolResult`；出错时返回 `std::unexpected("message")` |
+
+辅助函数：`HttpGet(url)`（复用 TLS 会话，重试一次）、`UrlEncode()`、`Between()`、`CleanXmlText()`、`Now(&tm)`
+（时钟同步前返回 false）、用于小型持久列表的 `ListItems()`/`StoreItems()`、获取用户城市的 `LoadConfig()`。
+
+## 原则
+
+- 返回**简短、适合朗读**的文字：它会被读出来。
+- 网络请求控制在约 10 秒内；稍后要做的事交给调度器。
+- 代码中不放任何密钥。使用公开接口或保存在 NVS 中的密钥。
+- 只允许网页界面调用的工具：`mcp.AddUserOnlyTool(...)`。
+- 描述要简洁；工具列表会随每次会话发送。
+
+## 2. 测试
+
+```bash
+python3 firmware/scripts/validate_data.py      # also checks tool names mentioned in prompts
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.fuel_price","arguments":{"kind":"RON 95"}}'
+```
+
+然后自然地提问，并在串口日志中查找 `Tool call: vn_fuel_price`。

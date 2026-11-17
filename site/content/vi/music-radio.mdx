@@ -1,0 +1,44 @@
+---
+title: Nhạc và radio
+description: Zing MP3 kèm lời chạy theo nhạc, radio trực tuyến và nhạc offline trong thẻ SD.
+---
+
+import { Shots } from '@/components/Characters'
+
+# Nhạc và radio
+
+<Shots items={[['music-lyrics', 'Lời chạy theo nhạc'], ['music-artist', 'Tên ca sĩ'], ['radio', 'Kênh radio']]} />
+
+## Zing MP3
+
+Hỏi một bài hoặc một ca sĩ: "mở bài Hà Nội mùa thu", "nhạc Sơn Tùng". `music.search` đọc danh sách
+ngắn; `music.play` phát bài và hiện **lời bài hát chạy theo nhạc** (LRC) từng dòng dưới gương mặt
+nhân vật. Lúc nghe nhạc, nhân vật thả lỏng và lắc lư theo.
+
+## Radio
+
+| Kênh | id |
+| --- | --- |
+| VOV1 Thời sự | `vov1` |
+| VOV2 Văn hóa Đời sống | `vov2` |
+| VOV3 Âm nhạc | `vov3` |
+| VOV Giao thông Hà Nội | `vovgt_hn` |
+| VOV Giao thông TP.HCM | `vovgt_hcm` |
+| FM Hà Nội 90 | `fm_hanoi_90` |
+| FM Hà Nội 96 | `fm_hanoi_96` |
+| RFI Tiếng Việt | `rfi` |
+
+Nói "mở VOV3", bấm một kênh trong trang cài đặt, hoặc chọn **Radio** trong menu tròn. Hỗ trợ cả luồng
+MP3/AAC lẫn danh sách HLS. Danh sách kênh là dữ liệu trong `assistant.json` (`radio[]`), thêm kênh
+chỉ cần thêm một dòng.
+
+## Thẻ nhớ SD
+
+Chép file `.mp3` vào thẻ microSD (tên tiếng Việt có dấu thoải mái, FAT được mount với UTF-8). Nói "mở
+nhạc trong thẻ nhớ" hoặc "mở bài Diễm xưa trong thẻ". Tìm kiếm bỏ qua dấu và hoa thường, nên "diem
+xua" vẫn tìm ra `Nhạc/Diễm Xưa - Khánh Ly.mp3`. Không cần mạng.
+
+## Dừng nhạc
+
+- Chạm đúp màn hình (chạm một lần chỉ hiện gợi ý, nên lỡ chạm cũng không tắt nhạc).
+- Nói "tắt nhạc", hoặc bấm **Dừng** trên thanh đang phát ở trang cài đặt.

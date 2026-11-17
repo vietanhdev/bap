@@ -1,0 +1,41 @@
+---
+title: 音乐与电台
+description: 同步歌词的 Zing MP3、在线电台以及 SD 卡离线音乐。
+---
+
+import { Shots } from '@/components/Characters'
+
+# 音乐与电台
+
+<Shots items={[['music-lyrics', '同步歌词'], ['music-artist', '歌手信息'], ['radio', '电台']]} />
+
+## Zing MP3
+
+说出歌名或歌手："播放 Hà Nội mùa thu"、"来点 Sơn Tùng 的歌"。`music.search` 读出简短列表；
+`music.play` 播放歌曲，并在角色的脸下方逐行显示**同步歌词**（LRC）。播放音乐时，角色会放松地跟着摇摆。
+
+## 电台
+
+| 电台 | id |
+| --- | --- |
+| VOV1 新闻 | `vov1` |
+| VOV2 文化生活 | `vov2` |
+| VOV3 音乐 | `vov3` |
+| VOV 河内交通台 | `vovgt_hn` |
+| VOV 胡志明市交通台 | `vovgt_hcm` |
+| 河内 FM 90 | `fm_hanoi_90` |
+| 河内 FM 96 | `fm_hanoi_96` |
+| RFI 越南语 | `rfi` |
+
+说"打开 VOV3"，在网页设置中点电台按钮，或在圆形菜单中选择**电台**。支持 MP3/AAC 流和 HLS 播放列表。
+电台列表是 `assistant.json`（`radio[]`）中的数据，加一个电台只需一行。
+
+## SD 卡
+
+把 `.mp3` 文件放进 microSD 卡（越南语文件名没问题，FAT 以 UTF-8 挂载）。说"播放卡里的音乐"或"播放卡里的
+Diễm xưa"。匹配时忽略声调符号和大小写，所以 "diem xua" 也能找到 `Nhạc/Diễm Xưa - Khánh Ly.mp3`。无需联网。
+
+## 停止播放
+
+- 双击屏幕（单击只会显示提示，误触不会停掉音乐）。
+- 说"停止音乐"，或在网页设置的播放栏上点**停止**。

@@ -2,6 +2,8 @@
 // TicketSsl, TLS session tickets cached per host and offered on reconnect.
 #include "ticket_ssl.h"
 
+#include <utility>
+
 #include <esp_crt_bundle.h>
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -326,9 +328,39 @@ void TicketSsl::ReceiveTask() {
             break;
         }
 
+        data.resize(ret);
+        RememberCloseFrame(data);
         if (stream_callback_) {
-            data.resize(ret);
             stream_callback_(data);
         }
     }
+}
+
+namespace {
+std::mutex g_close_mutex;
+std::string g_close_reason;
+}  // namespace
+
+// A server that ends a WebSocket session sends a close frame (0x88, length, 2-byte code, UTF-8
+// reason) as the last bytes before closing. The WebSocket layer drops its payload, so it is kept
+// here for diagnostics: Gemini puts the cause there (quota, invalid argument, deadline...).
+void TicketSsl::RememberCloseFrame(const std::string& chunk) {
+    for (size_t i = 0; i + 4 <= chunk.size(); ++i) {
+        if ((uint8_t)chunk[i] != 0x88)
+            continue;
+        size_t len = (uint8_t)chunk[i + 1];
+        if (len < 2 || len > 125 || i + 2 + len != chunk.size())
+            continue;
+        int code = ((uint8_t)chunk[i + 2] << 8) | (uint8_t)chunk[i + 3];
+        if (code < 1000 || code > 4999)
+            continue;
+        std::lock_guard<std::mutex> lock(g_close_mutex);
+        g_close_reason = std::to_string(code) + " " + chunk.substr(i + 4, len - 2);
+        return;
+    }
+}
+
+std::string TicketSsl::TakeCloseReason() {
+    std::lock_guard<std::mutex> lock(g_close_mutex);
+    return std::exchange(g_close_reason, std::string());
 }

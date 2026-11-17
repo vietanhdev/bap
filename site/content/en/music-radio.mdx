@@ -1,0 +1,44 @@
+---
+title: Music and radio
+description: Zing MP3 with synced lyrics, live radio and offline music from the SD card.
+---
+
+import { Shots } from '@/components/Characters'
+
+# Music and radio
+
+<Shots items={[['music-lyrics', 'Synced lyrics'], ['music-artist', 'Artist line'], ['radio', 'Radio station']]} />
+
+## Zing MP3
+
+Ask for a song or an artist: "play Hà Nội mùa thu", "some Sơn Tùng songs". `music.search` reads
+back a short list; `music.play` streams the song and shows its **synced lyrics** (LRC) line by
+line under the character's face. The face relaxes and sways while music plays.
+
+## Radio
+
+| Station | id |
+| --- | --- |
+| VOV1 News | `vov1` |
+| VOV2 Culture and life | `vov2` |
+| VOV3 Music | `vov3` |
+| VOV Traffic Hanoi | `vovgt_hn` |
+| VOV Traffic Ho Chi Minh City | `vovgt_hcm` |
+| Hanoi FM 90 | `fm_hanoi_90` |
+| Hanoi FM 96 | `fm_hanoi_96` |
+| RFI Vietnamese | `rfi` |
+
+Say "open VOV3", tap a station chip in the web settings, or pick **Radio** in the round menu.
+Both MP3/AAC streams and HLS playlists are supported. The station list is data in
+`assistant.json` (`radio[]`), so adding a station is a one-line change.
+
+## SD card
+
+Put `.mp3` files on a microSD card (Vietnamese file names are fine; FAT is mounted with UTF-8). Say
+"play music from the card" or "play Diễm xưa from the card". Matching ignores accents and case, so
+"diem xua" finds `Nhạc/Diễm Xưa - Khánh Ly.mp3`. No network is needed.
+
+## Stopping
+
+- Double-tap the screen (a single tap shows a hint first, so a stray touch never stops the music).
+- Say "stop the music", or press **Stop** on the now-playing bar in the web settings.

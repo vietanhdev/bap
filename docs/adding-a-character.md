@@ -31,7 +31,7 @@ Fields (validated by `firmware/scripts/validate_data.py`, used by `assistant_con
 | Field | Required | Rules |
 | --- | --- | --- |
 | `id` | yes | Lowercase `[a-z0-9_]`, at most 13 characters (stored in NVS as `c_<id>`; NVS keys are limited to 15). Unique. Never rename it later: settings and overrides are keyed by it. |
-| `name` | yes | Display name with diacritics. The user can say it to switch (`nhan_vat.doi` tool, `SetActiveCharacter()`). |
+| `name` | yes | Display name with diacritics. The user can say it to switch (`character.switch` tool, `SetActiveCharacter()`). |
 | `voice` | yes | A Gemini Live prebuilt voice, for example `Leda`, `Aoede`, `Kore`, `Zephyr`, `Puck`, `Charon`, `Fenrir`, `Orus`, `Achird` (the web UI list is `VOICES` in `firmware/web/index.html`). |
 | `persona` | yes | Vietnamese system prompt for the character: who it is, how it addresses itself and the user, personality. Keep it to a short paragraph; `common_rules` is appended automatically by `SystemPrompt()`, so don't repeat the shared rules. |
 | `look.shape` | yes | One of the shapes drawn by `BuildBody()` in `firmware/src/assistant/assistant_face.cc`: `cloud`, `corn`, `avocado`, `mochi`, `robot`. Unknown values fall back to `cloud`. |
@@ -96,7 +96,7 @@ firmware/build.sh && firmware/flash_app.sh     # or: firmware/ota.sh bap-xxxx.lo
 ```
 
 - Rotate the wheel while resting: the new character appears with its tagline.
-- Or say "cho mình gặp Na": the `nhan_vat.doi` tool switches and restarts the session with the
+- Or say "cho mình gặp Na": the `character.switch` tool switches and restarts the session with the
   new voice and persona.
 - In the web UI you can tweak the name, voice and persona without rebuilding. Those edits are
   saved per device in NVS (`SaveCharacterOverride()`); copy the final version back into

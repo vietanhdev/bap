@@ -1,0 +1,52 @@
+---
+title: 음성 앱
+description: assistant.json에 데이터로 정의된, 안내가 있는 음성 경험.
+---
+
+import { Callout } from 'nextra/components'
+
+# 음성 앱
+
+앱은 모델을 위한 짧은 대본입니다. 루틴이나 게임, 안내가 있는 연습 같은 것이죠. 앱은
+`firmware/data/assistant.json`의 데이터라서 새로 추가할 때 C++가 필요 없습니다.
+
+| 앱 | id | 하는 일 |
+| --- | --- | --- |
+| 아침 브리핑 | `morning_news` | 날씨, 음력 날짜, 주요 뉴스 몇 개를 1분 정도로 |
+| 잠자리 동화 | `bedtime_story` | 베트남 전래 동화를 짧게 나눠서 |
+| 영어 말하기 연습 | `english_practice` | 천천히 영어로 대화하고 베트남어로 고쳐 줘요 |
+| 퀴즈 | `quiz` | 민속 수수께끼와 상식 문제, 점수 계산 |
+| 호흡 | `breathing` | 긴장을 푸는 1분 호흡 |
+| 오늘 뭐 먹지 | `what_to_eat` | 냉장고 재료로 만드는 베트남 요리와 조리법 |
+| 25분 집중 | `pomodoro` | 25분 작업 타이머 후 휴식 알림 |
+| 보고 말하기 | `look_and_tell` | 카메라로 물건을 설명하고 글자를 읽고 의견을 말해요 |
+| 저녁 일기 | `evening_journal` | 오늘 이야기를 들려주면 요약해서 저장해요 |
+| 재미있는 운세 | `fun_horoscope` | 별자리별 긍정적인 덕담, 재미로만 |
+| 한국어 배우기 | `learn_korean` | 한 번에 한국어 단어 세 개, 천천히 반복 |
+
+## 앱 열기
+
+- **휠:** 쉬는 중에 두 번 누르면 앱 목록이 열립니다. 돌려서 고르고 눌러서 엽니다.
+- **메뉴:** 휠 길게 누르기 → 앱.
+- **음성:** "퀴즈 열어 줘", "동화 들려줘". `app.open` 도구가 대본을 불러옵니다.
+- **웹 설정:** 대화 탭에 모든 앱이 있고, 누르면 기기에서 시작합니다.
+
+<Callout type="info">
+**아침 브리핑**은 저절로 실행되기도 합니다. *아침 인사*를 켜 두면 6시에서 10시 사이 카메라가 처음
+사람을 볼 때 캐릭터가 인사하고 브리핑을 읽어 줍니다(하루 한 번). [카메라와 스마트
+기능](/ko/smart-features)을 보세요.
+</Callout>
+
+## 앱 만들기
+
+```json
+{
+  "id": "riddles",
+  "title": "Riddles",
+  "desc": "Short riddles for kids, with hints.",
+  "prompt": "Ask one short riddle at a time. Wait for the answer, give a hint if needed..."
+}
+```
+
+`id`는 소문자 `[a-z0-9_]`, `title`과 `desc`는 메뉴와 웹 설정에 표시되고, `prompt`는 앱을 열 때
+모델에 전달됩니다. `python3 firmware/scripts/validate_data.py`로 파일을 확인하세요.

@@ -1,0 +1,75 @@
+---
+title: Thêm nhân vật
+description: Nhân vật là dữ liệu. Dùng lại một dáng có sẵn thì không cần viết C++.
+---
+
+# Thêm nhân vật
+
+Nhân vật mới dùng lại một dáng có sẵn **không cần sửa C++**: chỉ cần thêm một mục vào
+`firmware/data/assistant.json`.
+
+## 1. Thêm dữ liệu
+
+```json
+{
+  "id": "na",
+  "name": "Na",
+  "kind": "quả na xanh",
+  "voice": "Zephyr",
+  "tagline": "Tò mò, hay hỏi, thích khám phá",
+  "persona": "Bạn là Na, một quả na xanh tò mò... Bạn xưng \"Na\" và gọi người dùng là \"bạn\".",
+  "look": {
+    "shape": "mochi",
+    "body": "#A8D88A",
+    "accent": "#6FA556",
+    "ink": "#2F4022",
+    "cheek": "#F5A77B"
+  }
+}
+```
+
+| Trường | Bắt buộc | Quy tắc |
+| --- | --- | --- |
+| `id` | có | Chữ thường `[a-z0-9_]`, tối đa 13 ký tự (lưu trong NVS dạng `c_<id>`). Không trùng; đừng đổi sau này. |
+| `name` | có | Tên hiển thị. Người dùng nói tên này để đổi nhân vật. |
+| `voice` | có | Giọng có sẵn của Gemini Live: `Leda`, `Aoede`, `Kore`, `Zephyr`, `Puck`, `Charon`, `Fenrir`, `Orus`, `Achird`… |
+| `persona` | có | Nhân vật là ai, xưng hô thế nào. Một đoạn ngắn; `common_rules` được tự động nối thêm. |
+| `look.shape` | có | `cloud`, `corn`, `avocado`, `mochi` hoặc `robot` |
+| `look.body/accent/ink/cheek` | nên có | `#RRGGBB`. Nền màn hình tối (`#15131F`), nhớ kiểm tra độ tương phản. |
+| `kind`, `tagline` | nên có | Mô tả ngắn và câu hiện khi chọn nhân vật |
+
+```bash
+python3 firmware/scripts/validate_data.py
+```
+
+## 2. Ảnh xem trước trên web (tùy chọn)
+
+Thiết bị tự vẽ gương mặt. Trang cài đặt hiện ảnh GIF xem trước do `firmware/assets/make_faces.py`
+tạo; thêm nhân vật vào bảng `CHARACTERS` của file đó rồi chạy:
+
+```bash
+uv run --with pillow python firmware/assets/make_faces.py firmware/assets/faces --only na
+firmware/build_assets.sh && firmware/flash_assets.sh
+```
+
+## 3. Dáng mới (chỉ khi cần)
+
+Thêm một nhánh vào `BuildBody()` trong `firmware/src/assistant/assistant_face.cc`, dùng các hàm
+`Shape()`, `Arc()` và `Hex()` trong không gian thiết kế 320×320, thêm tên dáng vào `KNOWN_SHAPES` trong
+`validate_data.py`, và một hàm vẽ tương ứng trong `make_faces.py`. Kiểm tra đủ 23 biểu cảm; đường dẫn
+`/screen.jpg` cho bạn ảnh chụp màn hình.
+
+## 4. Thử
+
+```bash
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+```
+
+Xoay núm, hoặc nói "cho mình gặp Na".
+
+## Mẹo viết tính cách
+
+- Chốt cách nhân vật xưng hô với chính mình và với người dùng.
+- Tả giọng điệu bằng vài từ; danh sách câu cửa miệng dài sẽ bị lặp lại quá nhiều.
+- Mọi thứ đều được nói ra: không emoji, không định dạng.
+- Giữ dưới khoảng 1.500 byte vì nó được gửi ở mỗi phiên.

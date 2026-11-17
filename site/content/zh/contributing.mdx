@@ -1,0 +1,35 @@
+---
+title: 参与贡献
+description: 分支、提交、检查，以及绝不能提交的内容。
+---
+
+# 参与贡献
+
+- `main` 始终可以编译。请从 `feat/<short-name>` 或 `fix/<short-name>` 这样的分支发起 Pull Request。
+- 提交遵循 [Conventional Commits](https://www.conventionalcommits.org/)：`feat:`、`fix:`、`docs:`、`refactor:`、`test:`、`chore:`。
+- 代码、文件名、函数名和工具名使用英文。越南语用于用户听到和看到的内容。
+- `vendor/` 中的修改必须附带重新生成的补丁：`firmware/scripts/export_patch.sh`。
+
+## 发起 PR 之前
+
+```bash
+for t in firmware/tests/*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t || echo "FAIL $t"; done
+python3 firmware/scripts/validate_data.py
+clang-format -i firmware/src/*/*.cc firmware/src/*/*.h
+firmware/build.sh
+```
+
+CI 会运行主机测试、数据检查、clang-format、以空 API 密钥编译固件，以及 gitleaks 密钥扫描。
+
+## 绝不提交
+
+`secrets/`、`backup/`（闪存备份含设备密钥）、`server/.env`、`vendor/`、`firmware/build/`、编译日志，或编译好的
+`xiaozhi.bin`（可能含有你的 API 密钥）。如果密钥上了 GitHub，请立即吊销。
+
+## 本站
+
+文档站点位于 `site/`（Next.js + Nextra）。页面是 `site/content/<locale>/` 中的 MDX 文件，每种语言一个文件夹。
+
+```bash
+cd site && pnpm install && pnpm dev
+```

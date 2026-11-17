@@ -12,6 +12,8 @@ void LogTurn(const char* role, const std::string& text);  // conversation log fo
 std::string LogJson();
 std::string IdleLine();  // "Thứ hai 16/11\n8/10 âm lịch" for the resting screen
 std::string AlarmsText();
+void RefreshIdleScreen();  // redraws the resting status and date line (e.g. after a language
+                           // change)
 // Scroll wheel (see assistant_input.cc). Rotate/Click return true when they consumed the event.
 bool OnWheelRotate(bool clockwise);
 bool OnWheelClick();

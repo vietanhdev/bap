@@ -1,0 +1,35 @@
+---
+title: Camera and smart features
+description: Presence detection, morning greeting, night mode and quiet hours.
+---
+
+import { Callout } from 'nextra/components'
+
+# Camera and smart features
+
+The Watcher's camera has its own AI chip, a Himax HX6538, which runs a person detector **on the
+chip**. Bắp uses it for small, private touches. No image is sent anywhere and no Gemini quota is
+used.
+
+| Feature | What happens | Default |
+| --- | --- | --- |
+| **Notice people** | When someone appears, the screen wakes up and the character looks happy | off |
+| **Morning greeting** | The first time it sees you between 6:00 and 10:00, the character greets you and reads the morning briefing (weather, lunar date, headlines). Once a day; needs *Notice people* | off |
+| **Greet people** | Says hello when someone arrives | off |
+| **Night mode** | 22:00–06:00: dim screen, volume capped at 35%, calm face (no breathing, still "zzz") | on |
+| **Quiet nights** | 22:00–06:00: the wake word is off, so TV or conversation cannot wake it. Double-tap the screen or press the wheel to talk | off |
+| **Low battery** | Reminds you to plug it in | on |
+
+Turn them on in the web settings (System tab) or in the round menu → Settings.
+
+<Callout type="info">
+Camera photos only go to Gemini when the assistant calls `self.camera.take_photo`, for example in
+the *Look and tell* app or when you ask "what am I holding?".
+</Callout>
+
+## Other sensors and hardware
+
+- **Microphone array** with Espressif's AFE (noise suppression, echo cancellation) and the
+  "Hi Lili" wake word model running on the device.
+- **SD card** for offline music (shares the SPI bus with the camera).
+- **Battery** level and charging state, shown in the status bar.

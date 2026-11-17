@@ -1,0 +1,38 @@
+---
+title: 기여하기
+description: 브랜치, 커밋, 점검, 그리고 절대 커밋하지 말아야 할 것.
+---
+
+# 기여하기
+
+- `main`은 항상 빌드됩니다. `feat/<short-name>`이나 `fix/<short-name>` 같은 브랜치에서 풀 리퀘스트를
+  여세요.
+- 커밋은 [Conventional Commits](https://www.conventionalcommits.org/)를 따릅니다: `feat:`, `fix:`,
+  `docs:`, `refactor:`, `test:`, `chore:`.
+- 코드, 파일 이름, 함수 이름, 도구 이름은 영어로 씁니다. 베트남어는 사용자가 듣고 읽는 것에 씁니다.
+- `vendor/`의 변경은 다시 만든 패치와 함께 와야 합니다: `firmware/scripts/export_patch.sh`.
+
+## PR을 열기 전에
+
+```bash
+for t in firmware/tests/*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t || echo "FAIL $t"; done
+python3 firmware/scripts/validate_data.py
+clang-format -i firmware/src/*/*.cc firmware/src/*/*.h
+firmware/build.sh
+```
+
+CI는 호스트 테스트, 데이터 검사, clang-format, 빈 API 키로 펌웨어 빌드, gitleaks 비밀 검사를 실행합니다.
+
+## 절대 커밋하지 말 것
+
+`secrets/`, `backup/`(플래시 덤프에는 기기 키가 있음), `server/.env`, `vendor/`, `firmware/build/`, 빌드
+로그, 빌드한 `xiaozhi.bin`(API 키가 들어 있을 수 있음). 키가 GitHub에 올라갔다면 즉시 폐기하세요.
+
+## 이 사이트
+
+문서 사이트는 `site/`(Next.js + Nextra)에 있습니다. 페이지는 언어별 폴더 `site/content/<locale>/`의 MDX
+파일입니다.
+
+```bash
+cd site && pnpm install && pnpm dev
+```

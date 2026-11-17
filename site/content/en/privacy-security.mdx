@@ -1,0 +1,53 @@
+---
+title: Privacy and security
+description: Where your audio, images and keys go, and how the device is protected.
+---
+
+import { Callout } from 'nextra/components'
+
+# Privacy and security
+
+## No relay server
+
+The device opens a TLS connection to `generativelanguage.googleapis.com` and nothing else sits in
+the middle. There is no Bắp cloud, no account and no analytics.
+
+## What leaves the device, and when
+
+- **Audio** is streamed to Gemini only during a conversation: after the wake word, a wheel press
+  or a double-tap. The session closes after 30 seconds of silence.
+- **Images** are sent only when the assistant calls the camera tool (`self.camera.take_photo`).
+  Presence detection runs on the camera's own AI chip and never sends an image.
+- **Tool requests** go straight to the public data source (Open-Meteo, VnExpress, Vietcombank,
+  PNJ, CafeF, ESPN, Zing MP3, radio stations). Your city is used for weather; nothing else about
+  you is sent.
+- **Webhooks** you add yourself receive the request text you send them.
+
+## The API key
+
+The key is stored in the device's NVS or built into the firmware from `secrets/GEMINI_API_KEY`.
+The browser only ever sees a masked key (`AIza••••••••xxxx`). Anyone with physical access to the
+device, or to a `xiaozhi.bin` you built with a key, can extract it: use a dedicated key with a
+quota limit and never share your built `.bin`.
+
+<Callout type="info">
+Tip: use a free-tier key as the main key and a separate billing-enabled key only as the fallback.
+The device always tries the free key first.
+</Callout>
+
+## The settings page
+
+- LAN only. Never forward port 80 to the Internet; use a VPN for remote access.
+- Optional password (HTTP Basic, salted and iterated SHA-256 stored in NVS).
+- Every `POST` requires an `X-Bap` header, which blocks cross-site form attacks from other
+  websites.
+
+## Flash and factory keys
+
+`nvsfactory` (`0x9000`) is never written. `firmware/restore_stock.sh` writes back a full backup,
+after checking its SHA-256.
+
+## For contributors
+
+Never commit `secrets/`, `backup/`, `vendor/`, `firmware/build/`, build logs or a built `.bin`.
+CI runs gitleaks on every push. Third-party code is read before it is built or flashed.

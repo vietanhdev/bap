@@ -1,0 +1,72 @@
+---
+title: 添加角色
+description: 角色就是数据。复用已有的身体形状就完全不需要写 C++。
+---
+
+# 添加角色
+
+复用已有身体形状的新角色**不需要改 C++**：只需在 `firmware/data/assistant.json` 中加一项。
+
+## 1. 添加条目
+
+```json
+{
+  "id": "na",
+  "name": "Na",
+  "kind": "a green custard apple",
+  "voice": "Zephyr",
+  "tagline": "Curious, asks a lot, loves exploring",
+  "persona": "You are Na, a curious little custard apple... You call yourself \"Na\" and the user \"bạn\".",
+  "look": {
+    "shape": "mochi",
+    "body": "#A8D88A",
+    "accent": "#6FA556",
+    "ink": "#2F4022",
+    "cheek": "#F5A77B"
+  }
+}
+```
+
+| 字段 | 必填 | 规则 |
+| --- | --- | --- |
+| `id` | 是 | 小写 `[a-z0-9_]`，最多 13 个字符（在 NVS 中存为 `c_<id>`）。唯一，之后不要改名。 |
+| `name` | 是 | 显示名称。用户说出这个名字即可切换。 |
+| `voice` | 是 | Gemini Live 预置声音：`Leda`、`Aoede`、`Kore`、`Zephyr`、`Puck`、`Charon`、`Fenrir`、`Orus`、`Achird`… |
+| `persona` | 是 | 角色是谁、如何称呼自己和用户。一小段即可；`common_rules` 会自动追加。 |
+| `look.shape` | 是 | `cloud`、`corn`、`avocado`、`mochi` 或 `robot` |
+| `look.body/accent/ink/cheek` | 建议 | `#RRGGBB`。屏幕背景是深色（`#15131F`），注意对比度。 |
+| `kind`、`tagline` | 建议 | 简短描述，以及选择角色时显示的一句话 |
+
+```bash
+python3 firmware/scripts/validate_data.py
+```
+
+## 2. 网页预览（可选）
+
+设备会原生绘制表情。网页设置中的 GIF 预览由 `firmware/assets/make_faces.py` 生成；把角色加入它的 `CHARACTERS` 表，然后：
+
+```bash
+uv run --with pillow python firmware/assets/make_faces.py firmware/assets/faces --only na
+firmware/build_assets.sh && firmware/flash_assets.sh
+```
+
+## 3. 新的身体形状（仅在需要时）
+
+在 `firmware/src/assistant/assistant_face.cc` 的 `BuildBody()` 中添加分支，在 320×320 设计空间中使用 `Shape()`、
+`Arc()` 和 `Hex()` 辅助函数；把名称加入 `validate_data.py` 的 `KNOWN_SHAPES`，并在 `make_faces.py` 中添加对应的
+绘制函数。检查全部 23 种表情；`/screen.jpg` 可以截取屏幕。
+
+## 4. 试一试
+
+```bash
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+```
+
+转动滚轮，或说"我想和 Na 聊天"。
+
+## 性格写作小贴士
+
+- 定好角色怎么称呼自己和用户。
+- 用几个词描述语气；长长的口头禅列表会被过度使用。
+- 一切都会被说出来：不要用 emoji，也不要用格式。
+- 控制在约 1,500 字节以内，它会随每次会话发送。

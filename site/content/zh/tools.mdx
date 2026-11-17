@@ -1,0 +1,77 @@
+---
+title: 工具
+description: 助手能调用的全部工具，从农历到 Zing MP3。
+---
+
+import { Callout } from 'nextra/components'
+
+# 工具
+
+工具是模型在对话中可以调用的函数。它们**在设备上**运行，直接访问公开数据源，返回一段简短的回答让角色读出来。
+不需要额外的 API 密钥。
+
+## 日常生活（越南）
+
+| 工具 | 功能 | 来源 |
+| --- | --- | --- |
+| `vn.lunar_date` | 任意公历日期对应的农历、干支纪年和农历节日 | 设备端算法 |
+| `vn.lunar_to_solar` | 农历转公历（"明年春节是哪天？"） | 设备端算法 |
+| `vn.weather` | 任何地点的当前天气和 3 天预报 | Open-Meteo |
+| `vn.air_quality` | AQI 和 PM2.5，附戴口罩、开窗建议 | Open-Meteo |
+| `vn.news` | 按主题的最新头条（最新、国际、商业、体育、科技…） | VnExpress RSS |
+| `vn.exchange_rate` | 外汇汇率（USD、EUR、JPY、KRW、CNY…） | Vietcombank |
+| `vn.gold_price` | SJC 金条、9999 金戒等金价 | PNJ |
+| `vn.gold_price_hai_hong` | Hải Hồng 金店的金银报价牌 | 店铺报价牌 |
+| `vn.stocks` | VN-Index、VN30、HNX-Index、UPCoM | CafeF |
+| `vn.lottery` | 北部、中部或南部的最新彩票结果 | RSS |
+| `sports.football` | 越南时间的赛程和比分：英超、欧冠、西甲、意甲、德甲、法甲 | ESPN |
+
+## 时间、笔记与记忆
+
+| 工具 | 功能 |
+| --- | --- |
+| `timer.set` | 倒计时（"10 分钟后提醒我"） |
+| `alarm.set` | 指定时刻的闹钟或提醒，可每天重复 |
+| `timer.list` | 列出正在运行的计时器和闹钟 |
+| `timer.cancel` | 取消一项，`number=0` 取消全部 |
+| `notes.add`、`notes.list`、`notes.remove` | 待办或购物清单（最多 30 条） |
+| `memory.save`、`memory.forget` | 关于你的长期记忆（名字、喜好、家人），每次会话都会带上 |
+
+## 音乐、电台与应用
+
+| 工具 | 功能 |
+| --- | --- |
+| `music.search` | 在 Zing MP3 搜索并读出简短列表 |
+| `music.play` | 按歌名或 id 播放 Zing MP3 歌曲，同步歌词 |
+| `music.sd_card` | 播放 SD 卡里的音乐，离线可用，搜索忽略声调符号 |
+| `radio.play` | 播放电台（VOV1–3、VOV 交通台、河内 FM、RFI） |
+| `music.stop` | 停止音乐或电台 |
+| `app.open` | 打开一个[语音应用](/zh/apps) |
+| `character.switch` | 切换到另一个[角色](/zh/characters) |
+
+## 设备与扩展
+
+| 工具 | 功能 |
+| --- | --- |
+| `system.wifi_setup` | 让设备进入 Wi-Fi 配置模式（仅在明确要求时） |
+| `extension.call` | 调用你在网页设置中声明的 Webhook（Home Assistant、n8n、自己的服务器） |
+| `self.camera.take_photo` | 拍照并让模型查看（上游工具） |
+| `self.audio_speaker.set_volume`、`self.screen.set_brightness` | 音量和亮度（上游工具） |
+
+<Callout type="info">
+工具名是英文的 `group.action` 标识符。Gemini 函数名不能包含点，所以桥接层会把 `vn.weather` 转成
+`vn_weather` 再转回来。模型用来判断何时调用工具的描述用越南语写成，并附有示例说法。
+</Callout>
+
+## 可选：Google 搜索
+
+有开通结算的密钥时，可以在网页设置中打开 Google 搜索。如果开启搜索后会话被拒绝，设备会关闭搜索并重试一次。
+
+## 不用说话也能测试工具
+
+网页服务器开放了设备的 MCP 服务器：
+
+```bash
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.weather","arguments":{"place":"Hà Nội"}}'
+```

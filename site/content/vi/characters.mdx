@@ -1,0 +1,41 @@
+---
+title: Nhân vật
+description: Bông, Bắp, Bơ, Mochi và Tí, mỗi bạn một giọng, một tính cách và gương mặt vẽ trực tiếp trên máy.
+---
+
+import { Characters, Shots } from '@/components/Characters'
+
+# Nhân vật
+
+Bắp có năm nhân vật. Mỗi nhân vật có giọng Gemini, tính cách và gương mặt riêng, vẽ trực tiếp bằng
+LVGL: 23 biểu cảm, chớp mắt, thở nhẹ và miệng nhép theo lời nói.
+
+<Characters lang="vi" />
+
+## Đổi nhân vật
+
+- **Núm xoay:** xoay khi đang nghỉ, nhân vật tiếp theo hiện ra kèm câu giới thiệu.
+- **Cảm ứng:** vuốt ngang trên màn hình nghỉ.
+- **Giọng nói:** "gọi Bắp ra đây", "cho mình gặp Bơ". Công cụ `character.switch` đổi nhân vật và
+  mở lại phiên với giọng và tính cách mới.
+- **Menu:** giữ núm xoay → Nhân vật.
+- **Trang cài đặt:** thẻ Cá nhân hóa.
+
+<Shots items={[['idle-bong', 'Bông đang nghỉ'], ['listening', 'Bắp đang nghe'], ['listening-bo', 'Bơ đang nghe'], ['listen-mochi', 'Mochi đang nghe'], ['listen-ti', 'Tí đang nghe'], ['menu-characters', 'Menu nhân vật']]} />
+
+## Cá nhân hóa không cần build lại
+
+Trong trang cài đặt bạn có thể đổi tên, đổi giọng và viết lại tính cách của nhân vật. Thay đổi được
+lưu riêng trên từng máy (NVS), nên hai máy chạy cùng firmware vẫn có tính cách khác nhau: ví dụ
+một bé Bơ trả lời gọn gàng, hài hước trên bàn này và một bé Bông dịu dàng trên bàn kia. Để trống
+một ô sẽ trả về giá trị gốc.
+
+## Gương mặt được vẽ thế nào
+
+Nhân vật là dữ liệu trong `firmware/data/assistant.json`. Đối tượng `look` chọn dáng (`cloud`,
+`corn`, `avocado`, `mochi` hoặc `robot`) và bốn màu (`body`, `accent`, `ink`, `cheek`).
+`assistant_face.cc` dựng thân, mắt, lông mày, miệng và chi tiết từ các giá trị đó, nên nhân vật mới
+dùng lại một dáng có sẵn không cần viết C++. Xem [Thêm nhân vật](/vi/adding-a-character).
+
+Ban đêm gương mặt chuyển sang chế độ yên: không thở, chữ "zzz" đứng yên, rất ít lần vẽ lại, nên LVGL
+chỉ tốn khoảng 1% CPU.

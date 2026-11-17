@@ -1,0 +1,63 @@
+---
+title: 아키텍처
+description: Bắp이 xiaozhi-esp32 위에서 Gemini Live와 직접 대화하는 방식.
+---
+
+# 아키텍처
+
+Bắp은 업스트림 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 위의 얇은 층입니다. 업스트림은
+보드 지원, 오디오 파이프라인(AFE, 호출어, 재생), LVGL 디스플레이, Wi-Fi 설정, 기기 내 MCP 서버를
+제공합니다. Bắp은 여기에 다음을 더합니다.
+
+1. **Gemini Live API와 직접** 통신하는 `Protocol` 구현,
+2. `assistant::` 모듈들: 설정, 도구, 웹 UI, 얼굴, 메뉴, 입력, 라디오, SD 카드.
+
+![아키텍처](/diagrams/architecture.svg)
+
+## 대화 한 번의 흐름
+
+![세션 흐름](/diagrams/session-flow.svg)
+
+1. 호출어, 휠 누르기, 두 번 탭이 오디오 채널을 엽니다.
+2. `GeminiLiveProtocol`이 `generativelanguage.googleapis.com`으로 TLS 위의 WebSocket을 엽니다.
+   `TicketSsl`이 세션 티켓으로 이전 TLS 세션을 재개해 핸드셰이크가 1.4초 대신 약 0.1초에 끝납니다.
+3. 설정 메시지에는 모델, 캐릭터 목소리, 시스템 프롬프트(성격, 공통 규칙, 도시, 기억, 날짜와 시간),
+   함수 선언으로 바뀐 모든 도구가 담깁니다.
+4. 마이크 오디오는 16 kHz PCM16으로 올라가고, 답은 24 kHz PCM16으로 돌아오며 자막이 될 입력·출력
+   전사가 함께 옵니다.
+5. 모델이 함수를 호출하면 브리지가 JSON-RPC `tools/call`로 MCP 서버에 전달하고 결과를
+   `toolResponse`로 돌려보냅니다.
+6. 30초 동안 활동이 없거나 모델이 `end_conversation`을 호출하면 세션이 닫힙니다. 프롬프트와 목소리가
+   그대로라면 재개 핸들로 다음 세션이 이어집니다.
+
+이 프로토콜은 업스트림 서버가 보내는 것과 같은 `tts`, `stt`, `llm` 메시지를 내보내므로 업스트림의
+상태 머신과 화면이 그대로 동작합니다.
+
+## 데이터로 정의되는 캐릭터, 앱, 언어
+
+![데이터 흐름](/diagrams/data-driven.svg)
+
+`firmware/data/assistant.json`에 캐릭터, 공통 규칙, 앱, 라디오 채널, 언어가 들어 있습니다. `build.sh`가
+이를 펌웨어에 넣고, 웹 설정에서 바꾼 NVS 값이 그 위에 덮입니다. `SystemPrompt()`, `Localize()`, 얼굴
+렌더러가 모두 이 합쳐진 데이터를 읽습니다.
+
+## 소스 구성
+
+| 경로 | 역할 |
+| --- | --- |
+| `firmware/src/protocols/gemini_live_protocol.{h,cc}` | Gemini Live 세션, 오디오 송수신, 자막, 도구 호출 브리지 |
+| `firmware/src/protocols/ticket_ssl.{h,cc}` | 모든 외부 연결에 쓰는 세션 티켓 재개 TLS |
+| `firmware/src/assistant/assistant_config.{h,cc}` | 설정, 캐릭터, 앱, 언어, `SystemPrompt()`, `Localize()` |
+| `firmware/src/assistant/assistant_tools.cc` | 도구, 스케줄러(타이머, 알람, 야간 모드), 시간 동기화, 대화 기록 |
+| `firmware/src/assistant/assistant_web.cc` | 설정 페이지와 JSON API, mDNS 이름, OTA |
+| `firmware/src/assistant/assistant_face.{h,cc}` | LVGL로 직접 그리는 캐릭터 |
+| `firmware/src/assistant/assistant_menu.{h,cc}` | 원형 메뉴 |
+| `firmware/src/assistant/assistant_input.cc` | 휠과 터치 동작, 사람 인식, 아침 브리핑, 방해 금지 |
+| `firmware/src/assistant/assistant_radio.{h,cc}`, `assistant_zing.{h,cc}`, `assistant_sd.{h,cc}` | 라디오와 HLS, Zing MP3, SD 카드 음악 |
+| `firmware/src/assistant/assistant_auth.{h,cc}` | 설정 비밀번호 |
+| `firmware/src/assistant/assistant_perf.cc` | `/api/perf` |
+| `firmware/src/assistant/vn_lunar.h`, `lrc.h`, `text_fold.h` | 호스트 테스트가 있는 헤더 전용 도우미 |
+| `firmware/data/assistant.json` | 캐릭터, 앱, 라디오, 언어 |
+| `firmware/web/index.html` | 설정 페이지 |
+| `firmware/patches/xiaozhi-esp32.patch` | 업스트림에 거는 작은 훅 |
+| `firmware/sdkconfig.gemini` | 빌드용 메모리, TLS, 코덱 설정 |

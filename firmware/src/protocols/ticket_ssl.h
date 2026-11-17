@@ -29,6 +29,8 @@ public:
 
     // Drops every cached session (e.g. after the server rejected one).
     static void ForgetSessions();
+    // Code and reason of the last WebSocket close frame a server sent ("1011 ..."), then clears it.
+    static std::string TakeCloseReason();
 
 private:
     esp_tls_t* tls_client_ = nullptr;
@@ -38,6 +40,7 @@ private:
     TaskHandle_t receive_task_handle_ = nullptr;
 
     void ReceiveTask();
+    static void RememberCloseFrame(const std::string& chunk);
 };
 
 // Forwards everything to the board's network, except TLS connections, which use TicketSsl.

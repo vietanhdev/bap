@@ -1,0 +1,67 @@
+---
+title: Thêm công cụ
+description: Đăng ký một hàm trên MCP server của thiết bị; Gemini tự thấy nó.
+---
+
+import { Callout } from 'nextra/components'
+
+# Thêm công cụ
+
+Công cụ được đăng ký trên MCP server của thiết bị và tự động được giới thiệu với Gemini dưới dạng
+khai báo hàm; bạn không cần đụng tới mã protocol.
+
+<Callout type="info">
+Có cần C++ không? Một kịch bản cố định cho mô hình là **ứng dụng** (chỉ dữ liệu). Gọi dịch vụ riêng của
+bạn thì dùng **webhook** khai báo trong trang cài đặt, gọi qua `extension.call`.
+</Callout>
+
+## 1. Đăng ký
+
+Trong `assistant::RegisterTools()` (`firmware/src/assistant/assistant_tools.cc`):
+
+```cpp
+mcp.AddTool("vn.fuel_price",
+            "Xem giá xăng dầu bán lẻ hôm nay tại Việt Nam (RON 95, E5, dầu DO). Dùng khi người "
+            "dùng hỏi giá xăng.",
+            PropertyList({Property("kind", kPropertyTypeString, std::string(""))}),
+            [](const PropertyList& p) -> ToolResult {
+                auto body = HttpGet("https://example.vn/fuel.json");
+                if (!body) return std::unexpected(body.error());
+                // ... đọc bằng cJSON, tạo câu trả lời ngắn ...
+                return std::string("Xăng RON 95 hôm nay 21.000 đồng một lít.");
+            });
+```
+
+| Thành phần | Ghi chú |
+| --- | --- |
+| Tên | Tiếng Anh dạng `nhóm.hành_động`, chữ thường ASCII (`vn.weather`, `timer.set`). Dấu chấm thành `_` với Gemini, nên tên phải không trùng sau khi đổi và dài tối đa 64 ký tự. |
+| Mô tả | Một hai câu nói rõ **khi nào** dùng, kèm câu người dùng hay nói. Đây là tất cả những gì mô hình thấy. |
+| `Property(name, kPropertyTypeString)` | Chuỗi bắt buộc |
+| `Property(name, kPropertyTypeString, std::string(""))` | Chuỗi tùy chọn có giá trị mặc định |
+| `Property(name, kPropertyTypeInteger, min, max)` | Số nguyên bắt buộc trong khoảng |
+| `Property(name, kPropertyTypeInteger, default, min, max)` | Số nguyên tùy chọn |
+| `Property(name, kPropertyTypeBoolean, false)` | Boolean tùy chọn |
+| Giá trị trả về | `ReturnValue` (chuỗi, bool, int hoặc `cJSON*`) hoặc `ToolResult`; trả `std::unexpected("thông báo")` khi lỗi |
+
+Hàm hỗ trợ: `HttpGet(url)` (dùng lại phiên TLS, thử lại một lần), `UrlEncode()`, `Between()`,
+`CleanXmlText()`, `Now(&tm)` (trả false khi chưa đồng bộ giờ), `ListItems()`/`StoreItems()` cho danh
+sách nhỏ lưu lâu dài, `LoadConfig()` cho thành phố của người dùng.
+
+## Nguyên tắc
+
+- Trả về câu **ngắn, đọc lên được**: nó sẽ được đọc thành tiếng.
+- Giữ mỗi lần gọi mạng dưới khoảng 10 giây; việc làm sau thì giao cho bộ lập lịch.
+- Không để bí mật trong mã. Dùng nguồn công khai hoặc key lưu trong NVS.
+- Công cụ chỉ trang web được gọi: `mcp.AddUserOnlyTool(...)`.
+- Viết mô tả gọn; danh sách công cụ được gửi ở mỗi phiên.
+
+## 2. Kiểm thử
+
+```bash
+python3 firmware/scripts/validate_data.py      # kiểm tra cả tên công cụ được nhắc trong prompt
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.fuel_price","arguments":{"kind":"RON 95"}}'
+```
+
+Rồi hỏi tự nhiên và tìm dòng `Tool call: vn_fuel_price` trong log serial.

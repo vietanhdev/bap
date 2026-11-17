@@ -4,7 +4,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 B="$HERE/../vendor/xiaozhi-esp32/build"
-PORT="${PORT:-/dev/serial/by-id/usb-1a86_USB_Dual_Serial_5C2C160775-if02}"
+source "$HERE/scripts/find_port.sh"
 ASSETS="${ASSETS:-$HERE/build/assets.bin}"
 uv run -q --with esptool esptool --chip esp32s3 --port "$PORT" --baud 921600 \
   --before default-reset --after hard-reset write-flash \

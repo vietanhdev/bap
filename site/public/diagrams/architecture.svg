@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="690" viewBox="0 0 980 690" role="img" aria-labelledby="t d">
+<title id="t">Bắp system architecture</title>
+<desc id="d">Firmware modules on the SenseCAP Watcher and the external services they talk to directly.</desc>
+
+<style>
+  svg { --bg:#f8f6ff; --card:#ffffff; --panel:#f0ecff; --ink:#1e1b2e; --muted:#6b6785;
+        --line:#d6cff3; --accent:#7c5cff; --accent2:#a594ff; --soft:#ece6ff; --shadow:#2a1f66;
+        --shadowop:0.10; --before:#d9d4ea; --corn:#e8b520; --avo:#6fa83a; --pink:#e57aa3;
+        --sky:#3f9fd6; --danger:#e0567a; --ok:#2f9e6a; --chip:#f3f0ff; --onaccent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --bg:#15131f; --card:#1e1b2e; --panel:#1a1828; --ink:#f1eefc; --muted:#a39fbd;
+          --line:#3a3454; --accent:#a594ff; --accent2:#7c5cff; --soft:#2a2540; --shadow:#000000;
+          --shadowop:0.45; --before:#3c3756; --corn:#f5c84b; --avo:#8bc34a; --pink:#f7a8c4;
+          --sky:#7ec8f0; --danger:#ff7c9c; --ok:#5fd39a; --chip:#262238; --onaccent:#15131f; }
+  }
+  text { font-family: Nunito, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; fill: var(--ink); }
+  .bg { fill: var(--bg); }
+  .card { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+  .panel { fill: var(--panel); stroke: var(--accent2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .soft { fill: var(--soft); }
+  .chip { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .accentf { fill: var(--accent); }
+  .accent2f { fill: var(--accent2); }
+  .beforef { fill: var(--before); }
+  .cornf { fill: var(--corn); } .avof { fill: var(--avo); } .pinkf { fill: var(--pink); }
+  .skyf { fill: var(--sky); } .dangerf { fill: var(--danger); } .okf { fill: var(--ok); }
+  .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.2px; }
+  .t-sub { font-size: 14px; fill: var(--muted); }
+  .t-h { font-size: 15.5px; font-weight: 800; }
+  .t-b { font-size: 14px; font-weight: 600; }
+  .t-s { font-size: 13px; fill: var(--muted); }
+  .t-xs { font-size: 12px; fill: var(--muted); }
+  .t-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
+  .t-on { fill: var(--onaccent); }
+  .t-accent { fill: var(--accent); }
+  .t-danger { fill: var(--danger); }
+  .t-ok { fill: var(--ok); }
+  .line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .aline { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dline { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 4 4; }
+  .life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .ds { flood-color: var(--shadow); flood-opacity: var(--shadowop); }
+  .mk { fill: var(--muted); } .mka { fill: var(--accent); }
+</style>
+
+<defs>
+  <filter id="sh" x="-8%" y="-15%" width="116%" height="140%">
+    <feDropShadow class="ds" dx="0" dy="3" stdDeviation="5"/>
+  </filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mk" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mka" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#5b8cff"/>
+  </linearGradient>
+  <linearGradient id="gradwarm" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
+  </linearGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="980" height="690" rx="22"/>
+<text x="32" y="48" class="t-title">Bắp · system architecture</text>
+<text x="32" y="72" class="t-sub">Everything runs on the Watcher. Audio goes straight to Google, nothing sits in between.</text>
+<rect x="24" y="92" width="604" height="578" rx="20" class="panel"/>
+<text x="44" y="120" class="t-h">SenseCAP Watcher</text>
+<text x="218" y="120" class="t-s">ESP32-S3 · 8 MB PSRAM · 32 MB flash · 412×412 round LCD</text>
+<rect x="44" y="136" width="568" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="150" width="4" height="44" rx="2" class="skyf"/>
+<text x="62" y="165" class="t-h">GeminiLiveProtocol</text>
+<text x="62" y="186" class="t-s">setup · audio up/down · tool bridge</text>
+<rect x="396" y="159" width="200" height="28" rx="14.0" class="soft"/>
+<text x="496.0" y="177.5" class="t-b t-accent" text-anchor="middle">TicketSsl · TLS resume</text>
+<rect x="44" y="224" width="372" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="238" width="4" height="44" rx="2" class="accentf"/>
+<text x="62" y="253" class="t-h">Application</text>
+<text x="62" y="274" class="t-s">upstream xiaozhi-esp32 · states, wake word, sessions</text>
+<rect x="436" y="224" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="436" y="238" width="4" height="44" rx="2" class="accentf"/>
+<text x="454" y="253" class="t-h">Audio service</text>
+<text x="454" y="274" class="t-s">AFE · codecs · resample</text>
+<rect x="44" y="312" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="326" width="4" height="44" rx="2" class="cornf"/>
+<text x="62" y="341" class="t-h">Mic + AFE</text>
+<text x="62" y="362" class="t-s">wake word “Hi Lili”</text>
+<rect x="240" y="312" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="240" y="326" width="4" height="44" rx="2" class="cornf"/>
+<text x="258" y="341" class="t-h">Wheel + touch</text>
+<text x="258" y="362" class="t-s">gestures · round menu</text>
+<rect x="436" y="312" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="436" y="326" width="4" height="44" rx="2" class="cornf"/>
+<text x="454" y="341" class="t-h">Himax HX6538</text>
+<text x="454" y="362" class="t-s">on-chip person detect</text>
+<rect x="44" y="400" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="414" width="4" height="44" rx="2" class="pinkf"/>
+<text x="62" y="429" class="t-h">LVGL faces</text>
+<text x="62" y="450" class="t-s">23 faces · subtitles</text>
+<rect x="240" y="400" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="240" y="414" width="4" height="44" rx="2" class="pinkf"/>
+<text x="258" y="429" class="t-h">Music player</text>
+<text x="258" y="450" class="t-s">Zing · VOV/FM · SD card</text>
+<rect x="436" y="400" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="436" y="414" width="4" height="44" rx="2" class="avof"/>
+<text x="454" y="429" class="t-h">Config</text>
+<text x="454" y="450" class="t-s">NVS + assistant.json</text>
+<rect x="44" y="488" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="502" width="4" height="44" rx="2" class="avof"/>
+<text x="62" y="517" class="t-h">Scheduler</text>
+<text x="62" y="538" class="t-s">timers · alarms · night</text>
+<rect x="240" y="488" width="372" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="240" y="502" width="4" height="44" rx="2" class="avof"/>
+<text x="258" y="517" class="t-h">MCP tools</text>
+<text x="258" y="538" class="t-s">weather · lunar · news · gold · stocks · football</text>
+<rect x="44" y="576" width="176" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="44" y="590" width="4" height="44" rx="2" class="cornf"/>
+<text x="62" y="605" class="t-h">SD card</text>
+<text x="62" y="626" class="t-s">offline MP3 library</text>
+<rect x="240" y="576" width="372" height="72" rx="14" class="card" filter="url(#sh)"/>
+<rect x="240" y="590" width="4" height="44" rx="2" class="skyf"/>
+<text x="258" y="605" class="t-h">Web UI + OTA</text>
+<text x="258" y="626" class="t-s">bap-xxxx.local · password · health · update</text>
+<rect x="664" y="112" width="292" height="140" rx="18" fill="url(#grad)" filter="url(#sh)"/>
+<text x="684" y="146" style="font-size:18px;font-weight:800;fill:#fff">Google Gemini Live API</text>
+<text x="684" y="176" style="font-size:14px;fill:#fff;opacity:.92">WebSocket over TLS</text>
+<text x="684" y="198" style="font-size:14px;fill:#fff;opacity:.92">PCM16 16 kHz up · 24 kHz down</text>
+<text x="684" y="220" style="font-size:14px;fill:#fff;opacity:.92">tool calls · live transcripts</text>
+<rect x="664" y="266" width="292" height="34" rx="17" class="chip"/>
+<circle cx="684" cy="283" r="7" class="okf"/>
+<path d="M680.5,283 l2.5,2.6 l4.5,-5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+<text x="700" y="288" class="t-b t-ok">No relay server, no cloud of ours</text>
+<rect x="664" y="312" width="292" height="196" rx="18" class="card" filter="url(#sh)"/>
+<text x="684" y="342" class="t-h">Live data</text>
+<text x="766" y="342" class="t-s">HTTP(S), no extra keys</text>
+<rect x="684" y="364" width="126" height="26" rx="13" class="chip"/>
+<circle cx="697" cy="377" r="4.5" class="avof"/>
+<text x="708" y="382" class="t-s">Open-Meteo</text>
+<rect x="820" y="364" width="126" height="26" rx="13" class="chip"/>
+<circle cx="833" cy="377" r="4.5" class="pinkf"/>
+<text x="844" y="382" class="t-s">VnExpress</text>
+<rect x="684" y="398" width="126" height="26" rx="13" class="chip"/>
+<circle cx="697" cy="411" r="4.5" class="avof"/>
+<text x="708" y="416" class="t-s">Vietcombank</text>
+<rect x="820" y="398" width="126" height="26" rx="13" class="chip"/>
+<circle cx="833" cy="411" r="4.5" class="cornf"/>
+<text x="844" y="416" class="t-s">PNJ · Hải Hồng</text>
+<rect x="684" y="432" width="126" height="26" rx="13" class="chip"/>
+<circle cx="697" cy="445" r="4.5" class="skyf"/>
+<text x="708" y="450" class="t-s">CafeF</text>
+<rect x="820" y="432" width="126" height="26" rx="13" class="chip"/>
+<circle cx="833" cy="445" r="4.5" class="skyf"/>
+<text x="844" y="450" class="t-s">ESPN</text>
+<rect x="684" y="466" width="126" height="26" rx="13" class="chip"/>
+<circle cx="697" cy="479" r="4.5" class="pinkf"/>
+<text x="708" y="484" class="t-s">Zing MP3</text>
+<rect x="820" y="466" width="126" height="26" rx="13" class="chip"/>
+<circle cx="833" cy="479" r="4.5" class="cornf"/>
+<text x="844" y="484" class="t-s">VOV · FM</text>
+<rect x="664" y="524" width="292" height="56" rx="16" class="card" filter="url(#sh)"/>
+<text x="684" y="548" class="t-h">Webhooks</text>
+<text x="684" y="568" class="t-s">Home Assistant · n8n · your server</text>
+<rect x="664" y="594" width="292" height="56" rx="16" class="card" filter="url(#sh)"/>
+<text x="684" y="618" class="t-h">Browser on your LAN</text>
+<text x="684" y="638" class="t-s">settings · logs · firmware update</text>
+<path d="M616,172 L658,172" class="aline" marker-end="url(#ara)" marker-start="url(#ara)"/>
+<path d="M616,514 C642,514 634,462 658,462" class="line" marker-end="url(#ar)"/>
+<path d="M616,538 C642,538 634,552 658,552" class="line" marker-end="url(#ar)"/>
+<path d="M658,622 C634,622 642,612 616,612" class="dline" marker-end="url(#ar)" marker-start="url(#ar)"/>
+</svg>

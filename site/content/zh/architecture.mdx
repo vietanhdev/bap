@@ -1,0 +1,56 @@
+---
+title: 架构
+description: Bắp 如何构建在 xiaozhi-esp32 之上并直接与 Gemini Live 对话。
+---
+
+# 架构
+
+Bắp 是上游 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 之上的一层薄封装。上游提供板级支持、
+音频管线（AFE、唤醒词、播放）、LVGL 显示、Wi-Fi 配网和设备端 MCP 服务器。Bắp 增加了：
+
+1. 一个**直接与 Gemini Live API 通信**的 `Protocol` 实现；
+2. 一组 `assistant::` 模块：配置、工具、网页界面、表情、菜单、输入、电台、SD 卡。
+
+![架构](/diagrams/architecture.svg)
+
+## 一次对话
+
+![会话流程](/diagrams/session-flow.svg)
+
+1. 唤醒词、按下滚轮或双击屏幕会打开音频通道。
+2. `GeminiLiveProtocol` 通过 TLS 打开到 `generativelanguage.googleapis.com` 的 WebSocket。`TicketSsl`
+   用会话票据恢复上一次 TLS 会话，握手只需约 0.1 秒而不是 1.4 秒。
+3. 设置消息包含模型、角色的声音、系统提示词（性格、通用规则、城市、记忆、日期时间），以及以函数声明形式提供的全部工具。
+4. 麦克风音频以 16 kHz PCM16 上传；回答以 24 kHz PCM16 返回，附带输入和输出转写，用作字幕。
+5. 模型调用函数时，桥接层以 JSON-RPC `tools/call` 转发给 MCP 服务器，再把结果作为 `toolResponse` 发回。
+6. 30 秒无活动（或模型调用 `end_conversation`）后会话关闭。如果提示词和声音没变，恢复句柄能让下一次会话接着上一次。
+
+该协议发出的 `tts`、`stt` 和 `llm` 消息与上游服务器完全相同，所以上游的状态机和显示无需改动。
+
+## 数据驱动的角色、应用和语言
+
+![数据流](/diagrams/data-driven.svg)
+
+`firmware/data/assistant.json` 包含角色、通用规则、应用、电台和语言。`build.sh` 把它嵌入固件；网页设置中
+修改的 NVS 值叠加在上面。`SystemPrompt()`、`Localize()` 和表情渲染器都读取合并后的数据。
+
+## 源码结构
+
+| 路径 | 作用 |
+| --- | --- |
+| `firmware/src/protocols/gemini_live_protocol.{h,cc}` | Gemini Live 会话、音频收发、字幕、工具调用桥接 |
+| `firmware/src/protocols/ticket_ssl.{h,cc}` | 所有外部连接使用的会话票据恢复 TLS |
+| `firmware/src/assistant/assistant_config.{h,cc}` | 配置、角色、应用、语言、`SystemPrompt()`、`Localize()` |
+| `firmware/src/assistant/assistant_tools.cc` | 工具、调度器（计时器、闹钟、夜间模式）、时钟同步、对话记录 |
+| `firmware/src/assistant/assistant_web.cc` | 设置页和 JSON API、mDNS 名称、OTA |
+| `firmware/src/assistant/assistant_face.{h,cc}` | 用 LVGL 原生绘制的角色 |
+| `firmware/src/assistant/assistant_menu.{h,cc}` | 圆形菜单 |
+| `firmware/src/assistant/assistant_input.cc` | 滚轮和触摸手势、有人感知、早间简报、免打扰 |
+| `firmware/src/assistant/assistant_radio.{h,cc}`、`assistant_zing.{h,cc}`、`assistant_sd.{h,cc}` | 电台和 HLS、Zing MP3、SD 卡音乐 |
+| `firmware/src/assistant/assistant_auth.{h,cc}` | 设置页密码 |
+| `firmware/src/assistant/assistant_perf.cc` | `/api/perf` |
+| `firmware/src/assistant/vn_lunar.h`、`lrc.h`、`text_fold.h` | 带主机测试的纯头文件工具 |
+| `firmware/data/assistant.json` | 角色、应用、电台、语言 |
+| `firmware/web/index.html` | 设置页 |
+| `firmware/patches/xiaozhi-esp32.patch` | 对上游的少量挂钩 |
+| `firmware/sdkconfig.gemini` | 编译用的内存、TLS 和编解码器设置 |

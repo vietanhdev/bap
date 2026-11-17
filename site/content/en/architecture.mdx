@@ -1,0 +1,64 @@
+---
+title: Architecture
+description: How Bắp sits on top of xiaozhi-esp32 and talks to Gemini Live directly.
+---
+
+# Architecture
+
+Bắp is a thin layer on top of upstream [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32).
+Upstream provides board support, the audio pipeline (AFE, wake word, playback), the LVGL display,
+Wi-Fi provisioning and an on-device MCP server. Bắp adds:
+
+1. a `Protocol` implementation that talks to the **Gemini Live API directly**, and
+2. a set of `assistant::` modules: config, tools, web UI, faces, menu, input, radio, SD card.
+
+![Architecture](/diagrams/architecture.svg)
+
+## A conversation
+
+![Session flow](/diagrams/session-flow.svg)
+
+1. The wake word, a wheel press or a double-tap opens the audio channel.
+2. `GeminiLiveProtocol` opens a WebSocket over TLS to
+   `generativelanguage.googleapis.com`. `TicketSsl` resumes the previous TLS session with a
+   session ticket, so the handshake takes about 0.1 s instead of 1.4 s.
+3. The setup message carries the model, the character's voice, the system prompt (persona,
+   shared rules, city, memories, date and time) and every tool as a function declaration.
+4. Microphone audio goes up as raw PCM16 at 16 kHz; the answer comes back as PCM16 at 24 kHz, with
+   input and output transcriptions that become subtitles.
+5. When the model calls a function, the bridge forwards it to the MCP server as a JSON-RPC
+   `tools/call` and sends the result back as a `toolResponse`.
+6. After 30 seconds without activity (or when the model calls `end_conversation`) the session
+   closes. A resume handle lets the next session continue if the prompt and voice did not change.
+
+The protocol emits the same `tts`, `stt` and `llm` messages that upstream servers send, so the
+upstream state machine and display work unchanged.
+
+## Data-driven characters, apps and languages
+
+![Data flow](/diagrams/data-driven.svg)
+
+`firmware/data/assistant.json` holds characters, shared rules, apps, radio stations and languages.
+`build.sh` embeds it in the firmware; NVS overrides from the web settings are layered on top.
+`SystemPrompt()`, `Localize()` and the face renderer all read from that merged view.
+
+## Source layout
+
+| Path | Role |
+| --- | --- |
+| `firmware/src/protocols/gemini_live_protocol.{h,cc}` | Gemini Live session, audio up/down, transcripts, tool-call bridge |
+| `firmware/src/protocols/ticket_ssl.{h,cc}` | TLS with session-ticket resumption for every outgoing connection |
+| `firmware/src/assistant/assistant_config.{h,cc}` | Config, characters, apps, languages, `SystemPrompt()`, `Localize()` |
+| `firmware/src/assistant/assistant_tools.cc` | Tools, scheduler (timers, alarms, night mode), clock sync, conversation log |
+| `firmware/src/assistant/assistant_web.cc` | Settings page and JSON API, mDNS name, OTA |
+| `firmware/src/assistant/assistant_face.{h,cc}` | Characters drawn natively with LVGL |
+| `firmware/src/assistant/assistant_menu.{h,cc}` | The round menu |
+| `firmware/src/assistant/assistant_input.cc` | Wheel and touch gestures, presence, morning briefing, quiet hours |
+| `firmware/src/assistant/assistant_radio.{h,cc}`, `assistant_zing.{h,cc}`, `assistant_sd.{h,cc}` | Radio and HLS, Zing MP3, SD-card music |
+| `firmware/src/assistant/assistant_auth.{h,cc}` | Optional settings password |
+| `firmware/src/assistant/assistant_perf.cc` | `/api/perf` |
+| `firmware/src/assistant/vn_lunar.h`, `lrc.h`, `text_fold.h` | Header-only helpers with host tests |
+| `firmware/data/assistant.json` | Characters, apps, radio, languages |
+| `firmware/web/index.html` | The settings page |
+| `firmware/patches/xiaozhi-esp32.patch` | Small hooks into upstream |
+| `firmware/sdkconfig.gemini` | Memory, TLS and codec settings for the build |

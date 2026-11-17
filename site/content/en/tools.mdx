@@ -1,0 +1,80 @@
+---
+title: Tools
+description: Every tool the assistant can call, from the lunar calendar to Zing MP3.
+---
+
+import { Callout } from 'nextra/components'
+
+# Tools
+
+Tools are functions the model can call during a conversation. They run **on the device**, call
+public data sources directly and return a short answer that the character reads aloud. No extra
+API keys are needed.
+
+## Daily life (Vietnam)
+
+| Tool | What it does | Source |
+| --- | --- | --- |
+| `vn.lunar_date` | Lunar date, can-chi year, lunar festivals for any solar date | on-device algorithm |
+| `vn.lunar_to_solar` | Converts a lunar date to the solar calendar ("when is Tết next year?") | on-device algorithm |
+| `vn.weather` | Current weather and a 3-day forecast, anywhere | Open-Meteo |
+| `vn.air_quality` | AQI and PM2.5, with advice on masks and windows | Open-Meteo |
+| `vn.news` | Latest headlines by topic (latest, world, business, sports, tech…) | VnExpress RSS |
+| `vn.exchange_rate` | Foreign exchange rates (USD, EUR, JPY, KRW, CNY…) | Vietcombank |
+| `vn.gold_price` | SJC bars, 9999 rings and other gold prices | PNJ |
+| `vn.gold_price_hai_hong` | Gold and silver board of the Hải Hồng jewellery shop | shop price board |
+| `vn.stocks` | VN-Index, VN30, HNX-Index, UPCoM | CafeF |
+| `vn.lottery` | Latest lottery results, north, central or south | RSS feed |
+| `sports.football` | Fixtures and scores in Vietnam time: Premier League, Champions League, La Liga, Serie A, Bundesliga, Ligue 1 | ESPN |
+
+## Time, notes and memory
+
+| Tool | What it does |
+| --- | --- |
+| `timer.set` | Countdown timer ("remind me in 10 minutes") |
+| `alarm.set` | Alarm or reminder at a time of day, optionally daily |
+| `timer.list` | Lists running timers and alarms |
+| `timer.cancel` | Cancels one, or all with `number=0` |
+| `notes.add`, `notes.list`, `notes.remove` | A small to-do / shopping list (up to 30 items) |
+| `memory.save`, `memory.forget` | Long-term facts about you (name, likes, family), added to every session |
+
+## Music, radio and apps
+
+| Tool | What it does |
+| --- | --- |
+| `music.search` | Searches Zing MP3 and reads back a short list |
+| `music.play` | Plays a song from Zing MP3 by name or by id, with synced lyrics |
+| `music.sd_card` | Plays music from the SD card, offline, accent-insensitive search |
+| `radio.play` | Plays a radio station (VOV1–3, VOV traffic, Hanoi FM, RFI) |
+| `music.stop` | Stops music or radio |
+| `app.open` | Opens a [voice app](/en/apps) |
+| `character.switch` | Switches to another [character](/en/characters) |
+
+## Device and extensions
+
+| Tool | What it does |
+| --- | --- |
+| `system.wifi_setup` | Puts the device in Wi-Fi setup mode (only when asked explicitly) |
+| `extension.call` | Calls a webhook you declared in the web settings (Home Assistant, n8n, your own server) |
+| `self.camera.take_photo` | Takes a photo and lets the model look at it (upstream tool) |
+| `self.audio_speaker.set_volume`, `self.screen.set_brightness` | Volume and brightness (upstream tools) |
+
+<Callout type="info">
+Tool names are English `group.action` identifiers. Gemini function names cannot contain dots, so
+the bridge turns `vn.weather` into `vn_weather` and back. The descriptions, which the model reads
+to decide when to call a tool, are written in Vietnamese with example phrases.
+</Callout>
+
+## Optional: Google Search
+
+With a paid (billing-enabled) key you can turn on Google Search grounding in the web settings. If a
+session is rejected with search on, the device turns it off and retries once.
+
+## Test a tool without talking
+
+The web server exposes the device's MCP server:
+
+```bash
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.weather","arguments":{"place":"Hà Nội"}}'
+```

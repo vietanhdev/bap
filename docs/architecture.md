@@ -146,7 +146,7 @@ Gemini; the protocol bridges the two at runtime:
 1. **Declarations.** `GeminiLiveProtocol::BuildToolDeclarations()` sends
    `{"method":"tools/list"}` to `McpServer::ParseMessage()` and converts every tool into a Gemini
    `functionDeclarations` entry:
-   - `name`: MCP names contain dots (`vn.am_lich`, `self.camera.take_photo`); Gemini names allow
+   - `name`: MCP names contain dots (`vn.lunar_date`, `self.camera.take_photo`); Gemini names allow
      only letters, digits, `_` and `-`, so `ToFunctionName()` replaces `.` with `_` and truncates
      to 64 characters. The mapping is kept in `fn_to_tool_`.
    - `description`: copied as is.
@@ -191,13 +191,13 @@ How each field is used (`assistant_config.cc` unless noted):
 | Field | Used by |
 | --- | --- |
 | `id` | NVS key for overrides (`"c_" + id`), active character in `Config::character`, face asset names `<id>_<emotion>.gif` |
-| `name`, `kind` | `SystemPrompt()` (list of other characters), `nhan_vat.doi` tool (`SetActiveCharacter()` matches id or name), wheel preview |
+| `name`, `kind` | `SystemPrompt()` (list of other characters), `character.switch` tool (`SetActiveCharacter()` matches id or name), wheel preview |
 | `voice` | `prebuiltVoiceConfig.voiceName` in the session setup |
 | `persona` | First part of `SystemPrompt()` |
 | `tagline` | Shown when choosing the character with the wheel (`OnWheelRotate()`) and in the web UI |
 | `look.shape` | `BuildBody()` in `assistant_face.cc`: `cloud` (default), `corn`, `avocado`, `mochi`, `robot` |
 | `look.body/accent/ink/cheek` | Colors for the body, details, eyes and mouth, cheeks |
-| `apps[]` | `Apps()`: wheel app launcher (`OnWheelClick()` sends the prompt via `Say()`), `ung_dung.mo` tool, list in `SystemPrompt()` |
+| `apps[]` | `Apps()`: wheel app launcher (`OnWheelClick()` sends the prompt via `Say()`), `app.open` tool, list in `SystemPrompt()` |
 
 Overrides: the web UI can change a character's `name`, `voice` and `persona`. They are saved by
 `SaveCharacterOverride()` as one small JSON string per character in NVS namespace `assistant`;

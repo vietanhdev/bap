@@ -232,7 +232,11 @@ GeminiLiveProtocol::OpenResult GeminiLiveProtocol::TryOpen(const assistant::Conf
         HandleMessage(data, len);
     });
     websocket_->OnDisconnected([this]() {
-        ESP_LOGI(TAG, "Disconnected");
+        auto reason = TicketSsl::TakeCloseReason();
+        if (reason.empty())
+            ESP_LOGI(TAG, "Disconnected");
+        else
+            ESP_LOGW(TAG, "Disconnected by Gemini: %s", reason.c_str());
         xEventGroupSetBits(event_group_, kSetupFailedBit);
         if (channel_open_.exchange(false) && on_audio_channel_closed_ != nullptr) {
             on_audio_channel_closed_();

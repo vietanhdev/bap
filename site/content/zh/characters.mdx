@@ -1,0 +1,36 @@
+---
+title: 角色
+description: Bông、Bắp、Bơ、Mochi 和 Tí，各有声音、性格和在设备上原生绘制的表情。
+---
+
+import { Characters, Shots } from '@/components/Characters'
+
+# 角色
+
+Bắp 自带五个角色。每个角色都有自己的 Gemini 声音、性格，以及用 LVGL 原生绘制的脸：23 种表情、眨眼、
+呼吸，嘴巴还会跟着声音动。
+
+<Characters lang="zh" />
+
+## 切换角色
+
+- **滚轮：**休息时转动，下一个角色会带着简介出现。
+- **触摸：**在休息画面左右滑动。
+- **语音：**"叫 Bắp 出来"、"我想和 Bơ 聊天"。`character.switch` 工具会切换角色，并用新的声音和性格重新开始会话。
+- **菜单：**长按滚轮 → 角色。
+- **网页设置：**个性化标签页。
+
+<Shots items={[['idle-bong', '休息中的 Bông'], ['listening', '聆听中的 Bắp'], ['listening-bo', '聆听中的 Bơ'], ['listen-mochi', '聆听中的 Mochi'], ['listen-ti', '聆听中的 Tí'], ['menu-characters', '角色菜单']]} />
+
+## 不用重新编译就能个性化
+
+在网页设置里可以给角色改名、换声音、重写性格。修改按设备保存在 NVS 中，所以运行同一固件的两台设备可以
+有不同的性格：比如一张桌上是简短幽默的 Bơ，另一张桌上是温柔的 Bông。留空即恢复默认值。
+
+## 脸是怎么画出来的
+
+角色是 `firmware/data/assistant.json` 里的数据。`look` 对象决定身体形状（`cloud`、`corn`、`avocado`、
+`mochi` 或 `robot`）和四种颜色（`body`、`accent`、`ink`、`cheek`）。`assistant_face.cc` 根据这些值构建
+身体、眼睛、眉毛、嘴巴和装饰，所以复用已有形状的新角色不需要写 C++。见[添加角色](/zh/adding-a-character)。
+
+夜里脸会安静下来：不再呼吸，"zzz" 静止不动，重绘次数很少，LVGL 只占约 1% CPU。

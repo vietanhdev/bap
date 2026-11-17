@@ -1,0 +1,51 @@
+---
+title: Quyền riêng tư và bảo mật
+description: Âm thanh, hình ảnh và key của bạn đi đâu, thiết bị được bảo vệ thế nào.
+---
+
+import { Callout } from 'nextra/components'
+
+# Quyền riêng tư và bảo mật
+
+## Không có máy chủ trung gian
+
+Thiết bị mở kết nối TLS tới `generativelanguage.googleapis.com` và không có gì đứng ở giữa. Không có
+đám mây Bắp, không tài khoản, không thu thập số liệu.
+
+## Thứ gì rời khỏi thiết bị, và khi nào
+
+- **Âm thanh** chỉ được gửi lên Gemini trong lúc trò chuyện: sau từ đánh thức, nhấn núm xoay hoặc chạm
+  đúp. Phiên tự đóng sau 30 giây im lặng.
+- **Hình ảnh** chỉ được gửi khi trợ lý gọi công cụ camera (`self.camera.take_photo`). Nhận biết có
+  người chạy trên chip AI của camera và không bao giờ gửi ảnh.
+- **Yêu cầu của công cụ** đi thẳng tới nguồn dữ liệu công khai (Open-Meteo, VnExpress, Vietcombank,
+  PNJ, CafeF, ESPN, Zing MP3, các đài radio). Thành phố của bạn dùng cho thời tiết; ngoài ra không gửi
+  gì về bạn.
+- **Webhook** do bạn tự thêm nhận nội dung yêu cầu bạn gửi tới nó.
+
+## API key
+
+Key được lưu trong NVS của thiết bị hoặc nhúng vào firmware từ `secrets/GEMINI_API_KEY`. Trình duyệt
+chỉ thấy key đã che (`AIza••••••••xxxx`). Ai có thiết bị trong tay, hoặc có file `xiaozhi.bin` bạn build
+kèm key, đều có thể lấy được key: hãy dùng key riêng có giới hạn quota và không chia sẻ file `.bin`.
+
+<Callout type="info">
+Mẹo: dùng key miễn phí làm key chính và một key có bật thanh toán chỉ để dự phòng. Thiết bị luôn thử
+key miễn phí trước.
+</Callout>
+
+## Trang cài đặt
+
+- Chỉ dùng trong mạng LAN. Đừng mở cổng 80 ra Internet; muốn dùng từ xa hãy dùng VPN.
+- Mật khẩu tùy chọn (HTTP Basic, lưu dạng băm SHA-256 có salt, lặp nhiều vòng, trong NVS).
+- Mọi `POST` cần header `X-Bap`, chặn tấn công gửi form chéo trang từ website khác.
+
+## Flash và khóa xuất xưởng
+
+`nvsfactory` (`0x9000`) không bao giờ bị ghi. `firmware/restore_stock.sh` ghi lại bản sao lưu đầy đủ
+sau khi kiểm tra SHA-256.
+
+## Cho người đóng góp
+
+Không bao giờ commit `secrets/`, `backup/`, `vendor/`, `firmware/build/`, log build hay file `.bin` đã
+build. CI chạy gitleaks ở mỗi lần push. Mã của bên thứ ba được đọc kỹ trước khi build hay flash.

@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="650" viewBox="0 0 980 650" role="img" aria-labelledby="t d">
+<title id="t">Data-driven characters</title>
+<desc id="d">How assistant.json and NVS overrides become the Gemini prompt, UI strings and faces.</desc>
+
+<style>
+  svg { --bg:#f8f6ff; --card:#ffffff; --panel:#f0ecff; --ink:#1e1b2e; --muted:#6b6785;
+        --line:#d6cff3; --accent:#7c5cff; --accent2:#a594ff; --soft:#ece6ff; --shadow:#2a1f66;
+        --shadowop:0.10; --before:#d9d4ea; --corn:#e8b520; --avo:#6fa83a; --pink:#e57aa3;
+        --sky:#3f9fd6; --danger:#e0567a; --ok:#2f9e6a; --chip:#f3f0ff; --onaccent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --bg:#15131f; --card:#1e1b2e; --panel:#1a1828; --ink:#f1eefc; --muted:#a39fbd;
+          --line:#3a3454; --accent:#a594ff; --accent2:#7c5cff; --soft:#2a2540; --shadow:#000000;
+          --shadowop:0.45; --before:#3c3756; --corn:#f5c84b; --avo:#8bc34a; --pink:#f7a8c4;
+          --sky:#7ec8f0; --danger:#ff7c9c; --ok:#5fd39a; --chip:#262238; --onaccent:#15131f; }
+  }
+  text { font-family: Nunito, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; fill: var(--ink); }
+  .bg { fill: var(--bg); }
+  .card { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+  .panel { fill: var(--panel); stroke: var(--accent2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .soft { fill: var(--soft); }
+  .chip { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .accentf { fill: var(--accent); }
+  .accent2f { fill: var(--accent2); }
+  .beforef { fill: var(--before); }
+  .cornf { fill: var(--corn); } .avof { fill: var(--avo); } .pinkf { fill: var(--pink); }
+  .skyf { fill: var(--sky); } .dangerf { fill: var(--danger); } .okf { fill: var(--ok); }
+  .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.2px; }
+  .t-sub { font-size: 14px; fill: var(--muted); }
+  .t-h { font-size: 15.5px; font-weight: 800; }
+  .t-b { font-size: 14px; font-weight: 600; }
+  .t-s { font-size: 13px; fill: var(--muted); }
+  .t-xs { font-size: 12px; fill: var(--muted); }
+  .t-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
+  .t-on { fill: var(--onaccent); }
+  .t-accent { fill: var(--accent); }
+  .t-danger { fill: var(--danger); }
+  .t-ok { fill: var(--ok); }
+  .line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .aline { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dline { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 4 4; }
+  .life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .ds { flood-color: var(--shadow); flood-opacity: var(--shadowop); }
+  .mk { fill: var(--muted); } .mka { fill: var(--accent); }
+</style>
+
+<defs>
+  <filter id="sh" x="-8%" y="-15%" width="116%" height="140%">
+    <feDropShadow class="ds" dx="0" dy="3" stdDeviation="5"/>
+  </filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mk" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mka" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#5b8cff"/>
+  </linearGradient>
+  <linearGradient id="gradwarm" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
+  </linearGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="980" height="650" rx="22"/>
+<text x="32" y="48" class="t-title">Characters and apps are data</text>
+<text x="32" y="72" class="t-sub">assistant.json ships the defaults; the web UI saves overrides in NVS. No C++ per character.</text>
+<rect x="32" y="104" width="300" height="260" rx="18" class="card" filter="url(#sh)"/>
+<text x="52" y="136" class="t-h t-mono" style="font-size:15px;font-weight:700">assistant.json</text>
+<text x="52" y="156" class="t-s">built into the firmware</text>
+<rect x="50" y="180" width="264" height="28" rx="10" class="chip"/>
+<circle cx="66" cy="194" r="5" class="pinkf"/>
+<text x="80" y="199" class="t-mono">characters</text>
+<text x="300" y="199" class="t-b t-accent" text-anchor="end">5</text>
+<rect x="50" y="214" width="264" height="28" rx="10" class="chip"/>
+<circle cx="66" cy="228" r="5" class="avof"/>
+<text x="80" y="233" class="t-mono">apps</text>
+<text x="300" y="233" class="t-b t-accent" text-anchor="end">11</text>
+<rect x="50" y="248" width="264" height="28" rx="10" class="chip"/>
+<circle cx="66" cy="262" r="5" class="cornf"/>
+<text x="80" y="267" class="t-mono">radio</text>
+<text x="300" y="267" class="t-b t-accent" text-anchor="end">8</text>
+<rect x="50" y="282" width="264" height="28" rx="10" class="chip"/>
+<circle cx="66" cy="296" r="5" class="skyf"/>
+<text x="80" y="301" class="t-mono">languages</text>
+<text x="300" y="301" class="t-b t-accent" text-anchor="end">4</text>
+<rect x="50" y="316" width="264" height="28" rx="10" class="chip"/>
+<circle cx="66" cy="330" r="5" class="accentf"/>
+<text x="80" y="335" class="t-mono">common_rules</text>
+<text x="300" y="335" class="t-b t-accent" text-anchor="end">1</text>
+<rect x="32" y="384" width="300" height="138" rx="18" class="card" filter="url(#sh)"/>
+<text x="52" y="416" class="t-h">NVS overrides</text>
+<text x="52" y="436" class="t-s">edited in the web UI, per device</text>
+<text x="52" y="464" class="t-s">• name · voice · persona</text>
+<text x="52" y="484" class="t-s">• memory · city · language</text>
+<text x="52" y="504" class="t-s">• night · presence · morning</text>
+<rect x="400" y="214" width="190" height="120" rx="60" class="soft" filter="url(#sh)"/>
+<text x="495.0" y="268" class="t-h" text-anchor="middle" style="font-size:20px">Config</text>
+<text x="495.0" y="292" class="t-s t-mono" text-anchor="middle">LoadConfig()</text>
+<path d="M338,234 C370,234 360,264 394,264" class="line" marker-end="url(#ar)"/>
+<path d="M338,454 C370,454 360,290 394,290" class="line" marker-end="url(#ar)"/>
+<rect x="654" y="104" width="296" height="72" rx="16" class="card" filter="url(#sh)"/>
+<rect x="654" y="118" width="4" height="44" rx="2" class="skyf"/>
+<text x="674" y="134" class="t-h t-mono" style="font-size:14.5px;font-weight:700">Localize()</text>
+<text x="674" y="156" class="t-s">menu, status and UI strings</text>
+<path d="M596,274 C614,274 614,140 648,140" class="line" marker-end="url(#ar)"/>
+<rect x="654" y="196" width="296" height="72" rx="16" class="card" filter="url(#sh)"/>
+<rect x="654" y="210" width="4" height="44" rx="2" class="pinkf"/>
+<text x="674" y="226" class="t-h t-mono" style="font-size:14.5px;font-weight:700">FaceShow()</text>
+<text x="674" y="248" class="t-s">LVGL face from the look colours</text>
+<path d="M596,274 C614,274 614,232 648,232" class="line" marker-end="url(#ar)"/>
+<rect x="654" y="288" width="296" height="72" rx="16" class="card" filter="url(#sh)"/>
+<rect x="654" y="302" width="4" height="44" rx="2" class="accentf"/>
+<text x="674" y="318" class="t-h t-mono" style="font-size:14.5px;font-weight:700">SystemPrompt()</text>
+<text x="674" y="340" class="t-s">persona + rules + language + memory</text>
+<path d="M596,274 C614,274 614,324 648,324" class="line" marker-end="url(#ar)"/>
+<rect x="654" y="396" width="296" height="74" rx="16" fill="url(#grad)" filter="url(#sh)"/>
+<text x="674" y="427" style="font-size:16px;font-weight:800;fill:#fff">Gemini setup message</text>
+<text x="674" y="449" style="font-size:13.5px;fill:#fff;opacity:.9">voice + prompt + tools, about 15 KB</text>
+<path d="M802.0,366 L802.0,390" class="line" marker-end="url(#ar)"/>
+<text x="32" y="570" class="t-xs" style="letter-spacing:1.4px;font-weight:800">CHARACTERS</text>
+<rect x="32" y="580" width="104" height="40" rx="20" class="chip"/>
+<circle cx="52" cy="600" r="10" fill="#ffffff" stroke="#9db6e4" stroke-width="2.5"/>
+<text x="69" y="598" class="t-b">Bông</text>
+<text x="69" y="613" class="t-xs">Leda</text>
+<rect x="144" y="580" width="104" height="40" rx="20" class="chip"/>
+<circle cx="164" cy="600" r="10" fill="#ffd84d" stroke="#d9a400" stroke-width="2.5"/>
+<text x="181" y="598" class="t-b">Bắp</text>
+<text x="181" y="613" class="t-xs">Puck</text>
+<rect x="256" y="580" width="104" height="40" rx="20" class="chip"/>
+<circle cx="276" cy="600" r="10" fill="#8bc34a" stroke="#4a7c48" stroke-width="2.5"/>
+<text x="293" y="598" class="t-b">Bơ</text>
+<text x="293" y="613" class="t-xs">Achird</text>
+<rect x="368" y="580" width="104" height="40" rx="20" class="chip"/>
+<circle cx="388" cy="600" r="10" fill="#ffd0de" stroke="#ff96b4" stroke-width="2.5"/>
+<text x="405" y="598" class="t-b">Mochi</text>
+<text x="405" y="613" class="t-xs">Aoede</text>
+<rect x="480" y="580" width="104" height="40" rx="20" class="chip"/>
+<circle cx="500" cy="600" r="10" fill="#cee4f6" stroke="#1e2a44" stroke-width="2.5"/>
+<text x="517" y="598" class="t-b">Tí</text>
+<text x="517" y="613" class="t-xs">Kore</text>
+<text x="654" y="570" class="t-xs" style="letter-spacing:1.4px;font-weight:800">LANGUAGES</text>
+<rect x="654" y="580" width="102" height="40" rx="20" class="chip"/>
+<text x="705.0" y="598" class="t-b t-accent" text-anchor="middle">vi</text>
+<text x="705.0" y="613" class="t-xs" text-anchor="middle">Tiếng Việt</text>
+<rect x="762" y="580" width="78" height="40" rx="20" class="chip"/>
+<text x="801.0" y="598" class="t-b t-accent" text-anchor="middle">en</text>
+<text x="801.0" y="613" class="t-xs" text-anchor="middle">English</text>
+<rect x="846" y="580" width="56" height="40" rx="20" class="chip"/>
+<text x="874.0" y="598" class="t-b t-accent" text-anchor="middle">ko</text>
+<text x="874.0" y="613" class="t-xs" text-anchor="middle">한국어</text>
+<rect x="908" y="580" width="44" height="40" rx="20" class="chip"/>
+<text x="930.0" y="598" class="t-b t-accent" text-anchor="middle">zh</text>
+<text x="930.0" y="613" class="t-xs" text-anchor="middle">中文</text>
+</svg>

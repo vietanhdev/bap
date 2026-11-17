@@ -1,0 +1,75 @@
+---
+title: 캐릭터 추가
+description: 캐릭터는 데이터입니다. 기존 몸 모양을 쓰면 C++가 전혀 필요 없습니다.
+---
+
+# 캐릭터 추가
+
+기존 몸 모양을 다시 쓰는 새 캐릭터는 **C++ 변경이 필요 없습니다**. `firmware/data/assistant.json`에
+항목 하나만 추가하면 됩니다.
+
+## 1. 항목 추가
+
+```json
+{
+  "id": "na",
+  "name": "Na",
+  "kind": "a green custard apple",
+  "voice": "Zephyr",
+  "tagline": "Curious, asks a lot, loves exploring",
+  "persona": "You are Na, a curious little custard apple... You call yourself \"Na\" and the user \"bạn\".",
+  "look": {
+    "shape": "mochi",
+    "body": "#A8D88A",
+    "accent": "#6FA556",
+    "ink": "#2F4022",
+    "cheek": "#F5A77B"
+  }
+}
+```
+
+| 필드 | 필수 | 규칙 |
+| --- | --- | --- |
+| `id` | 예 | 소문자 `[a-z0-9_]`, 최대 13자 (NVS에 `c_<id>`로 저장). 고유해야 하고 나중에 바꾸지 마세요. |
+| `name` | 예 | 표시 이름. 사용자가 이 이름을 말해 전환합니다. |
+| `voice` | 예 | Gemini Live 기본 음성: `Leda`, `Aoede`, `Kore`, `Zephyr`, `Puck`, `Charon`, `Fenrir`, `Orus`, `Achird`… |
+| `persona` | 예 | 캐릭터가 누구인지, 자신과 사용자를 어떻게 부르는지. 짧은 한 단락. `common_rules`는 자동으로 붙습니다. |
+| `look.shape` | 예 | `cloud`, `corn`, `avocado`, `mochi`, `robot` 중 하나 |
+| `look.body/accent/ink/cheek` | 권장 | `#RRGGBB`. 화면 배경이 어두우니(`#15131F`) 대비를 확인하세요. |
+| `kind`, `tagline` | 권장 | 짧은 설명과 캐릭터를 고를 때 보이는 문구 |
+
+```bash
+python3 firmware/scripts/validate_data.py
+```
+
+## 2. 웹 미리보기 (선택)
+
+기기는 얼굴을 직접 그립니다. 웹 설정의 GIF 미리보기는 `firmware/assets/make_faces.py`가 만듭니다.
+`CHARACTERS` 표에 캐릭터를 추가한 뒤:
+
+```bash
+uv run --with pillow python firmware/assets/make_faces.py firmware/assets/faces --only na
+firmware/build_assets.sh && firmware/flash_assets.sh
+```
+
+## 3. 새 몸 모양 (필요할 때만)
+
+`firmware/src/assistant/assistant_face.cc`의 `BuildBody()`에 분기를 추가해 320×320 디자인 공간에서
+`Shape()`, `Arc()`, `Hex()` 도우미를 쓰고, `validate_data.py`의 `KNOWN_SHAPES`에 이름을, `make_faces.py`에
+대응하는 그리기 함수를 추가하세요. 23가지 표정을 모두 확인하세요. `/screen.jpg`로 화면을 캡처할 수
+있습니다.
+
+## 4. 써 보기
+
+```bash
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+```
+
+휠을 돌리거나 "Na랑 얘기할래"라고 말해 보세요.
+
+## 성격 작성 팁
+
+- 캐릭터가 자신과 사용자를 부르는 방식을 정해 두세요.
+- 말투는 몇 단어로 묘사하세요. 긴 유행어 목록은 지나치게 반복됩니다.
+- 모든 것이 소리로 나옵니다. 이모지도, 서식도 쓰지 마세요.
+- 세션마다 전송되므로 약 1,500바이트 이하로 유지하세요.

@@ -11,7 +11,7 @@ Before writing C++, check whether you need a tool at all:
 - **A fixed script for the model** (a game, a routine, a guided exercise): add an *app* to
   `firmware/data/assistant.json` instead. No code needed.
 - **Calling your own service** (Home Assistant, n8n, a script on your server): add a *hook* in the
-  web UI (`http://bap-xxxx.local`, section for extensions). The built-in `mo_rong.goi` tool posts
+  web UI (`http://bap-xxxx.local`, section for extensions). The built-in `extension.call` tool posts
   `{"action": <name>, "text": <request>}` to the hook URL and reads back the reply.
 
 Write a native tool when it needs device features, has to be fast, or must work without a server.
@@ -38,7 +38,7 @@ Reference for the pieces (upstream `main/mcp_server.h`):
 
 | Piece | Notes |
 | --- | --- |
-| Name | `group.action`, lowercase ASCII, for example `vn.thoi_tiet`, `hen_gio.dat`. Dots become `_` for Gemini (`ToFunctionName()` in `gemini_live_protocol.cc`), so names must stay unique after that and within 64 characters. Keep the existing Vietnamese naming style. |
+| Name | `group.action`, lowercase ASCII, for example `vn.weather`, `timer.set`. Dots become `_` for Gemini (`ToFunctionName()` in `gemini_live_protocol.cc`), so names must stay unique after that and within 64 characters. Keep the existing Vietnamese naming style. |
 | Description | Vietnamese, one or two sentences. Say **when** to use it with example phrases a user would say. This is the only thing the model sees, so it decides whether the tool is called. |
 | `Property(name, kPropertyTypeString)` | Required string argument |
 | `Property(name, kPropertyTypeString, std::string(""))` | Optional string with a default |
@@ -65,7 +65,7 @@ Guidelines:
   under about 10 seconds. For anything that should happen later (a reminder), store it and let the
   scheduler (`SchedulerTask()`) act on it.
 - **Need the device to do something after replying** (switch character, restart the session)?
-  Look at `nhan_vat.doi`: it replies first and does the work in a short-lived FreeRTOS task.
+  Look at `character.switch`: it replies first and does the work in a short-lived FreeRTOS task.
 - **No secrets in tools.** Use public endpoints, or keys stored in NVS via the web UI, never
   hard-coded keys.
 - Tools that only the user (web UI) should trigger: register them with `mcp.AddUserOnlyTool(...)`;

@@ -1,0 +1,108 @@
+---
+title: Bắt đầu
+description: Sao lưu Watcher, build Bắp, flash và trò chuyện lần đầu.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Bắt đầu
+
+Bắp chạy trên **Seeed SenseCAP Watcher**. Bạn build firmware trên máy Linux có Docker, flash qua
+USB một lần, những lần sau cập nhật qua Wi-Fi.
+
+## Cần chuẩn bị
+
+- **Seeed SenseCAP Watcher** (bản W1-A, W1-B hoặc bản "for XiaoZhi"): ESP32-S3, flash 32 MB, PSRAM
+  8 MB, màn hình cảm ứng tròn 1,45" 412×412, núm xoay có nút nhấn, camera với chip AI Himax
+  HX6538, micro và loa.
+- **Cáp USB-C có truyền dữ liệu**. Chip CH342 của Watcher hiện ra dạng
+  `/dev/serial/by-id/usb-1a86_USB_Dual_Serial_...-if02` (cổng 02 là ESP32-S3).
+- **Máy tính Linux** có Docker và [uv](https://docs.astral.sh/uv/) (để chạy `esptool`).
+- Một **Gemini API key** từ [Google AI Studio](https://aistudio.google.com/apikey).
+
+<Steps>
+
+### Sao lưu firmware gốc
+
+Làm một lần trước khi flash lần đầu. Bản sao lưu giúp bạn quay về firmware gốc bất cứ lúc nào.
+
+```bash
+mkdir -p backup
+uv run --with esptool esptool --chip esp32s3 --port /dev/serial/by-id/usb-1a86_USB_Dual_Serial_*-if02 \
+  --baud 921600 read-flash 0x0 0x2000000 backup/watcher-w1a-esp32s3-full-32MB.bin
+( cd backup && sha256sum watcher-w1a-esp32s3-full-32MB.bin > watcher-w1a-esp32s3-full-32MB.bin.sha256 )
+```
+
+<Callout type="warning">
+Bản dump chứa khóa riêng của thiết bị. Không bao giờ commit hay chia sẻ thư mục `backup/`.
+</Callout>
+
+### Lấy mã nguồn upstream và áp bản vá
+
+Bắp gồm một bản vá nhỏ và các module riêng, đặt trên một commit cố định của
+[xiaozhi-esp32](https://github.com/78/xiaozhi-esp32).
+
+```bash
+firmware/scripts/apply_patch.sh   # clone xiaozhi-esp32 vào vendor/ và áp firmware/patches/xiaozhi-esp32.patch
+```
+
+### Build
+
+```bash
+mkdir -p secrets && chmod 700 secrets
+printf '%s' 'YOUR_GEMINI_API_KEY' > secrets/GEMINI_API_KEY && chmod 600 secrets/GEMINI_API_KEY
+
+firmware/build.sh          # firmware, trong Docker espressif/idf:release-v6.1
+firmware/build_assets.sh   # font, mặt nhân vật và mô hình từ đánh thức
+```
+
+Biến tùy chọn của `build.sh`: `GEMINI_MODEL`, `GEMINI_VOICE`, `WAKE_WORD` (mặc định
+`wn9_hilili_tts`, tức "Hi Lili") và `LANG_CODE` (mặc định `vi-VN`).
+
+<Callout type="info">
+Có thể để trống key khi build (tạo file `secrets/GEMINI_API_KEY` rỗng) rồi nhập sau trong trang cài
+đặt. Firmware do CI build không bao giờ chứa key.
+</Callout>
+
+**Key miễn phí và key trả phí dự phòng (tùy chọn).** Đặt key của project *không* bật thanh toán vào
+`secrets/GEMINI_API_KEY`, và key của project *đã* bật thanh toán vào `secrets/GEMINI_API_KEY_PAID`.
+Thiết bị luôn thử key miễn phí trước, chỉ dùng key trả phí khi key miễn phí bị từ chối. Sau khi bị
+từ chối, key miễn phí được thử lại sau 1, 2, 4, 8 rồi tối đa 15 phút. Cả hai key đều sửa được trong
+trang cài đặt, nơi cũng hiện số phiên mỗi key đã dùng từ lúc bật máy.
+
+### Flash
+
+```bash
+firmware/flash.sh               # lần đầu: bootloader, bảng phân vùng, otadata, ứng dụng, assets
+firmware/flash_app.sh           # những lần sau: chỉ ứng dụng (nhanh)
+firmware/flash_assets.sh        # chỉ phân vùng assets
+firmware/ota.sh bap-xxxx.local  # cập nhật qua Wi-Fi, không cần cáp
+```
+
+Các script tự tìm Watcher trên USB. Nếu cắm nhiều máy, chọn một máy bằng
+`PORT=/dev/serial/by-id/... firmware/flash.sh`.
+
+### Kết nối Wi-Fi
+
+1. Lần đầu khởi động, thiết bị phát Wi-Fi tên **`Bap-XXXX`**. Kết nối điện thoại vào mạng đó, trang
+   cấu hình tự mở (hoặc vào `http://192.168.4.1`), chọn Wi-Fi nhà bạn và nhập mật khẩu.
+2. Khi đã vào mạng, mở **`http://bap-xxxx.local`** (hoặc IP hiện trên màn hình) từ máy tính cùng
+   mạng. `xxxx` là 4 ký tự cuối địa chỉ MAC, nên mỗi máy có một tên riêng.
+3. Nhập Gemini API key nếu chưa build kèm, chọn thành phố và nhân vật.
+
+### Chào Bắp
+
+Nói từ đánh thức **"Hi Lili"**, nhấn núm xoay hoặc chạm đúp màn hình. Gương mặt chuyển sang lắng
+nghe, cứ thế nói thôi. Phiên tự đóng sau 30 giây im lặng.
+
+</Steps>
+
+## Quay về firmware gốc
+
+```bash
+firmware/restore_stock.sh
+```
+
+Script kiểm tra SHA-256 của `backup/watcher-w1a-esp32s3-full-32MB.bin` rồi ghi lại toàn bộ 32 MB từ
+địa chỉ `0x0`. Nếu không có bản sao lưu, có thể cài lại firmware SenseCraft chính thức bằng công cụ
+của Seeed: Bắp không bao giờ ghi phân vùng `nvsfactory` (`0x9000`) nên khóa thiết bị vẫn còn.

@@ -48,8 +48,9 @@ void ShowApp() {
     if (apps.empty())
         return;
     g_app_index = (g_app_index % (int)apps.size() + apps.size()) % apps.size();
-    Show("Ứng dụng " + std::to_string(g_app_index + 1) + "/" + std::to_string(apps.size()),
-         apps[g_app_index].title + " · bấm để mở", "thinking");
+    Show(Localize("Ứng dụng") + " " + std::to_string(g_app_index + 1) + "/" +
+             std::to_string(apps.size()),
+         apps[g_app_index].title + " · " + Localize("bấm để mở"), "thinking");
 }
 
 }  // namespace
@@ -282,7 +283,7 @@ static bool MorningBriefing() {
         return false;
     done_yday = t.tm_yday;
     for (auto& a : Apps()) {
-        if (a.id != "ban_tin_sang")
+        if (a.id != "morning_news")
             continue;
         Say("<hệ thống>Người dùng vừa xuất hiện trước máy lần đầu trong buổi sáng hôm nay. " +
             a.prompt + "</hệ thống>");

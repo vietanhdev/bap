@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="690" viewBox="0 0 980 690" role="img" aria-labelledby="t d">
+<title id="t">Wheel and touch controls</title>
+<desc id="d">Illustration of the Watcher with its wheel and a table of every wheel and touch gesture.</desc>
+
+<style>
+  svg { --bg:#f8f6ff; --card:#ffffff; --panel:#f0ecff; --ink:#1e1b2e; --muted:#6b6785;
+        --line:#d6cff3; --accent:#7c5cff; --accent2:#a594ff; --soft:#ece6ff; --shadow:#2a1f66;
+        --shadowop:0.10; --before:#d9d4ea; --corn:#e8b520; --avo:#6fa83a; --pink:#e57aa3;
+        --sky:#3f9fd6; --danger:#e0567a; --ok:#2f9e6a; --chip:#f3f0ff; --onaccent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --bg:#15131f; --card:#1e1b2e; --panel:#1a1828; --ink:#f1eefc; --muted:#a39fbd;
+          --line:#3a3454; --accent:#a594ff; --accent2:#7c5cff; --soft:#2a2540; --shadow:#000000;
+          --shadowop:0.45; --before:#3c3756; --corn:#f5c84b; --avo:#8bc34a; --pink:#f7a8c4;
+          --sky:#7ec8f0; --danger:#ff7c9c; --ok:#5fd39a; --chip:#262238; --onaccent:#15131f; }
+  }
+  text { font-family: Nunito, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; fill: var(--ink); }
+  .bg { fill: var(--bg); }
+  .card { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+  .panel { fill: var(--panel); stroke: var(--accent2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .soft { fill: var(--soft); }
+  .chip { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .accentf { fill: var(--accent); }
+  .accent2f { fill: var(--accent2); }
+  .beforef { fill: var(--before); }
+  .cornf { fill: var(--corn); } .avof { fill: var(--avo); } .pinkf { fill: var(--pink); }
+  .skyf { fill: var(--sky); } .dangerf { fill: var(--danger); } .okf { fill: var(--ok); }
+  .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.2px; }
+  .t-sub { font-size: 14px; fill: var(--muted); }
+  .t-h { font-size: 15.5px; font-weight: 800; }
+  .t-b { font-size: 14px; font-weight: 600; }
+  .t-s { font-size: 13px; fill: var(--muted); }
+  .t-xs { font-size: 12px; fill: var(--muted); }
+  .t-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
+  .t-on { fill: var(--onaccent); }
+  .t-accent { fill: var(--accent); }
+  .t-danger { fill: var(--danger); }
+  .t-ok { fill: var(--ok); }
+  .line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .aline { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dline { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 4 4; }
+  .life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .ds { flood-color: var(--shadow); flood-opacity: var(--shadowop); }
+  .mk { fill: var(--muted); } .mka { fill: var(--accent); }
+</style>
+
+<defs>
+  <filter id="sh" x="-8%" y="-15%" width="116%" height="140%">
+    <feDropShadow class="ds" dx="0" dy="3" stdDeviation="5"/>
+  </filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mk" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mka" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#5b8cff"/>
+  </linearGradient>
+  <linearGradient id="gradwarm" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
+  </linearGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="980" height="690" rx="22"/>
+<text x="32" y="48" class="t-title">Wheel and touch</text>
+<text x="32" y="72" class="t-sub">Every gesture, by state. Hold anywhere for the round menu.</text>
+<circle cx="220" cy="360" r="164" fill="#2b2838" stroke="#4a4466" stroke-width="2" filter="url(#sh)"/>
+<circle cx="220" cy="360" r="150" fill="#15131f"/>
+<text x="220" y="252" text-anchor="middle" style="font-size:15px;fill:#f1eefc;font-weight:700">10:24</text>
+<g transform="translate(220,366)"><path d="M-62,30 C-92,30 -94,-8 -66,-12 C-66,-46 -24,-56 -10,-30 C2,-58 52,-52 50,-16 C80,-16 84,30 56,30 Z" fill="#ffffff" stroke="#9db6e4" stroke-width="3"/><ellipse cx="-24" cy="2" rx="6" ry="8" fill="#3a2e4c"/><ellipse cx="22" cy="2" rx="6" ry="8" fill="#3a2e4c"/><circle cx="-22" cy="-1" r="2" fill="#fff"/><circle cx="24" cy="-1" r="2" fill="#fff"/><ellipse cx="-40" cy="14" rx="9" ry="5" fill="#ff9eb5" opacity=".75"/><ellipse cx="38" cy="14" rx="9" ry="5" fill="#ff9eb5" opacity=".75"/><path d="M-8,14 Q-1,21 6,14" stroke="#3a2e4c" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+<text x="220" y="452" text-anchor="middle" style="font-size:14px;fill:#c9c4e0">Chạm 2 lần để nói chuyện</text>
+<rect x="380" y="240" width="30" height="70" rx="12" fill="#3a364d"/>
+<line x1="386" y1="250" x2="404" y2="250" stroke="#56506f" stroke-width="2"/>
+<line x1="386" y1="260" x2="404" y2="260" stroke="#56506f" stroke-width="2"/>
+<line x1="386" y1="270" x2="404" y2="270" stroke="#56506f" stroke-width="2"/>
+<line x1="386" y1="280" x2="404" y2="280" stroke="#56506f" stroke-width="2"/>
+<line x1="386" y1="290" x2="404" y2="290" stroke="#56506f" stroke-width="2"/>
+<line x1="386" y1="300" x2="404" y2="300" stroke="#56506f" stroke-width="2"/>
+<path d="M424,248 q16,27 0,54" class="aline" marker-end="url(#ara)" marker-start="url(#ara)"/>
+<text x="395" y="332" class="t-b t-accent" text-anchor="middle">wheel</text>
+<circle cx="160" cy="410" r="16" fill="none" stroke="#a594ff" stroke-width="2.5" opacity=".9"/>
+<circle cx="160" cy="410" r="27" fill="none" stroke="#a594ff" stroke-width="1.5" opacity=".45"/>
+<text x="220" y="562" class="t-s" text-anchor="middle">412×412 touch screen (SPD2010)</text>
+<rect x="470" y="104" width="480" height="254" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="494" cy="131" r="7" class="accentf"/>
+<text x="510" y="136" class="t-h">Wheel</text>
+<rect x="488" y="152" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="167.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="168" class="t-b">Rotate</text>
+<text x="722" y="168" class="t-s">switch character</text>
+<line x1="488" y1="182" x2="932" y2="182" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="186" width="60" height="22" rx="11.0" class="chip"/>
+<text x="518.0" y="201.5" class="t-xs" text-anchor="middle">talking</text>
+<text x="578" y="202" class="t-b">Rotate</text>
+<text x="722" y="202" class="t-s">volume</text>
+<line x1="488" y1="216" x2="932" y2="216" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="220" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="235.5" class="t-xs" text-anchor="middle">any</text>
+<text x="578" y="236" class="t-b">Press</text>
+<text x="722" y="236" class="t-s">talk · pause · resume</text>
+<line x1="488" y1="250" x2="932" y2="250" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="254" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="269.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="270" class="t-b">Double press</text>
+<text x="722" y="270" class="t-s">apps list</text>
+<line x1="488" y1="284" x2="932" y2="284" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="288" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="303.5" class="t-xs" text-anchor="middle">any</text>
+<text x="578" y="304" class="t-b">Hold 1 s</text>
+<text x="722" y="304" class="t-s">menu (hold again: back)</text>
+<line x1="488" y1="318" x2="932" y2="318" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="322" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="337.5" class="t-xs" text-anchor="middle">any</text>
+<text x="578" y="338" class="t-b">Hold 20 s</text>
+<text x="722" y="338" class="t-s">factory reset</text>
+<rect x="470" y="374" width="480" height="288" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="494" cy="401" r="7" class="pinkf"/>
+<text x="510" y="406" class="t-h">Touch</text>
+<rect x="488" y="422" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="437.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="438" class="t-b">Tap</text>
+<text x="722" y="438" class="t-s">giggle</text>
+<line x1="488" y1="452" x2="932" y2="452" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="456" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="471.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="472" class="t-b">Double tap</text>
+<text x="722" y="472" class="t-s">start talking</text>
+<line x1="488" y1="486" x2="932" y2="486" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="490" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="505.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="506" class="t-b">Swipe ← →</text>
+<text x="722" y="506" class="t-s">switch character</text>
+<line x1="488" y1="520" x2="932" y2="520" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="524" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="539.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="540" class="t-b">Hold</text>
+<text x="722" y="540" class="t-s">menu</text>
+<line x1="488" y1="554" x2="932" y2="554" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="558" width="60" height="22" rx="11.0" class="chip"/>
+<text x="518.0" y="573.5" class="t-xs" text-anchor="middle">talking</text>
+<text x="578" y="574" class="t-b">Tap</text>
+<text x="722" y="574" class="t-s">interrupt</text>
+<line x1="488" y1="588" x2="932" y2="588" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="592" width="48" height="22" rx="11.0" class="chip"/>
+<text x="512.0" y="607.5" class="t-xs" text-anchor="middle">music</text>
+<text x="578" y="608" class="t-b">Double tap</text>
+<text x="722" y="608" class="t-s">stop music</text>
+<line x1="488" y1="622" x2="932" y2="622" stroke="var(--line)" stroke-width="1"/>
+<rect x="488" y="626" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="641.5" class="t-xs" text-anchor="middle">menu</text>
+<text x="578" y="642" class="t-b">Swipe / tap</text>
+<text x="722" y="642" class="t-s">move · centre opens</text>
+</svg>

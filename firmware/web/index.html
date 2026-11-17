@@ -6,7 +6,7 @@
 <title>Bắp</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%E2%98%81%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
-:root{--bg:#f4f6fb;--card:#fff;--fg:#2b2440;--muted:#7a7391;--line:#e6e3f0;--accent:#7c5cff;--accent-fg:#fff;--soft:#efeaff;--ok:#1f9d6b;--bad:#d64562;--me:#e3f1ff}
+:root{color-scheme:light dark;--bg:#f4f6fb;--card:#fff;--fg:#2b2440;--muted:#7a7391;--line:#e6e3f0;--accent:#7c5cff;--accent-fg:#fff;--soft:#efeaff;--ok:#1f9d6b;--bad:#d64562;--me:#e3f1ff}
 @media(prefers-color-scheme:dark){:root{--bg:#15131f;--card:#201d2e;--fg:#ece9f7;--muted:#9c95b5;--line:#322e45;--accent:#9d86ff;--accent-fg:#15131f;--soft:#2b2644;--ok:#4fd3a0;--bad:#ff7d95;--me:#1d3350}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -41,7 +41,13 @@ textarea{min-height:150px;resize:vertical}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.playing{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;margin-bottom:12px;border-radius:14px;background:var(--soft)}.playing b{font-weight:600}
+.playing{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 14px;margin-bottom:12px;border-radius:14px;background:linear-gradient(135deg,var(--soft),var(--bg))}
+.playing>span{flex:1;min-width:0;display:flex;align-items:center;gap:10px}.playing b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eq{display:inline-flex;align-items:flex-end;gap:2px;height:16px;flex:none}.eq i{width:3px;background:var(--accent);border-radius:2px;animation:eq 1s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.4s}.eq i:nth-child(3){animation-delay:-.7s}
+@keyframes eq{0%,100%{height:4px}50%{height:16px}}
+@media (prefers-reduced-motion:reduce){.eq i{animation:none;height:10px}}
+.playing button{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12);padding:8px 14px;flex:none}
 .kv{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}.kv b{text-align:right}
 @media(max-width:440px){.row{grid-template-columns:1fr}}
 .check{flex-direction:row;align-items:flex-start;gap:10px;font-weight:500}
@@ -65,7 +71,8 @@ li button{padding:2px 9px;font-size:13px}
 pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;color:var(--muted)}
 .hook{display:grid;gap:8px;background:var(--bg);border-radius:12px;padding:10px}
 .hook input{background:var(--card)}
-.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px;box-shadow:0 -6px 20px rgba(0,0,0,.08);transform:translateY(110%);transition:transform .25s ease}
+.bar.show{transform:none}
 .bar div{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
 .bar span{flex:1;font-size:14px;color:var(--muted);min-width:0}
 .bar span.ok{color:var(--ok)}.bar span.bad{color:var(--bad)}
@@ -87,7 +94,7 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
 <div class="tab" id="tab-chat">
 <section>
   <h2>Trò chuyện</h2>
-  <div class="playing" id="playing" hidden><span>♪ <b id="playingTitle"></b></span><button type="button" id="stopBtn">Dừng</button></div>
+  <div class="playing" id="playing" hidden><span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><b id="playingTitle"></b></span><button type="button" id="stopBtn">■ Dừng</button></div>
   <div class="chat" id="chat"><span class="empty">Chưa có cuộc trò chuyện nào. Nói "Hi Lili" với máy hoặc gõ ở dưới.</span></div>
   <form class="say" id="sayForm"><input type="text" id="sayText" placeholder="Gõ câu muốn nói" autocomplete="off"><button class="primary">Gửi</button></form>
   <div class="chips" id="chips"></div>
@@ -206,7 +213,7 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
 </div>
 </main>
 
-<div class="bar"><div><span id="msg">Thay đổi có hiệu lực ở lần trò chuyện kế tiếp.</span><button class="primary" id="save">Lưu</button></div></div>
+<div class="bar" id="bar"><div><span id="msg">Thay đổi có hiệu lực ở lần trò chuyện kế tiếp.</span><button class="primary" id="save">Lưu</button></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -223,12 +230,15 @@ CITIES.forEach((c,i)=>$('cityPick').add(new Option(c[0],i)));
 CHIPS.forEach(t=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=()=>say(t);$('chips').append(b)});
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-selected',x===b));['chat','me','sys'].forEach(t=>$('tab-'+t).hidden=t!==b.dataset.tab)});
 
-function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||''}
+let barT;function showBar(){clearTimeout(barT);$('bar').classList.add('show')}
+function msg(t,cls){$('msg').textContent=t;$('msg').className=cls||'';showBar();if(cls==='ok'&&!dirty)barT=setTimeout(()=>$('bar').classList.remove('show'),2500)}
+const CFG_IDS=new Set(['c_name','c_voice','c_persona','language','cityPick','city','lat','lon','presence','morning','quiet','night_dim','idle_s','greet','api_key','api_key_paid','model','search']);
+['input','change'].forEach(ev=>document.addEventListener(ev,e=>{if(CFG_IDS.has(e.target.id)||e.target.closest('#hooks'))msg('Có thay đổi chưa lưu. Có hiệu lực ở lần trò chuyện kế tiếp.')}));
 function el(tag,text,cls){const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e}
 function renderList(key,empty){const ul=$(key);ul.textContent='';if(!lists[key].length){ul.append(el('li',empty,'empty'));return}
   lists[key].forEach((t,i)=>{const li=el('li'),b=el('button','Xóa');b.type='button';b.onclick=()=>{lists[key].splice(i,1);dirty=true;renderList(key,empty);msg('Bấm Lưu để xác nhận xóa.')};li.append(el('span',t),b);ul.append(li)})}
 function renderHooks(){const box=$('hooks');box.textContent='';hooks.forEach((h,i)=>{const d=el('div','','hook');
-  [['name','Tên, ví dụ: den_phong_khach','text'],['desc','Mô tả để trợ lý biết khi nào dùng','text'],['url','http://192.168.0.10:3000/api/bap','url']].forEach(([k,ph,ty])=>{const inp=el('input');inp.type=ty;inp.placeholder=ph;inp.value=h[k]||'';inp.setAttribute('aria-label',ph);inp.oninput=()=>{h[k]=inp.value;dirty=true};d.append(inp)});
+  [['name','Tên, ví dụ: den_phong_khach','text'],['desc','Mô tả để trợ lý biết khi nào dùng','text'],['url','http://homeassistant.local:8123/api/webhook/bap','url']].forEach(([k,ph,ty])=>{const inp=el('input');inp.type=ty;inp.placeholder=ph;inp.value=h[k]||'';inp.setAttribute('aria-label',ph);inp.oninput=()=>{h[k]=inp.value;dirty=true};d.append(inp)});
   const b=el('button','Xóa tiện ích này');b.type='button';b.onclick=()=>{hooks.splice(i,1);dirty=true;renderHooks()};d.append(b);box.append(d)});
   if(!hooks.length)box.append(el('span','Chưa có tiện ích nào.','empty'))}
 function cur(){return chars.find(c=>c.id===editing)||chars[0]}
@@ -239,7 +249,7 @@ function showChar(){const c=cur();if(!c)return;$('editTitle').textContent='Tùy 
 function renderChars(){const box=$('chars');box.textContent='';chars.forEach(c=>{const b=el('button');b.type='button';b.setAttribute('aria-pressed',c.id===cfg.character);
   const img=el('img');img.src='/face?c='+c.id+'&e='+(c.id===cfg.character?'happy':'relaxed');img.alt='';img.loading='lazy';
   b.append(img,el('span',c.name),el('small',c.tagline));b.onclick=()=>{stash();cfg.character=c.id;editing=c.id;renderChars();showChar();msg('Bấm Lưu để đổi sang '+c.name+'.')};box.append(b)})}
-function renderStations(){const box=$('stations');box.textContent='';(cfg.stations||[]).forEach(s=>{const b=el('button','📻 '+s.name);b.type='button';b.onclick=()=>post('/api/tool',{name:'radio.mo',arguments:{kenh:s.id}}).then(()=>{msg('Đang mở '+s.name,'ok');setTimeout(status,2500)}).catch(()=>msg('Không mở được kênh này.','bad'));box.append(b)})}
+function renderStations(){const box=$('stations');box.textContent='';(cfg.stations||[]).forEach(s=>{const b=el('button','📻 '+s.name);b.type='button';b.onclick=()=>post('/api/tool',{name:'radio.play',arguments:{station:s.id}}).then(()=>{msg('Đang mở '+s.name,'ok');setTimeout(status,2500)}).catch(()=>msg('Không mở được kênh này.','bad'));box.append(b)})}
 function renderApps(){const box=$('apps');box.textContent='';(cfg.apps||[]).forEach(a=>{const b=el('button');b.type='button';b.append(el('span',a.title),el('small',a.desc));
   b.onclick=()=>post('/api/app',{id:a.id}).then(()=>msg('Đã mở '+a.title+'.','ok')).catch(()=>msg('Không mở được.','bad'));box.append(b)})}
 async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e){msg('Không tải được cấu hình.','bad');return}
@@ -260,7 +270,7 @@ async function save(){stash();const b={character:cfg.character,characters:chars.
   if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
   if($('api_key_paid').value.trim())b.api_key_paid=$('api_key_paid').value.trim();
   if(dirty){b.notes=lists.notes;b.memory=lists.memory;b.hooks=hooks.filter(h=>h.name&&h.url)}
-  try{await post('/api/config',b);$('api_key').value='';$('api_key_paid').value='';msg('Đã lưu.','ok');load()}catch(e){msg('Không lưu được: '+e.message,'bad')}}
+  try{await post('/api/config',b);$('api_key').value='';$('api_key_paid').value='';dirty=false;msg('Đã lưu.','ok');load()}catch(e){msg('Không lưu được: '+e.message,'bad')}}
 async function say(t){try{await post('/api/say',{text:t});msg('Đã gửi.','ok')}catch(e){msg('Không gửi được.','bad')}}
 async function live(k){try{await post('/api/config',{[k]:+$(k).value})}catch(e){}}
 function renderChat(log){const key=JSON.stringify(log);if(key===logKey||!log.length)return;logKey=key;const box=$('chat');box.textContent='';log.forEach(e=>box.append(el('p',e.text,e.role)));box.scrollTop=box.scrollHeight}

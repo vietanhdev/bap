@@ -1,0 +1,46 @@
+---
+title: Núm xoay và cảm ứng
+description: Mọi thao tác trên núm xoay và màn hình cảm ứng tròn.
+---
+
+import { Shots } from '@/components/Characters'
+
+# Núm xoay và cảm ứng
+
+![Thao tác núm xoay và cảm ứng](/diagrams/controls.svg)
+
+## Núm xoay
+
+| Trạng thái | Thao tác | Kết quả |
+| --- | --- | --- |
+| Đang nghỉ | Xoay | Đổi nhân vật |
+| Đang nghỉ | Nhấn đúp | Mở danh sách ứng dụng; xoay để chọn, nhấn để mở |
+| Đang trò chuyện | Xoay | Âm lượng |
+| Đang trò chuyện | Nhấn | Dừng hoặc tiếp tục nghe |
+| Bất kỳ | Giữ 1 giây | Mở menu (giữ lần nữa để quay lại) |
+| Trong menu | Xoay / nhấn | Di chuyển / mở |
+| Bất kỳ | Giữ 20 giây | Khôi phục cài đặt gốc: xóa toàn bộ thiết lập |
+
+## Màn hình cảm ứng
+
+| Trạng thái | Thao tác | Kết quả |
+| --- | --- | --- |
+| Đang nghỉ | Chạm | Nhân vật cười khúc khích |
+| Đang nghỉ | Chạm đúp | Bắt đầu trò chuyện |
+| Đang nghỉ | Vuốt ngang | Đổi nhân vật |
+| Đang nghỉ | Giữ | Mở menu |
+| Đang nói | Chạm | Ngắt lời |
+| Đang phát nhạc | Chạm đúp | Dừng nhạc |
+| Trong menu | Vuốt, hoặc chạm mục trên/dưới | Di chuyển; chạm mục giữa để mở; giữ để quay lại |
+
+## Menu tròn
+
+Giữ núm xoay (hoặc giữ màn hình) để mở: **Trò chuyện, Nhân vật, Ứng dụng, Radio, Thiết lập, Tắt máy**.
+Một cung trên viền cho biết bạn đang ở đâu, mục hiện tại nằm trong viên thuốc và hai mục bên cạnh
+mờ dần phía trên, phía dưới.
+
+**Thiết lập** gồm thanh trượt âm lượng và độ sáng, ngôn ngữ, các công tắc chế độ đêm, nhận biết có
+người, chào buổi sáng, không làm phiền ban đêm, chào khi thấy người, thông tin máy, cài Wi-Fi và khởi
+động lại. **Tắt máy** sẽ hỏi xác nhận.
+
+<Shots items={[['menu', 'Menu chính'], ['menu-settings', 'Menu thiết lập'], ['menu-characters', 'Nhân vật']]} />

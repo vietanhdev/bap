@@ -1,0 +1,67 @@
+---
+title: 도구 추가
+description: 기기의 MCP 서버에 함수를 등록하면 Gemini가 자동으로 알게 됩니다.
+---
+
+import { Callout } from 'nextra/components'
+
+# 도구 추가
+
+도구는 기기의 MCP 서버에 등록되고 자동으로 함수 선언이 되어 Gemini에 전달됩니다. 프로토콜 코드는
+건드릴 필요가 없습니다.
+
+<Callout type="info">
+C++가 정말 필요한가요? 모델을 위한 고정 대본이라면 **앱**(데이터만)으로, 자신의 서비스를 호출하려면 웹
+설정에 **웹훅**을 등록해 `extension.call`로 부르면 됩니다.
+</Callout>
+
+## 1. 등록하기
+
+`assistant::RegisterTools()`(`firmware/src/assistant/assistant_tools.cc`)에서:
+
+```cpp
+mcp.AddTool("vn.fuel_price",
+            "Xem giá xăng dầu bán lẻ hôm nay tại Việt Nam (RON 95, E5, dầu DO). Dùng khi người "
+            "dùng hỏi giá xăng.",
+            PropertyList({Property("kind", kPropertyTypeString, std::string(""))}),
+            [](const PropertyList& p) -> ToolResult {
+                auto body = HttpGet("https://example.vn/fuel.json");
+                if (!body) return std::unexpected(body.error());
+                // ... parse with cJSON, build a short spoken answer ...
+                return std::string("Xăng RON 95 hôm nay 21.000 đồng một lít.");
+            });
+```
+
+| 구성 | 메모 |
+| --- | --- |
+| 이름 | 영어 `group.action`, 소문자 ASCII (`vn.weather`, `timer.set`). Gemini에서는 점이 `_`가 되므로 변환 후에도 고유하고 64자 이내여야 합니다. |
+| 설명 | **언제** 쓰는지 사용자가 실제로 하는 말과 함께 한두 문장으로. 모델이 보는 것은 이것뿐입니다. |
+| `Property(name, kPropertyTypeString)` | 필수 문자열 |
+| `Property(name, kPropertyTypeString, std::string(""))` | 기본값이 있는 선택 문자열 |
+| `Property(name, kPropertyTypeInteger, min, max)` | 범위가 있는 필수 정수 |
+| `Property(name, kPropertyTypeInteger, default, min, max)` | 선택 정수 |
+| `Property(name, kPropertyTypeBoolean, false)` | 선택 불리언 |
+| 반환 | `ReturnValue`(문자열, bool, int, `cJSON*`) 또는 `ToolResult`. 오류면 `std::unexpected("message")` |
+
+도우미: `HttpGet(url)`(TLS 세션 재사용, 한 번 재시도), `UrlEncode()`, `Between()`, `CleanXmlText()`,
+`Now(&tm)`(시간 동기화 전에는 false), 작은 영구 목록용 `ListItems()`/`StoreItems()`, 사용자 도시용
+`LoadConfig()`.
+
+## 지침
+
+- **짧고 읽기 좋은** 텍스트를 돌려주세요. 소리 내어 읽힙니다.
+- 네트워크 호출은 약 10초 이내로, 나중 일은 스케줄러에 맡기세요.
+- 코드에 비밀을 넣지 마세요. 공개 엔드포인트나 NVS에 저장된 키를 쓰세요.
+- 웹 UI만 호출해야 하는 도구: `mcp.AddUserOnlyTool(...)`.
+- 도구 목록은 세션마다 전송되니 설명은 간결하게.
+
+## 2. 테스트
+
+```bash
+python3 firmware/scripts/validate_data.py      # also checks tool names mentioned in prompts
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.fuel_price","arguments":{"kind":"RON 95"}}'
+```
+
+그다음 자연스럽게 물어보고 시리얼 로그에서 `Tool call: vn_fuel_price`를 찾으세요.

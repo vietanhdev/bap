@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="810" viewBox="0 0 980 810" role="img" aria-labelledby="t d">
+<title id="t">Gemini Live session flow</title>
+<desc id="d">Sequence of messages between the user, the Bắp device and Gemini Live, with measured timings.</desc>
+
+<style>
+  svg { --bg:#f8f6ff; --card:#ffffff; --panel:#f0ecff; --ink:#1e1b2e; --muted:#6b6785;
+        --line:#d6cff3; --accent:#7c5cff; --accent2:#a594ff; --soft:#ece6ff; --shadow:#2a1f66;
+        --shadowop:0.10; --before:#d9d4ea; --corn:#e8b520; --avo:#6fa83a; --pink:#e57aa3;
+        --sky:#3f9fd6; --danger:#e0567a; --ok:#2f9e6a; --chip:#f3f0ff; --onaccent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --bg:#15131f; --card:#1e1b2e; --panel:#1a1828; --ink:#f1eefc; --muted:#a39fbd;
+          --line:#3a3454; --accent:#a594ff; --accent2:#7c5cff; --soft:#2a2540; --shadow:#000000;
+          --shadowop:0.45; --before:#3c3756; --corn:#f5c84b; --avo:#8bc34a; --pink:#f7a8c4;
+          --sky:#7ec8f0; --danger:#ff7c9c; --ok:#5fd39a; --chip:#262238; --onaccent:#15131f; }
+  }
+  text { font-family: Nunito, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; fill: var(--ink); }
+  .bg { fill: var(--bg); }
+  .card { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+  .panel { fill: var(--panel); stroke: var(--accent2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .soft { fill: var(--soft); }
+  .chip { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .accentf { fill: var(--accent); }
+  .accent2f { fill: var(--accent2); }
+  .beforef { fill: var(--before); }
+  .cornf { fill: var(--corn); } .avof { fill: var(--avo); } .pinkf { fill: var(--pink); }
+  .skyf { fill: var(--sky); } .dangerf { fill: var(--danger); } .okf { fill: var(--ok); }
+  .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.2px; }
+  .t-sub { font-size: 14px; fill: var(--muted); }
+  .t-h { font-size: 15.5px; font-weight: 800; }
+  .t-b { font-size: 14px; font-weight: 600; }
+  .t-s { font-size: 13px; fill: var(--muted); }
+  .t-xs { font-size: 12px; fill: var(--muted); }
+  .t-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
+  .t-on { fill: var(--onaccent); }
+  .t-accent { fill: var(--accent); }
+  .t-danger { fill: var(--danger); }
+  .t-ok { fill: var(--ok); }
+  .line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .aline { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dline { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 4 4; }
+  .life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .ds { flood-color: var(--shadow); flood-opacity: var(--shadowop); }
+  .mk { fill: var(--muted); } .mka { fill: var(--accent); }
+</style>
+
+<defs>
+  <filter id="sh" x="-8%" y="-15%" width="116%" height="140%">
+    <feDropShadow class="ds" dx="0" dy="3" stdDeviation="5"/>
+  </filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mk" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mka" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#5b8cff"/>
+  </linearGradient>
+  <linearGradient id="gradwarm" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
+  </linearGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="980" height="810" rx="22"/>
+<text x="32" y="48" class="t-title">A conversation, step by step</text>
+<text x="32" y="72" class="t-sub">From the wake word to the session closing on its own. Times measured on the device.</text>
+<rect x="58" y="100" width="184" height="46" rx="23" class="card" filter="url(#sh)"/>
+<circle cx="80" cy="123" r="7" class="cornf"/>
+<text x="158" y="129" class="t-h" text-anchor="middle">You</text>
+<line x1="150" y1="152" x2="150" y2="770" class="life"/>
+<rect x="378" y="100" width="184" height="46" rx="23" class="card" filter="url(#sh)"/>
+<circle cx="400" cy="123" r="7" class="accentf"/>
+<text x="478" y="129" class="t-h" text-anchor="middle">Bắp (ESP32-S3)</text>
+<line x1="470" y1="152" x2="470" y2="770" class="life"/>
+<rect x="708" y="100" width="184" height="46" rx="23" class="card" filter="url(#sh)"/>
+<circle cx="730" cy="123" r="7" class="skyf"/>
+<text x="808" y="129" class="t-h" text-anchor="middle">Gemini Live</text>
+<line x1="800" y1="152" x2="800" y2="770" class="life"/>
+<rect x="464" y="172" width="12" height="574" rx="6" class="soft"/>
+<path d="M160,196 L460,196" class="aline" marker-end="url(#ara)"/>
+<text x="310.0" y="187" class="t-b" text-anchor="middle">“Hi Lili” · tap · press</text>
+<rect x="28" y="183" width="46" height="26" rx="13.0" class="soft"/>
+<text x="51.0" y="200.5" class="t-b t-accent" text-anchor="middle">0 s</text>
+<path d="M480,252 L790,252" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="243" class="t-b" text-anchor="middle">TLS with saved session ticket</text>
+<text x="635.0" y="271" class="t-s" text-anchor="middle">~0.1 s resumed (1.36 s full handshake)</text>
+<rect x="28" y="239" width="69" height="26" rx="13.0" class="chip"/>
+<text x="62.5" y="256.5" class="t-s" text-anchor="middle">+0.1 s</text>
+<path d="M480,316 L790,316" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="307" class="t-b" text-anchor="middle">setup: persona + tools + voice</text>
+<text x="635.0" y="335" class="t-s" text-anchor="middle">~15 KB, resume handle if unchanged</text>
+<path d="M790,380 L480,380" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="371" class="t-b" text-anchor="middle">setupComplete</text>
+<rect x="486" y="398" width="270" height="46" rx="12" class="chip"/>
+<text x="500" y="418" class="t-b">listening face, mic opens</text>
+<text x="500" y="436" class="t-s">1.4–2.3 s after the wake word</text>
+<rect x="28" y="403" width="100" height="26" rx="13.0" class="soft"/>
+<text x="78.0" y="420.5" class="t-b t-accent" text-anchor="middle">≈1.4–2.3 s</text>
+<path d="M160,486 L460,486" class="line" marker-end="url(#ar)"/>
+<text x="310.0" y="477" class="t-b" text-anchor="middle">speaks</text>
+<path d="M480,486 L790,486" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="477" class="t-b" text-anchor="middle">realtimeInput</text>
+<text x="635.0" y="505" class="t-s" text-anchor="middle">PCM16 16 kHz, 120 ms chunks</text>
+<path d="M790,546 L480,546" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="537" class="t-b" text-anchor="middle">toolCall: weather, gold, Zing…</text>
+<path d="M480,600 L790,600" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="591" class="t-b" text-anchor="middle">toolResponse</text>
+<text x="635.0" y="619" class="t-s" text-anchor="middle">tool ran on the device (HTTP / NVS / camera)</text>
+<path d="M790,670 L480,670" class="line" marker-end="url(#ar)"/>
+<text x="635.0" y="661" class="t-b" text-anchor="middle">serverContent</text>
+<text x="635.0" y="689" class="t-s" text-anchor="middle">PCM16 24 kHz audio + transcripts</text>
+<path d="M460,670 L160,670" class="aline" marker-end="url(#ara)"/>
+<text x="310.0" y="661" class="t-b" text-anchor="middle">voice · lip sync · subtitles</text>
+<rect x="486" y="724" width="270" height="46" rx="12" class="chip"/>
+<text x="500" y="744" class="t-b">30 s of silence → close session</text>
+<text x="500" y="762" class="t-s">tap or wake word starts a new one</text>
+<rect x="28" y="729" width="100" height="26" rx="13.0" class="chip"/>
+<text x="78.0" y="746.5" class="t-s" text-anchor="middle">+30 s idle</text>
+</svg>

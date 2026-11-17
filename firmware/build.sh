@@ -42,7 +42,7 @@ if mode == "gemini":
     extra = os.path.join(os.path.dirname(src), "sdkconfig.gemini")
     app += [l.strip() for l in open(extra) if l.strip() and not l.lstrip().startswith("#")]
 else:
-    ip = os.environ.get("SERVER_IP", "192.168.0.58")
+    ip = os.environ["SERVER_IP"]  # LAN address of your self-hosted xiaozhi server
     app = [l.replace("__OTA_URL__", f"http://{ip}:8003/xiaozhi/ota/") for l in app]
 cfg["builds"][0]["sdkconfig_append"] = app
 json.dump(cfg, open(dst, "w"), indent=2)

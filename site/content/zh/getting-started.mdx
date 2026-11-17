@@ -1,0 +1,102 @@
+---
+title: 快速开始
+description: 备份 Watcher，编译 Bắp，刷写固件，开始第一次对话。
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# 快速开始
+
+Bắp 运行在 **Seeed SenseCAP Watcher** 上。你在装有 Docker 的 Linux 电脑上编译固件，通过 USB 刷写一次，
+之后就可以通过 Wi-Fi 更新。
+
+## 准备工作
+
+- **Seeed SenseCAP Watcher**（W1-A、W1-B 或 "for XiaoZhi" 版）：ESP32-S3，32 MB 闪存，8 MB PSRAM，
+  1.45 英寸 412×412 圆形触摸屏，带按键的滚轮，搭载 Himax HX6538 AI 芯片的摄像头，麦克风和扬声器。
+- 一根**支持数据传输的 USB-C 线**。Watcher 的 CH342 芯片显示为
+  `/dev/serial/by-id/usb-1a86_USB_Dual_Serial_...-if02`（接口 02 是 ESP32-S3）。
+- 装有 Docker 和 [uv](https://docs.astral.sh/uv/)（用于运行 `esptool`）的 **Linux 电脑**。
+- 从 [Google AI Studio](https://aistudio.google.com/apikey) 获取的 **Gemini API 密钥**。
+
+<Steps>
+
+### 备份原厂固件
+
+第一次刷写前做一次。有了备份，随时可以恢复原厂固件。
+
+```bash
+mkdir -p backup
+uv run --with esptool esptool --chip esp32s3 --port /dev/serial/by-id/usb-1a86_USB_Dual_Serial_*-if02 \
+  --baud 921600 read-flash 0x0 0x2000000 backup/watcher-w1a-esp32s3-full-32MB.bin
+( cd backup && sha256sum watcher-w1a-esp32s3-full-32MB.bin > watcher-w1a-esp32s3-full-32MB.bin.sha256 )
+```
+
+<Callout type="warning">
+备份中含有设备私钥。切勿提交或分享 `backup/` 文件夹。
+</Callout>
+
+### 获取上游源码并打补丁
+
+Bắp 是在固定版本的 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 之上加一个小补丁和自己的模块。
+
+```bash
+firmware/scripts/apply_patch.sh   # clones xiaozhi-esp32 into vendor/ and applies firmware/patches/xiaozhi-esp32.patch
+```
+
+### 编译
+
+```bash
+mkdir -p secrets && chmod 700 secrets
+printf '%s' 'YOUR_GEMINI_API_KEY' > secrets/GEMINI_API_KEY && chmod 600 secrets/GEMINI_API_KEY
+
+firmware/build.sh          # firmware, in the espressif/idf:release-v6.1 Docker image
+firmware/build_assets.sh   # fonts, character faces and the wake word model
+```
+
+`build.sh` 的可选变量：`GEMINI_MODEL`、`GEMINI_VOICE`、`WAKE_WORD`（默认 `wn9_hilili_tts`，即
+"Hi Lili"）和 `LANG_CODE`（默认 `vi-VN`）。
+
+<Callout type="info">
+编译时可以不放密钥（创建一个空的 `secrets/GEMINI_API_KEY`），之后在网页设置里填写。CI 编译的固件永远不含密钥。
+</Callout>
+
+**免费密钥加付费备用密钥（可选）。** 把*未*开通结算的项目的密钥放进 `secrets/GEMINI_API_KEY`，
+把*已*开通结算的项目的密钥放进 `secrets/GEMINI_API_KEY_PAID`。设备总是先用免费密钥，只有被拒绝时才用
+付费密钥。被拒绝后，免费密钥会在 1、2、4、8 分钟、最多 15 分钟后重试。两个密钥都能在网页设置中修改，
+页面还会显示开机以来每个密钥服务了多少次会话。
+
+### 刷写
+
+```bash
+firmware/flash.sh               # first time: bootloader, partition table, otadata, app, assets
+firmware/flash_app.sh           # later: the app only (fast)
+firmware/flash_assets.sh        # the assets partition only
+firmware/ota.sh bap-xxxx.local  # update over Wi-Fi, no cable
+```
+
+脚本会自动找到 USB 上的 Watcher。连接了多台时，用 `PORT=/dev/serial/by-id/... firmware/flash.sh` 指定一台。
+
+### 连接 Wi-Fi
+
+1. 首次开机，设备会开启名为 **`Bap-XXXX`** 的 Wi-Fi 热点。用手机连接后配置页会自动打开（或访问
+   `http://192.168.4.1`），选择你家的网络并输入密码。
+2. 联网后，在同一网络的电脑上打开 **`http://bap-xxxx.local`**（或屏幕上显示的 IP）。`xxxx` 是 MAC 地址
+   最后四位十六进制数，所以每台设备都有自己的名字。
+3. 如果编译时没放密钥，在这里填入 Gemini API 密钥，再选择城市和角色。
+
+### 打个招呼
+
+说唤醒词 **"Hi Lili"**、按下滚轮或双击屏幕。表情变成聆听状态后直接说话就行。安静 30 秒后会话会自动结束。
+
+</Steps>
+
+## 恢复原厂固件
+
+```bash
+firmware/restore_stock.sh
+```
+
+脚本先校验 `backup/watcher-w1a-esp32s3-full-32MB.bin` 的 SHA-256，再从地址 `0x0` 写回完整的 32 MB。
+没有自己的备份时，可以用 Seeed 的工具重新安装官方 SenseCraft 固件：Bắp 从不写入 `nvsfactory` 分区
+（`0x9000`），设备密钥依然完好。

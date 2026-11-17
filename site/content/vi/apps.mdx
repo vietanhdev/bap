@@ -1,0 +1,52 @@
+---
+title: Ứng dụng giọng nói
+description: Các trải nghiệm có kịch bản, khai báo bằng dữ liệu trong assistant.json.
+---
+
+import { Callout } from 'nextra/components'
+
+# Ứng dụng giọng nói
+
+Ứng dụng là một kịch bản ngắn cho mô hình: một thói quen, một trò chơi hay một bài tập có hướng dẫn.
+Ứng dụng là dữ liệu trong `firmware/data/assistant.json`, thêm mới không cần viết C++.
+
+| Ứng dụng | id | Làm gì |
+| --- | --- | --- |
+| Bản tin sáng | `morning_news` | Thời tiết, lịch âm và vài tin nổi bật trong khoảng một phút |
+| Kể chuyện cho bé | `bedtime_story` | Truyện cổ tích Việt Nam, kể từng đoạn ngắn |
+| Luyện nói tiếng Anh | `english_practice` | Trò chuyện tiếng Anh chậm rãi, sửa lỗi bằng tiếng Việt |
+| Đố vui | `quiz` | Câu đố dân gian và kiến thức, có tính điểm |
+| Hít thở thư giãn | `breathing` | Một phút hít thở theo nhịp để bớt căng thẳng |
+| Hôm nay ăn gì | `what_to_eat` | Gợi ý món Việt theo nguyên liệu có sẵn, kèm cách nấu |
+| Tập trung 25 phút | `pomodoro` | Hẹn giờ làm việc 25 phút rồi nhắc nghỉ |
+| Nhìn và kể | `look_and_tell` | Dùng camera để mô tả đồ vật, đọc chữ, nhận xét |
+| Nhật ký cuối ngày | `evening_journal` | Kể về hôm nay, Bắp tóm tắt và lưu lại |
+| Tử vi vui | `fun_horoscope` | Lời chúc tích cực theo cung hoàng đạo, chỉ để giải trí |
+| Học tiếng Hàn | `learn_korean` | Ba từ tiếng Hàn mỗi lần, nói chậm và nhắc lại |
+
+## Mở ứng dụng
+
+- **Núm xoay:** nhấn đúp khi đang nghỉ để mở danh sách; xoay để chọn, nhấn để mở.
+- **Menu:** giữ núm xoay → Ứng dụng.
+- **Giọng nói:** "mở đố vui", "kể chuyện cho bé đi". Công cụ `app.open` nạp kịch bản.
+- **Trang cài đặt:** thẻ Trò chuyện liệt kê mọi ứng dụng; bấm để mở trên máy.
+
+<Callout type="info">
+**Bản tin sáng** còn tự chạy: khi bật *Chào buổi sáng*, lần đầu camera thấy người trong khoảng 6 đến
+10 giờ sáng, nhân vật sẽ chào và đọc bản tin (mỗi ngày một lần). Xem
+[Camera và tính năng thông minh](/vi/smart-features).
+</Callout>
+
+## Viết một ứng dụng
+
+```json
+{
+  "id": "cau_do",
+  "title": "Câu đố cho bé",
+  "desc": "Câu đố ngắn cho trẻ nhỏ, có gợi ý.",
+  "prompt": "Mỗi lần hỏi một câu đố ngắn. Chờ bé trả lời, gợi ý nếu cần..."
+}
+```
+
+`id` gồm chữ thường `[a-z0-9_]`; `title` và `desc` hiện trong menu và trang cài đặt; `prompt` được
+gửi cho mô hình khi mở ứng dụng. Chạy `python3 firmware/scripts/validate_data.py` để kiểm tra.

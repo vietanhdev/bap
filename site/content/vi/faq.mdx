@@ -1,0 +1,54 @@
+---
+title: Hỏi đáp và xử lý sự cố
+description: Cài Wi-Fi, khôi phục, API key, âm thanh và các câu hỏi thường gặp.
+---
+
+# Hỏi đáp và xử lý sự cố
+
+### Làm sao để kết nối Wi-Fi khác?
+
+Giữ núm xoay để mở menu → **Thiết lập → Cài Wi-Fi**, hoặc nói "cài lại Wi-Fi". Máy phát mạng
+**`Bap-XXXX`**; kết nối điện thoại vào đó và chọn mạng mới tại `http://192.168.4.1`. Bạn cũng có thể
+thêm mạng trong trang cài đặt (thẻ Hệ thống) khi máy vẫn đang kết nối.
+
+### Màn hình báo kiểm tra mạng
+
+Máy sẽ tự thử lại. Kiểm tra router có băng 2,4 GHz (ESP32-S3 không có 5 GHz) và mật khẩu đã lưu đúng.
+
+### "Gemini rejected the session"
+
+Key bị thiếu, sai hoặc hết hạn mức. Mở `http://bap-xxxx.local` → Hệ thống → Gemini và dán key mới. Có
+key trả phí dự phòng thì máy tự chuyển.
+
+### Máy không nghe từ đánh thức
+
+Nói "Hi Lili" rõ ràng, cách khoảng một mét. *Không làm phiền ban đêm* tắt từ đánh thức từ 22:00 đến
+06:00; khi đó hãy nhấn núm xoay hoặc chạm đúp màn hình.
+
+### Ban đêm máy nói to quá
+
+Chế độ đêm (bật sẵn) giới hạn âm lượng 35% từ 22:00 đến 06:00. Xoay núm khi máy đang nói, hoặc chỉnh
+âm lượng trong menu hay trang cài đặt.
+
+### Quên mật khẩu trang cài đặt
+
+Giữ núm xoay 20 giây: máy xóa toàn bộ thiết lập về mặc định (gồm cả Wi-Fi, key và mật khẩu).
+
+### Tắt nhạc thế nào?
+
+Chạm đúp màn hình, nói "tắt nhạc", hoặc bấm Dừng trong trang cài đặt.
+
+### Có quay về firmware gốc được không?
+
+Được. `firmware/restore_stock.sh` ghi lại bản sao lưu đầy đủ. Nếu không có, hãy cài lại SenseCraft bằng
+công cụ của Seeed; khóa xuất xưởng ở `0x9000` vẫn nguyên vẹn.
+
+### Dùng khi đi vắng được không?
+
+Trang cài đặt cố ý chỉ dùng trong mạng LAN. Hãy dùng VPN như Tailscale hoặc WireGuard để vào mạng nhà;
+đừng mở thiết bị ra Internet.
+
+### Xem log ở đâu?
+
+Cắm USB và mở cổng serial ở 115200 baud, hoặc xem nhật ký hội thoại trong thẻ Trò chuyện. `/api/perf`
+cho biết tình trạng CPU, bộ nhớ và Wi-Fi.

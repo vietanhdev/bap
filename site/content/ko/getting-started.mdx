@@ -1,0 +1,107 @@
+---
+title: 시작하기
+description: Watcher를 백업하고, Bắp을 빌드해 플래시한 뒤 첫 대화를 나눠 보세요.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# 시작하기
+
+Bắp은 **Seeed SenseCAP Watcher**에서 동작합니다. Docker가 있는 Linux 컴퓨터에서 펌웨어를 빌드하고,
+USB로 한 번 플래시한 뒤에는 Wi-Fi로 업데이트합니다.
+
+## 준비물
+
+- **Seeed SenseCAP Watcher** (W1-A, W1-B 또는 "for XiaoZhi" 에디션): ESP32-S3, 32 MB 플래시, 8 MB
+  PSRAM, 1.45인치 412×412 원형 터치스크린, 버튼이 달린 스크롤 휠, Himax HX6538 AI 칩이 있는 카메라,
+  마이크와 스피커.
+- **데이터 전송이 되는 USB-C 케이블**. Watcher의 CH342 칩은
+  `/dev/serial/by-id/usb-1a86_USB_Dual_Serial_...-if02`로 나타납니다 (인터페이스 02가 ESP32-S3).
+- Docker와 [uv](https://docs.astral.sh/uv/)(`esptool` 실행용)가 설치된 **Linux 컴퓨터**.
+- [Google AI Studio](https://aistudio.google.com/apikey)에서 받은 **Gemini API 키**.
+
+<Steps>
+
+### 기본 펌웨어 백업
+
+처음 플래시하기 전에 한 번만 하세요. 백업이 있으면 언제든 원래 펌웨어로 돌아갈 수 있습니다.
+
+```bash
+mkdir -p backup
+uv run --with esptool esptool --chip esp32s3 --port /dev/serial/by-id/usb-1a86_USB_Dual_Serial_*-if02 \
+  --baud 921600 read-flash 0x0 0x2000000 backup/watcher-w1a-esp32s3-full-32MB.bin
+( cd backup && sha256sum watcher-w1a-esp32s3-full-32MB.bin > watcher-w1a-esp32s3-full-32MB.bin.sha256 )
+```
+
+<Callout type="warning">
+덤프에는 기기의 개인 키가 들어 있습니다. `backup/` 폴더는 절대 커밋하거나 공유하지 마세요.
+</Callout>
+
+### 업스트림 소스 받기와 패치 적용
+
+Bắp은 고정된 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 커밋 위에 작은 패치와 자체 모듈을
+더한 것입니다.
+
+```bash
+firmware/scripts/apply_patch.sh   # clones xiaozhi-esp32 into vendor/ and applies firmware/patches/xiaozhi-esp32.patch
+```
+
+### 빌드
+
+```bash
+mkdir -p secrets && chmod 700 secrets
+printf '%s' 'YOUR_GEMINI_API_KEY' > secrets/GEMINI_API_KEY && chmod 600 secrets/GEMINI_API_KEY
+
+firmware/build.sh          # firmware, in the espressif/idf:release-v6.1 Docker image
+firmware/build_assets.sh   # fonts, character faces and the wake word model
+```
+
+`build.sh`의 선택 변수: `GEMINI_MODEL`, `GEMINI_VOICE`, `WAKE_WORD`(기본값 `wn9_hilili_tts`, "Hi
+Lili"), `LANG_CODE`(기본값 `vi-VN`).
+
+<Callout type="info">
+빌드할 때 키를 비워 두고(빈 `secrets/GEMINI_API_KEY` 파일) 나중에 웹 설정에서 입력해도 됩니다. CI
+빌드에는 키가 절대 들어가지 않습니다.
+</Callout>
+
+**무료 키와 유료 대체 키 (선택).** 결제가 *꺼진* 프로젝트의 키를 `secrets/GEMINI_API_KEY`에, 결제가
+*켜진* 프로젝트의 키를 `secrets/GEMINI_API_KEY_PAID`에 넣으세요. 기기는 항상 무료 키를 먼저 쓰고,
+무료 키가 거절될 때만 유료 키를 씁니다. 거절된 뒤 무료 키는 1, 2, 4, 8분, 최대 15분 후에 다시
+시도됩니다. 두 키 모두 웹 설정에서 바꿀 수 있고, 부팅 후 각 키가 처리한 세션 수도 볼 수 있습니다.
+
+### 플래시
+
+```bash
+firmware/flash.sh               # first time: bootloader, partition table, otadata, app, assets
+firmware/flash_app.sh           # later: the app only (fast)
+firmware/flash_assets.sh        # the assets partition only
+firmware/ota.sh bap-xxxx.local  # update over Wi-Fi, no cable
+```
+
+스크립트가 USB의 Watcher를 자동으로 찾습니다. 여러 대를 연결했다면
+`PORT=/dev/serial/by-id/... firmware/flash.sh`로 하나를 고르세요.
+
+### Wi-Fi 연결
+
+1. 처음 부팅하면 기기가 **`Bap-XXXX`**라는 Wi-Fi 핫스팟을 엽니다. 휴대폰으로 접속하면 설정 페이지가
+   자동으로 열립니다(또는 `http://192.168.4.1`). 집 네트워크를 고르고 비밀번호를 입력하세요.
+2. 연결되면 같은 네트워크의 컴퓨터에서 **`http://bap-xxxx.local`**(또는 화면에 표시된 IP)을 엽니다.
+   `xxxx`는 MAC 주소의 마지막 16진수 네 자리라서 기기마다 이름이 다릅니다.
+3. 키를 빌드에 넣지 않았다면 Gemini API 키를 입력하고, 도시와 캐릭터를 고르세요.
+
+### 인사하기
+
+호출어 **"Hi Lili"**를 말하거나, 휠을 누르거나, 화면을 두 번 탭하세요. 얼굴이 듣는 표정으로 바뀌면
+그냥 말하면 됩니다. 30초 동안 조용하면 세션이 저절로 닫힙니다.
+
+</Steps>
+
+## 기본 펌웨어로 되돌리기
+
+```bash
+firmware/restore_stock.sh
+```
+
+스크립트는 `backup/watcher-w1a-esp32s3-full-32MB.bin`의 SHA-256을 확인한 뒤 주소 `0x0`부터 32 MB 전체를
+다시 씁니다. 백업이 없다면 Seeed 도구로 공식 SenseCraft 펌웨어를 다시 설치할 수 있습니다. Bắp은
+`nvsfactory` 파티션(`0x9000`)을 절대 쓰지 않으므로 기기 키는 그대로 남아 있습니다.

@@ -1,0 +1,64 @@
+---
+title: Kiến trúc
+description: Bắp nằm trên xiaozhi-esp32 và nói chuyện trực tiếp với Gemini Live như thế nào.
+---
+
+# Kiến trúc
+
+Bắp là một lớp mỏng đặt trên [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32). Upstream lo phần
+hỗ trợ bo mạch, đường âm thanh (AFE, từ đánh thức, phát), màn hình LVGL, cài Wi-Fi và một MCP server
+trên thiết bị. Bắp thêm:
+
+1. một `Protocol` nói chuyện **trực tiếp với Gemini Live API**, và
+2. các module `assistant::`: cấu hình, công cụ, giao diện web, gương mặt, menu, nhập liệu, radio,
+   thẻ SD.
+
+![Kiến trúc](/diagrams/architecture.svg)
+
+## Một cuộc trò chuyện
+
+![Luồng phiên](/diagrams/session-flow.svg)
+
+1. Từ đánh thức, nhấn núm xoay hoặc chạm đúp mở kênh âm thanh.
+2. `GeminiLiveProtocol` mở WebSocket qua TLS tới `generativelanguage.googleapis.com`. `TicketSsl` dùng
+   lại phiên TLS trước bằng session ticket, nên bắt tay chỉ mất khoảng 0,1 giây thay vì 1,4 giây.
+3. Tin nhắn setup gồm model, giọng của nhân vật, system prompt (tính cách, quy tắc chung, thành phố,
+   ghi nhớ, ngày giờ) và mọi công cụ dưới dạng khai báo hàm.
+4. Âm thanh micro được gửi lên dạng PCM16 16 kHz; câu trả lời về dạng PCM16 24 kHz, kèm bản chép lời
+   hai chiều để làm phụ đề.
+5. Khi mô hình gọi hàm, cầu nối chuyển nó tới MCP server bằng JSON-RPC `tools/call` và gửi kết quả về
+   dạng `toolResponse`.
+6. Sau 30 giây không hoạt động (hoặc khi mô hình gọi `end_conversation`) phiên đóng lại. Resume
+   handle cho phép phiên sau nối tiếp nếu prompt và giọng không đổi.
+
+Protocol phát ra đúng các thông điệp `tts`, `stt` và `llm` mà máy chủ upstream gửi, nên máy trạng
+thái và màn hình của upstream chạy nguyên vẹn.
+
+## Nhân vật, ứng dụng và ngôn ngữ là dữ liệu
+
+![Luồng dữ liệu](/diagrams/data-driven.svg)
+
+`firmware/data/assistant.json` chứa nhân vật, quy tắc chung, ứng dụng, kênh radio và ngôn ngữ.
+`build.sh` nhúng file này vào firmware; các thay đổi từ trang cài đặt (NVS) được chồng lên trên.
+`SystemPrompt()`, `Localize()` và bộ vẽ gương mặt đều đọc từ dữ liệu đã gộp đó.
+
+## Cấu trúc mã nguồn
+
+| Đường dẫn | Vai trò |
+| --- | --- |
+| `firmware/src/protocols/gemini_live_protocol.{h,cc}` | Phiên Gemini Live, âm thanh lên/xuống, phụ đề, cầu nối công cụ |
+| `firmware/src/protocols/ticket_ssl.{h,cc}` | TLS dùng lại phiên bằng session ticket cho mọi kết nối ra ngoài |
+| `firmware/src/assistant/assistant_config.{h,cc}` | Cấu hình, nhân vật, ứng dụng, ngôn ngữ, `SystemPrompt()`, `Localize()` |
+| `firmware/src/assistant/assistant_tools.cc` | Công cụ, bộ lập lịch (hẹn giờ, báo thức, chế độ đêm), đồng bộ giờ, nhật ký |
+| `firmware/src/assistant/assistant_web.cc` | Trang cài đặt và JSON API, tên mDNS, OTA |
+| `firmware/src/assistant/assistant_face.{h,cc}` | Nhân vật vẽ trực tiếp bằng LVGL |
+| `firmware/src/assistant/assistant_menu.{h,cc}` | Menu tròn |
+| `firmware/src/assistant/assistant_input.cc` | Núm xoay và cảm ứng, nhận biết người, bản tin sáng, giờ yên tĩnh |
+| `firmware/src/assistant/assistant_radio.{h,cc}`, `assistant_zing.{h,cc}`, `assistant_sd.{h,cc}` | Radio và HLS, Zing MP3, nhạc thẻ SD |
+| `firmware/src/assistant/assistant_auth.{h,cc}` | Mật khẩu trang cài đặt |
+| `firmware/src/assistant/assistant_perf.cc` | `/api/perf` |
+| `firmware/src/assistant/vn_lunar.h`, `lrc.h`, `text_fold.h` | Thư viện header-only có kiểm thử trên máy tính |
+| `firmware/data/assistant.json` | Nhân vật, ứng dụng, radio, ngôn ngữ |
+| `firmware/web/index.html` | Trang cài đặt |
+| `firmware/patches/xiaozhi-esp32.patch` | Các móc nhỏ vào upstream |
+| `firmware/sdkconfig.gemini` | Thiết lập bộ nhớ, TLS và codec khi build |

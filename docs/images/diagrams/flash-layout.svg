@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="612" viewBox="0 0 980 612" role="img" aria-labelledby="t d">
+<title id="t">Flash and memory layout</title>
+<desc id="d">Partition map of the 32 MB flash with nvsfactory protected, plus internal RAM and PSRAM budget.</desc>
+
+<style>
+  svg { --bg:#f8f6ff; --card:#ffffff; --panel:#f0ecff; --ink:#1e1b2e; --muted:#6b6785;
+        --line:#d6cff3; --accent:#7c5cff; --accent2:#a594ff; --soft:#ece6ff; --shadow:#2a1f66;
+        --shadowop:0.10; --before:#d9d4ea; --corn:#e8b520; --avo:#6fa83a; --pink:#e57aa3;
+        --sky:#3f9fd6; --danger:#e0567a; --ok:#2f9e6a; --chip:#f3f0ff; --onaccent:#ffffff; }
+  @media (prefers-color-scheme: dark) {
+    svg { --bg:#15131f; --card:#1e1b2e; --panel:#1a1828; --ink:#f1eefc; --muted:#a39fbd;
+          --line:#3a3454; --accent:#a594ff; --accent2:#7c5cff; --soft:#2a2540; --shadow:#000000;
+          --shadowop:0.45; --before:#3c3756; --corn:#f5c84b; --avo:#8bc34a; --pink:#f7a8c4;
+          --sky:#7ec8f0; --danger:#ff7c9c; --ok:#5fd39a; --chip:#262238; --onaccent:#15131f; }
+  }
+  text { font-family: Nunito, Inter, 'Segoe UI', system-ui, -apple-system, sans-serif; fill: var(--ink); }
+  .bg { fill: var(--bg); }
+  .card { fill: var(--card); stroke: var(--line); stroke-width: 1; }
+  .panel { fill: var(--panel); stroke: var(--accent2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+  .soft { fill: var(--soft); }
+  .chip { fill: var(--chip); stroke: var(--line); stroke-width: 1; }
+  .accentf { fill: var(--accent); }
+  .accent2f { fill: var(--accent2); }
+  .beforef { fill: var(--before); }
+  .cornf { fill: var(--corn); } .avof { fill: var(--avo); } .pinkf { fill: var(--pink); }
+  .skyf { fill: var(--sky); } .dangerf { fill: var(--danger); } .okf { fill: var(--ok); }
+  .t-title { font-size: 24px; font-weight: 800; letter-spacing: -0.2px; }
+  .t-sub { font-size: 14px; fill: var(--muted); }
+  .t-h { font-size: 15.5px; font-weight: 800; }
+  .t-b { font-size: 14px; font-weight: 600; }
+  .t-s { font-size: 13px; fill: var(--muted); }
+  .t-xs { font-size: 12px; fill: var(--muted); }
+  .t-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 13px; }
+  .t-on { fill: var(--onaccent); }
+  .t-accent { fill: var(--accent); }
+  .t-danger { fill: var(--danger); }
+  .t-ok { fill: var(--ok); }
+  .line { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .aline { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .dline { stroke: var(--muted); stroke-width: 1.4; fill: none; stroke-dasharray: 4 4; }
+  .life { stroke: var(--line); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; }
+  .ds { flood-color: var(--shadow); flood-opacity: var(--shadowop); }
+  .mk { fill: var(--muted); } .mka { fill: var(--accent); }
+</style>
+
+<defs>
+  <filter id="sh" x="-8%" y="-15%" width="116%" height="140%">
+    <feDropShadow class="ds" dx="0" dy="3" stdDeviation="5"/>
+  </filter>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mk" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path class="mka" d="M0,1 L10,5 L0,9 z"/>
+  </marker>
+  <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#5b8cff"/>
+  </linearGradient>
+  <linearGradient id="gradwarm" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
+  </linearGradient>
+</defs>
+<rect class="bg" x="0" y="0" width="980" height="612" rx="22"/>
+<text x="32" y="48" class="t-title">Flash and memory layout</text>
+<text x="32" y="72" class="t-sub">32 MB flash (partitions/v2/32m.csv) and where RAM goes at runtime.</text>
+<text x="40" y="112" class="t-xs" style="letter-spacing:1.4px;font-weight:800">32 MB FLASH</text>
+<rect x="40.0" y="126" width="52.2" height="64" rx="12" class="pinkf" filter="url(#sh)"/>
+<text x="66.125" y="164" class="t-b t-on" text-anchor="middle">sys</text>
+<rect x="96.2" y="126" width="108.5" height="64" rx="12" class="accentf" filter="url(#sh)"/>
+<text x="110.25" y="154" class="t-h t-on">ota_0</text>
+<text x="110.25" y="174" class="t-s t-on" style="opacity:.85">app 4 MB</text>
+<rect x="208.8" y="126" width="108.5" height="64" rx="12" class="accent2f" filter="url(#sh)"/>
+<text x="222.75" y="154" class="t-h t-on">ota_1</text>
+<text x="222.75" y="174" class="t-s t-on" style="opacity:.85">app 4 MB</text>
+<rect x="321.2" y="126" width="446.0" height="64" rx="12" class="avof" filter="url(#sh)"/>
+<text x="335.25" y="154" class="t-h t-on">assets</text>
+<text x="335.25" y="174" class="t-s t-on" style="opacity:.85">16 MB · fonts, faces, wake word</text>
+<rect x="771.2" y="126" width="164.8" height="64" rx="12" class="beforef" filter="url(#sh)"/>
+<text x="785.25" y="154" class="t-h">unused</text>
+<text x="785.25" y="174" class="t-s">6 MB</text>
+<rect x="100.2" y="182" width="85.7" height="4" rx="2" fill="#fff" opacity=".85"/>
+<text x="40.0" y="210" class="t-xs t-mono">0x0</text>
+<text x="96.25" y="210" class="t-xs t-mono">0x200000</text>
+<text x="208.75" y="210" class="t-xs t-mono">0x600000</text>
+<text x="321.25" y="210" class="t-xs t-mono">0xA00000</text>
+<text x="771.25" y="210" class="t-xs t-mono">0x1A00000</text>
+<text x="936.0" y="210" class="t-xs t-mono" text-anchor="end">0x2000000</text>
+<text x="110.25" y="234" class="t-s">Bắp ≈ 3.3 MB (79% of the slot), the other slot takes the next OTA</text>
+<rect x="40" y="262" width="900" height="150" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="68" cy="287" r="7" class="pinkf"/>
+<text x="84" y="292" class="t-h">sys: the first 2 MB, zoomed in (not to scale)</text>
+<rect x="60" y="308" width="90" height="52" rx="10" class="beforef"/>
+<text x="70" y="330" class="t-b">bootloader</text>
+<text x="62" y="380" class="t-xs t-mono">0x0</text>
+<rect x="156" y="308" width="110" height="52" rx="10" class="beforef"/>
+<text x="166" y="330" class="t-b">partition table</text>
+<text x="158" y="380" class="t-xs t-mono">0x8000</text>
+<rect x="272" y="308" width="172" height="52" rx="10" class="dangerf"/>
+<text x="282" y="330" class="t-b t-on">nvsfactory</text>
+<text x="282" y="350" class="t-xs t-on" style="opacity:.9">200 KB · Seeed keys</text>
+<text x="274" y="380" class="t-xs t-mono">0x9000</text>
+<rect x="280.0" y="388" width="156" height="22" rx="11.0" class="soft"/>
+<text x="358.0" y="403.5" class="t-xs t-danger" text-anchor="middle">never written by Bắp</text>
+<rect x="450" y="308" width="148" height="52" rx="10" class="avof"/>
+<text x="460" y="330" class="t-b t-on">nvs</text>
+<text x="460" y="350" class="t-xs t-on" style="opacity:.9">840 KB · settings</text>
+<text x="452" y="380" class="t-xs t-mono">0x3B000</text>
+<rect x="604" y="308" width="102" height="52" rx="10" class="accent2f"/>
+<text x="614" y="330" class="t-b t-on">otadata</text>
+<text x="614" y="350" class="t-xs t-on" style="opacity:.9">8 KB</text>
+<text x="606" y="380" class="t-xs t-mono">0x10D000</text>
+<rect x="712" y="308" width="94" height="52" rx="10" class="beforef"/>
+<text x="722" y="330" class="t-b">phy_init</text>
+<text x="722" y="350" class="t-xs">4 KB</text>
+<text x="714" y="380" class="t-xs t-mono">0x10F000</text>
+<rect x="812" y="308" width="90" height="52" rx="10" class="beforef"/>
+<text x="822" y="330" class="t-b">free</text>
+<text x="814" y="380" class="t-xs t-mono">0x110000</text>
+<rect x="40.0" y="438" width="292.0" height="136" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="66.0" cy="468" r="7" class="accentf"/>
+<text x="82.0" y="473" class="t-h">Internal SRAM</text>
+<text x="60.0" y="518" class="t-title" style="font-size:30px">55–60 KB</text>
+<text x="60.0" y="542" class="t-b">free when idle</text>
+<text x="60.0" y="562" class="t-s">lowest seen 33 KB during TLS + music</text>
+<rect x="344.0" y="438" width="292.0" height="136" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="370.0" cy="468" r="7" class="avof"/>
+<text x="386.0" y="473" class="t-h">PSRAM 8 MB</text>
+<text x="364.0" y="518" class="t-title" style="font-size:30px">3.2 MB</text>
+<text x="364.0" y="542" class="t-b">free when idle</text>
+<text x="364.0" y="562" class="t-s">Wi-Fi/lwIP buffers, cJSON, task stacks</text>
+<rect x="648.0" y="438" width="292.0" height="136" rx="18" class="card" filter="url(#sh)"/>
+<circle cx="674.0" cy="468" r="7" class="cornf"/>
+<text x="690.0" y="473" class="t-h">Moved to PSRAM</text>
+<text x="668.0" y="518" class="t-title" style="font-size:30px">3 stacks</text>
+<text x="668.0" y="542" class="t-b">opus codec · notify · Zing</text>
+<text x="668.0" y="562" class="t-s">never tasks that write flash/NVS</text>
+</svg>

@@ -1,0 +1,67 @@
+---
+title: Add a tool
+description: Register a function on the device's MCP server; Gemini sees it automatically.
+---
+
+import { Callout } from 'nextra/components'
+
+# Add a tool
+
+Tools are registered on the device's MCP server and offered to Gemini automatically as function
+declarations; you do not touch the protocol code.
+
+<Callout type="info">
+Do you need C++ at all? A fixed script for the model is an **app** (data only). Calling your own
+service is a **webhook** declared in the web settings, reached through `extension.call`.
+</Callout>
+
+## 1. Register it
+
+In `assistant::RegisterTools()` (`firmware/src/assistant/assistant_tools.cc`):
+
+```cpp
+mcp.AddTool("vn.fuel_price",
+            "Xem giá xăng dầu bán lẻ hôm nay tại Việt Nam (RON 95, E5, dầu DO). Dùng khi người "
+            "dùng hỏi giá xăng.",
+            PropertyList({Property("kind", kPropertyTypeString, std::string(""))}),
+            [](const PropertyList& p) -> ToolResult {
+                auto body = HttpGet("https://example.vn/fuel.json");
+                if (!body) return std::unexpected(body.error());
+                // ... parse with cJSON, build a short spoken answer ...
+                return std::string("Xăng RON 95 hôm nay 21.000 đồng một lít.");
+            });
+```
+
+| Piece | Notes |
+| --- | --- |
+| Name | English `group.action`, lowercase ASCII (`vn.weather`, `timer.set`). Dots become `_` for Gemini, so names must stay unique after that and within 64 characters. |
+| Description | One or two sentences saying **when** to use it, with phrases users actually say. It is all the model sees. |
+| `Property(name, kPropertyTypeString)` | Required string |
+| `Property(name, kPropertyTypeString, std::string(""))` | Optional string with a default |
+| `Property(name, kPropertyTypeInteger, min, max)` | Required integer in a range |
+| `Property(name, kPropertyTypeInteger, default, min, max)` | Optional integer |
+| `Property(name, kPropertyTypeBoolean, false)` | Optional boolean |
+| Return | `ReturnValue` (string, bool, int or `cJSON*`) or `ToolResult`; return `std::unexpected("message")` on errors |
+
+Helpers: `HttpGet(url)` (TLS session reuse, one retry), `UrlEncode()`, `Between()`,
+`CleanXmlText()`, `Now(&tm)` (false until the clock is synced), `ListItems()`/`StoreItems()` for
+small persistent lists, `LoadConfig()` for the user's city.
+
+## Guidelines
+
+- Return **short, speakable** text: it is read aloud.
+- Keep network calls under ~10 s; schedule anything later through the scheduler.
+- No secrets in code. Use public endpoints or keys stored in NVS.
+- Tools only the web UI should trigger: `mcp.AddUserOnlyTool(...)`.
+- Keep descriptions concise; the tool list is sent with every session.
+
+## 2. Test
+
+```bash
+python3 firmware/scripts/validate_data.py      # also checks tool names mentioned in prompts
+firmware/build.sh && firmware/ota.sh bap-xxxx.local
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.fuel_price","arguments":{"kind":"RON 95"}}'
+```
+
+Then ask naturally and look for `Tool call: vn_fuel_price` in the serial log.

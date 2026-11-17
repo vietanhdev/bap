@@ -1,0 +1,41 @@
+---
+title: Characters
+description: Bông, Bắp, Bơ, Mochi and Tí, each with a voice, a personality and a natively drawn face.
+---
+
+import { Characters, Shots } from '@/components/Characters'
+
+# Characters
+
+Bắp ships with five characters. Each one has its own Gemini voice, personality and a face drawn
+natively with LVGL: 23 expressions, blinking, breathing and a mouth that moves with the voice.
+
+<Characters lang="en" />
+
+## Switching characters
+
+- **Wheel:** rotate while resting. The next character appears with its tagline.
+- **Touch:** swipe sideways on the resting screen.
+- **Voice:** "call Bắp", "let me talk to Bơ". The `character.switch` tool switches and restarts
+  the session with the new voice and persona.
+- **Menu:** hold the wheel → Characters.
+- **Web settings:** the Personalization tab.
+
+<Shots items={[['idle-bong', 'Bông resting'], ['listening', 'Bắp listening'], ['listening-bo', 'Bơ listening'], ['listen-mochi', 'Mochi listening'], ['listen-ti', 'Tí listening'], ['menu-characters', 'Character menu']]} />
+
+## Personalize without rebuilding
+
+In the web settings you can rename a character, change its voice and rewrite its persona. The
+edits are stored per device in NVS, so two devices can run the same firmware with different
+personalities: for example, a short-and-funny Bơ on one desk and a gentle Bông on another. Empty
+fields restore the built-in values.
+
+## How a face is drawn
+
+Characters are data in `firmware/data/assistant.json`. The `look` object picks a body shape
+(`cloud`, `corn`, `avocado`, `mochi` or `robot`) and four colours (`body`, `accent`, `ink`,
+`cheek`). `assistant_face.cc` builds the body, eyes, brows, mouth and extras from those values, so a
+new character that reuses a shape needs no C++. See [Add a character](/en/adding-a-character).
+
+At night the face goes calm: no breathing animation, a still "zzz", and only a handful of redraws,
+which keeps LVGL around 1% CPU.

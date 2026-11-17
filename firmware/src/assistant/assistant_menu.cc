@@ -393,7 +393,7 @@ Level MainMenu() {
                            Push(Confirm("Tắt máy?", []() {
                                if (!g_power_off || !g_power_off()) {
                                    Board::GetInstance().GetDisplay()->ShowNotification(
-                                       "Đang cắm điện: rút cáp để tắt hẳn", 4000);
+                                       Localize("Đang cắm điện: rút cáp để tắt hẳn").c_str(), 4000);
                                }
                            }));
                        },

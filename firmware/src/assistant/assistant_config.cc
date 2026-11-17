@@ -70,6 +70,7 @@ Config LoadConfig() {
 }
 
 void SaveConfig(const Config& c) {
+    bool language_changed = false;
     {
         Settings s("assistant", true);
         s.SetString("api_key", c.api_key);
@@ -88,12 +89,18 @@ void SaveConfig(const Config& c) {
         s.SetBool("quiet", c.quiet);
         s.SetString("language", c.language);
         std::lock_guard<std::mutex> lock(g_language_mutex);
+        language_changed = g_language != c.language;
         g_language = c.language;
     }
+    bool character_changed;
     {
         std::lock_guard<std::mutex> lock(g_active_mutex);
+        character_changed = g_active_id != c.character;
         g_active_id = c.character;
     }
+    // Redraw the resting screen now: face for a new character, text for a new language.
+    if (language_changed || character_changed)
+        RefreshIdleScreen();
     // The Watcher's on-chip person detector reads these at boot.
     Settings model("model", true);
     model.SetInt("enable", (c.greet || c.presence) ? 1 : 0);

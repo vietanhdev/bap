@@ -1,0 +1,45 @@
+---
+title: 隐私与安全
+description: 你的声音、图像和密钥去了哪里，设备如何受到保护。
+---
+
+import { Callout } from 'nextra/components'
+
+# 隐私与安全
+
+## 无中转服务器
+
+设备只建立到 `generativelanguage.googleapis.com` 的 TLS 连接，中间没有任何东西。没有 Bắp 云、没有账号、没有统计分析。
+
+## 什么数据、何时离开设备
+
+- **声音**只在对话期间发送给 Gemini：在唤醒词、按下滚轮或双击之后。安静 30 秒后会话关闭。
+- **图像**只在助手调用摄像头工具（`self.camera.take_photo`）时发送。有人感知在摄像头自带的 AI 芯片上运行，从不发送图像。
+- **工具请求**直接发往公开数据源（Open-Meteo、VnExpress、Vietcombank、PNJ、CafeF、ESPN、Zing MP3、电台）。
+  你的城市用于天气查询，除此之外不发送任何关于你的信息。
+- 你自己添加的 **Webhook** 会收到你发给它的请求文字。
+
+## API 密钥
+
+密钥保存在设备的 NVS 中，或在编译时从 `secrets/GEMINI_API_KEY` 嵌入固件。浏览器只能看到遮盖后的密钥
+（`AIza••••••••xxxx`）。拿到设备本身、或拿到你带密钥编译的 `xiaozhi.bin` 的人都能提取密钥：请使用设有额度上限的
+专用密钥，不要分享编译好的 `.bin`。
+
+<Callout type="info">
+建议：用免费层密钥作为主密钥，另一个开通结算的密钥只作备用。设备总是先用免费密钥。
+</Callout>
+
+## 设置页
+
+- 仅限局域网。不要把 80 端口暴露到互联网；远程访问请用 VPN。
+- 可选密码（HTTP Basic，NVS 中保存加盐迭代的 SHA-256）。
+- 每个 `POST` 都需要 `X-Bap` 请求头，可防御来自其他网站的跨站表单攻击。
+
+## 闪存与出厂密钥
+
+`nvsfactory`（`0x9000`）从不写入。`firmware/restore_stock.sh` 在校验 SHA-256 后写回完整备份。
+
+## 致贡献者
+
+切勿提交 `secrets/`、`backup/`、`vendor/`、`firmware/build/`、编译日志或编译好的 `.bin`。CI 每次推送都运行
+gitleaks。第三方代码在编译或刷写前都会先阅读。

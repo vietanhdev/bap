@@ -1,0 +1,48 @@
+---
+title: Bộ nhớ và flash
+description: Bố cục flash 32 MB và cách Bắp dùng RAM trong chip của ESP32-S3.
+---
+
+import { Callout } from 'nextra/components'
+
+# Bộ nhớ và flash
+
+![Bố cục flash](/diagrams/flash-layout.svg)
+
+## Flash (32 MB)
+
+| Địa chỉ | Nội dung | Ghi bởi |
+| --- | --- | --- |
+| `0x0` | bootloader | `flash.sh` |
+| `0x8000` | bảng phân vùng (`partitions/v2/32m.csv`) | `flash.sh` |
+| `0x9000` | `nvsfactory`, 200 KB: EUI và khóa thiết bị của Seeed | **không bao giờ** |
+| `0x3B000` | `nvs`, 840 KB: thiết lập, ghi chú, ghi nhớ, báo thức | firmware |
+| `0x10D000` | `otadata` | `flash.sh`, OTA |
+| `0x200000` | `ota_0`, 4 MB: ứng dụng | `flash.sh`, `flash_app.sh`, OTA |
+| `0x600000` | `ota_1`, 4 MB: phân vùng OTA còn lại | OTA |
+| `0xA00000` | `assets`, 16 MB: phông chữ, gương mặt, mô hình từ đánh thức | `flash.sh`, `flash_assets.sh` |
+
+<Callout type="warning">
+`nvsfactory` chứa khóa Seeed nạp sẵn cho thiết bị. Không script nào của Bắp ghi vào đó, nên bạn luôn
+quay về được firmware chính thức.
+</Callout>
+
+## RAM
+
+ESP32-S3 có khoảng 512 KB SRAM trong chip và Watcher có thêm 8 MB PSRAM. RAM trong chip mới là thứ
+khan hiếm: Wi-Fi, TLS (bộ đệm DMA của AES phần cứng), âm thanh và LVGL đều cần nó.
+
+| | Lúc rảnh | Thấp nhất từng thấy |
+| --- | --- | --- |
+| RAM trong chip còn trống | 55–60 KB | ~33 KB |
+| PSRAM còn trống | ~3,2 MB | |
+
+Bắp giữ được như vậy nhờ:
+
+- cJSON và các vùng nhớ nhỏ nằm ở PSRAM; chỉ yêu cầu dưới 256 byte ở lại trong chip.
+- Stack của các tác vụ không đụng tới flash chạy trong PSRAM (`xTaskCreateWithCaps`): codec Opus,
+  trình phát thông báo và trình phát Zing.
+- Bộ đệm Wi-Fi và lwIP nằm ở PSRAM, nhường chỗ cho cửa sổ TCP 16 KB để âm thanh Gemini về mượt.
+- Tác vụ LVGL có stack 12 KB (trước đây từng tràn), và `/api/perf` báo stack còn trống ít nhất của
+  từng tác vụ để phát hiện sớm.
+- Web server giới hạn 4 kết nối mở, lwIP tối đa 16 socket.

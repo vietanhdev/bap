@@ -14,7 +14,9 @@
 #include <string>
 
 #include <freertos/FreeRTOS.h>
+#include <freertos/idf_additions.h>
 #include <freertos/semphr.h>
+#include <atomic>
 #include <memory>
 #include "application.h"
 #include "assets.h"
@@ -324,9 +326,13 @@ esp_err_t HandleAction(httpd_req_t* req) {
     } else if (action == "wheel_hold") {  // remote wheel, same as the physical one
         MenuIsOpen() ? MenuBack() : MenuOpen();
     } else if (action == "wheel_left" || action == "wheel_right") {
-        MenuRotate(action == "wheel_right");
+        bool clockwise = action == "wheel_right";
+        MenuIsOpen() ? MenuRotate(clockwise) : (void)OnWheelRotate(clockwise);
     } else if (action == "wheel_click") {
-        MenuClick();
+        if (MenuIsOpen())
+            MenuClick();
+        else if (!OnWheelClick())
+            app.Schedule([&app]() { app.ToggleChatState(); });
     } else if (action == "wifi_setup") {
         app.Schedule([]() { static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode(); });
     } else if (action == "reboot") {
@@ -404,7 +410,8 @@ esp_err_t HandleOta(httpd_req_t* req) {
     audio.EnableWakeWordDetection(false);
     ApplyVision(false);  // camera inference floods SPI while flash writes stall the CPU
     SetOtaInProgress(true);
-    Board::GetInstance().GetDisplay()->SetChatMessage("system", "Đang cập nhật phần mềm...");
+    Board::GetInstance().GetDisplay()->SetChatMessage(
+        "system", Localize("Đang cập nhật phần mềm...").c_str());
     std::string buf(16384, '\0');  // PSRAM; fewer, larger flash writes
     size_t remaining = req->content_len;
     while (remaining > 0) {
@@ -494,16 +501,50 @@ esp_err_t HandleFacePreview(httpd_req_t* req) {
 }
 
 // Live screenshot of the round display (JPEG), used by the web UI preview and for debugging.
-esp_err_t HandleScreen(httpd_req_t* req) {
+// Rendering the screen into a JPEG runs the whole LVGL draw pipeline, which needs far more stack
+// than the HTTP server task has (6 KB). It runs in a short-lived task with a 16 KB stack in PSRAM,
+// one snapshot at a time; the shared state outlives a request that gave up waiting.
+struct ScreenJob {
     std::string jpeg;
+    bool ok = false;
+    SemaphoreHandle_t done = xSemaphoreCreateBinary();
+    ~ScreenJob() { vSemaphoreDelete(done); }
+};
+std::atomic<bool> g_screen_busy{false};
+
+esp_err_t HandleScreen(httpd_req_t* req) {
     auto display = Board::GetInstance().GetDisplay();
-    if (display == nullptr || !display->SnapshotToJpeg(jpeg, 85)) {
+    if (display == nullptr || g_screen_busy.exchange(true)) {
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        return httpd_resp_sendstr(req, "snapshot busy");
+    }
+    auto job = new std::shared_ptr<ScreenJob>(std::make_shared<ScreenJob>());
+    auto keep = *job;
+    BaseType_t created = xTaskCreateWithCaps(
+        [](void* arg) {
+            auto owned = static_cast<std::shared_ptr<ScreenJob>*>(arg);
+            auto job = *owned;
+            delete owned;
+            job->ok = Board::GetInstance().GetDisplay()->SnapshotToJpeg(job->jpeg, 85);
+            g_screen_busy = false;
+            xSemaphoreGive(job->done);
+            job.reset();
+            vTaskDeleteWithCaps(nullptr);
+        },
+        "screen_jpg", 16 * 1024, job, 2, nullptr, MALLOC_CAP_SPIRAM);
+    if (created != pdPASS) {
+        delete job;
+        g_screen_busy = false;
+        httpd_resp_set_status(req, "503 Service Unavailable");
+        return httpd_resp_sendstr(req, "snapshot failed");
+    }
+    if (xSemaphoreTake(keep->done, pdMS_TO_TICKS(8000)) != pdTRUE || !keep->ok) {
         httpd_resp_set_status(req, "503 Service Unavailable");
         return httpd_resp_sendstr(req, "snapshot failed");
     }
     httpd_resp_set_type(req, "image/jpeg");
     httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    return httpd_resp_send(req, jpeg.data(), jpeg.size());
+    return httpd_resp_send(req, keep->jpeg.data(), keep->jpeg.size());
 }
 
 esp_err_t HandleApp(httpd_req_t* req) {
@@ -622,7 +663,7 @@ void StartWebServer() {
     RegisterPerfRoutes(server);
     // http://bap.local on networks and devices that support mDNS
     if (mdns_init() == ESP_OK) {
-        // One name per device so several Bắp on the same network do not clash: bap-8f78.local
+        // One name per device so several Bắp on the same network do not clash: bap-1a2b.local
         uint8_t mac[6] = {};
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
         char host[16];

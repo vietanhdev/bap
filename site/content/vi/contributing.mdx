@@ -1,0 +1,40 @@
+---
+title: Đóng góp
+description: Nhánh, commit, các bước kiểm tra và danh sách tuyệt đối không commit.
+---
+
+# Đóng góp
+
+- `main` luôn build được. Mở pull request từ một nhánh như `feat/<ten-ngan>` hoặc `fix/<ten-ngan>`.
+- Commit theo [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`,
+  `refactor:`, `test:`, `chore:`.
+- Mã nguồn, tên file, tên hàm và tên công cụ dùng tiếng Anh. Tiếng Việt dành cho những gì người dùng
+  nghe và đọc.
+- Thay đổi trong `vendor/` phải đi kèm bản vá mới: `firmware/scripts/export_patch.sh`.
+
+## Trước khi mở PR
+
+```bash
+for t in firmware/tests/*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t || echo "FAIL $t"; done
+python3 firmware/scripts/validate_data.py
+clang-format -i firmware/src/*/*.cc firmware/src/*/*.h
+firmware/build.sh
+```
+
+CI chạy kiểm thử trên máy tính, kiểm tra dữ liệu, clang-format, build firmware với API key rỗng và
+quét bí mật bằng gitleaks.
+
+## Tuyệt đối không commit
+
+`secrets/`, `backup/` (bản dump flash chứa khóa thiết bị), `server/.env`, `vendor/`, `firmware/build/`,
+log build, hay file `xiaozhi.bin` đã build (có thể chứa API key). Nếu một key lỡ lên GitHub, hãy thu
+hồi ngay.
+
+## Trang tài liệu này
+
+Trang tài liệu nằm trong `site/` (Next.js + Nextra). Mỗi trang là một file MDX trong
+`site/content/<locale>/`, mỗi ngôn ngữ một thư mục.
+
+```bash
+cd site && pnpm install && pnpm dev
+```

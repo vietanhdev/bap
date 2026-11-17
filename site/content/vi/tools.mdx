@@ -1,0 +1,80 @@
+---
+title: Công cụ
+description: Mọi công cụ trợ lý có thể gọi, từ lịch âm đến Zing MP3.
+---
+
+import { Callout } from 'nextra/components'
+
+# Công cụ
+
+Công cụ là các hàm mà mô hình có thể gọi trong lúc trò chuyện. Chúng chạy **ngay trên thiết bị**, gọi
+thẳng nguồn dữ liệu công khai và trả về câu trả lời ngắn để nhân vật đọc lên. Không cần API key nào
+khác.
+
+## Đời sống hằng ngày
+
+| Công cụ | Làm gì | Nguồn |
+| --- | --- | --- |
+| `vn.lunar_date` | Ngày âm, năm can chi, ngày lễ âm lịch của một ngày dương bất kỳ | thuật toán trên máy |
+| `vn.lunar_to_solar` | Đổi ngày âm sang dương ("Tết năm sau là ngày nào?") | thuật toán trên máy |
+| `vn.weather` | Thời tiết hiện tại và dự báo 3 ngày, ở bất kỳ đâu | Open-Meteo |
+| `vn.air_quality` | AQI và bụi mịn PM2.5, kèm lời khuyên đeo khẩu trang, mở cửa sổ | Open-Meteo |
+| `vn.news` | Tin mới nhất theo chủ đề (mới nhất, thế giới, kinh doanh, thể thao, công nghệ…) | VnExpress RSS |
+| `vn.exchange_rate` | Tỷ giá ngoại tệ (USD, EUR, JPY, KRW, CNY…) | Vietcombank |
+| `vn.gold_price` | Vàng miếng SJC, nhẫn 9999 và các loại khác | PNJ |
+| `vn.gold_price_hai_hong` | Bảng giá vàng bạc của tiệm vàng Hải Hồng | bảng giá của tiệm |
+| `vn.stocks` | VN-Index, VN30, HNX-Index, UPCoM | CafeF |
+| `vn.lottery` | Kết quả xổ số mới nhất miền Bắc, Trung hoặc Nam | RSS |
+| `sports.football` | Lịch thi đấu và tỷ số theo giờ Việt Nam: Ngoại hạng Anh, C1, La Liga, Serie A, Bundesliga, Ligue 1 | ESPN |
+
+## Thời gian, ghi chú và ghi nhớ
+
+| Công cụ | Làm gì |
+| --- | --- |
+| `timer.set` | Hẹn giờ đếm ngược ("nhắc mình sau 10 phút") |
+| `alarm.set` | Báo thức hoặc lời nhắc vào giờ cụ thể, có thể lặp hằng ngày |
+| `timer.list` | Danh sách hẹn giờ và báo thức đang chạy |
+| `timer.cancel` | Hủy một mục, hoặc tất cả với `number=0` |
+| `notes.add`, `notes.list`, `notes.remove` | Danh sách việc cần làm, đồ cần mua (tối đa 30 mục) |
+| `memory.save`, `memory.forget` | Ghi nhớ lâu dài về bạn (tên, sở thích, người thân), đưa vào mọi phiên |
+
+## Nhạc, radio và ứng dụng
+
+| Công cụ | Làm gì |
+| --- | --- |
+| `music.search` | Tìm bài trên Zing MP3 và đọc danh sách ngắn |
+| `music.play` | Phát bài từ Zing MP3 theo tên hoặc mã bài, kèm lời chạy theo nhạc |
+| `music.sd_card` | Phát nhạc trong thẻ SD, không cần mạng, tìm không cần dấu |
+| `radio.play` | Mở radio (VOV1–3, VOV Giao thông, FM Hà Nội, RFI) |
+| `music.stop` | Tắt nhạc hoặc radio |
+| `app.open` | Mở một [ứng dụng giọng nói](/vi/apps) |
+| `character.switch` | Đổi sang [nhân vật](/vi/characters) khác |
+
+## Thiết bị và tiện ích mở rộng
+
+| Công cụ | Làm gì |
+| --- | --- |
+| `system.wifi_setup` | Đưa máy vào chế độ cài Wi-Fi (chỉ khi được yêu cầu rõ ràng) |
+| `extension.call` | Gọi webhook bạn khai báo trong trang cài đặt (Home Assistant, n8n, máy chủ riêng) |
+| `self.camera.take_photo` | Chụp ảnh để mô hình xem (công cụ upstream) |
+| `self.audio_speaker.set_volume`, `self.screen.set_brightness` | Âm lượng và độ sáng (công cụ upstream) |
+
+<Callout type="info">
+Tên công cụ là định danh tiếng Anh dạng `nhóm.hành_động`. Tên hàm của Gemini không được có dấu
+chấm, nên cầu nối đổi `vn.weather` thành `vn_weather` và ngược lại. Phần mô tả, thứ mô hình đọc để
+quyết định khi nào gọi công cụ, viết bằng tiếng Việt kèm câu nói mẫu.
+</Callout>
+
+## Tùy chọn: Google Search
+
+Với key có bật thanh toán, bạn có thể bật tìm kiếm Google trong trang cài đặt. Nếu phiên bị từ chối
+khi bật tìm kiếm, thiết bị tự tắt nó và thử lại một lần.
+
+## Thử công cụ không cần nói
+
+Web server mở cổng tới MCP server của thiết bị:
+
+```bash
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.weather","arguments":{"place":"Hà Nội"}}'
+```

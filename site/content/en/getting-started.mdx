@@ -1,0 +1,113 @@
+---
+title: Getting started
+description: Back up the Watcher, build Bắp, flash it and have your first conversation.
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Getting started
+
+Bắp runs on the **Seeed SenseCAP Watcher**. You build the firmware on a Linux computer with Docker,
+flash it once over USB, and from then on update it over Wi-Fi.
+
+## What you need
+
+- **Seeed SenseCAP Watcher** (W1-A, W1-B or the "for XiaoZhi" edition): ESP32-S3, 32 MB flash,
+  8 MB PSRAM, 1.45" round 412×412 touch screen, scroll wheel with a button, camera with a Himax
+  HX6538 AI chip, microphone and speaker.
+- A **USB-C data cable**. The Watcher's CH342 dual serial chip shows up as
+  `/dev/serial/by-id/usb-1a86_USB_Dual_Serial_...-if02` (interface 02 is the ESP32-S3).
+- A **Linux computer** with Docker and [uv](https://docs.astral.sh/uv/) (used to run `esptool`).
+- A **Gemini API key** from [Google AI Studio](https://aistudio.google.com/apikey).
+
+<Steps>
+
+### Back up the stock firmware
+
+Do this once, before the first flash. The dump lets you go back to the original firmware at any
+time.
+
+```bash
+mkdir -p backup
+uv run --with esptool esptool --chip esp32s3 --port /dev/serial/by-id/usb-1a86_USB_Dual_Serial_*-if02 \
+  --baud 921600 read-flash 0x0 0x2000000 backup/watcher-w1a-esp32s3-full-32MB.bin
+( cd backup && sha256sum watcher-w1a-esp32s3-full-32MB.bin > watcher-w1a-esp32s3-full-32MB.bin.sha256 )
+```
+
+<Callout type="warning">
+The dump contains the device's private keys. Never commit or share the `backup/` folder.
+</Callout>
+
+### Get the upstream source and apply the patch
+
+Bắp is a small patch plus its own modules on top of a pinned
+[xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) commit.
+
+```bash
+firmware/scripts/apply_patch.sh   # clones xiaozhi-esp32 into vendor/ and applies firmware/patches/xiaozhi-esp32.patch
+```
+
+### Build
+
+```bash
+mkdir -p secrets && chmod 700 secrets
+printf '%s' 'YOUR_GEMINI_API_KEY' > secrets/GEMINI_API_KEY && chmod 600 secrets/GEMINI_API_KEY
+
+firmware/build.sh          # firmware, in the espressif/idf:release-v6.1 Docker image
+firmware/build_assets.sh   # fonts, character faces and the wake word model
+```
+
+Optional variables for `build.sh`: `GEMINI_MODEL`, `GEMINI_VOICE`, `WAKE_WORD` (default
+`wn9_hilili_tts`, "Hi Lili") and `LANG_CODE` (default `vi-VN`).
+
+<Callout type="info">
+You can leave the key empty at build time (create an empty `secrets/GEMINI_API_KEY`) and enter it
+later in the web settings. CI builds never contain a key.
+</Callout>
+
+**Free key plus paid fallback (optional).** Put a key from a project *without* billing in
+`secrets/GEMINI_API_KEY`, and a key from a project *with* billing in
+`secrets/GEMINI_API_KEY_PAID`. The device always tries the free key first and only uses the paid
+key when the free one is rejected. After a rejection the free key is retried after 1, 2, 4, 8 and
+at most 15 minutes. Both keys can be changed in the web settings, which also show how many
+sessions each key has served since boot.
+
+### Flash
+
+```bash
+firmware/flash.sh               # first time: bootloader, partition table, otadata, app, assets
+firmware/flash_app.sh           # later: the app only (fast)
+firmware/flash_assets.sh        # the assets partition only
+firmware/ota.sh bap-xxxx.local  # update over Wi-Fi, no cable
+```
+
+The scripts find the Watcher on USB by themselves. With several Watchers connected, pick one with
+`PORT=/dev/serial/by-id/... firmware/flash.sh`.
+
+### Connect to Wi-Fi
+
+1. On first boot the device opens a Wi-Fi hotspot named **`Bap-XXXX`**. Join it with your phone;
+   the setup page opens by itself (or browse to `http://192.168.4.1`). Pick your home network and
+   enter its password.
+2. Once online, open **`http://bap-xxxx.local`** (or the IP shown on screen) from a computer on the
+   same network. `xxxx` is the last four hex digits of the device's MAC address, so every device
+   has its own name.
+3. Enter the Gemini API key if you did not build it in, then choose your city and a character.
+
+### Say hello
+
+Say the wake word **"Hi Lili"**, press the wheel, or double-tap the screen. The face switches to
+listening; just talk. The session closes by itself after 30 seconds of silence.
+
+</Steps>
+
+## Go back to the stock firmware
+
+```bash
+firmware/restore_stock.sh
+```
+
+The script checks the SHA-256 of `backup/watcher-w1a-esp32s3-full-32MB.bin` and writes the whole
+32 MB back from address `0x0`. Without your own dump you can reinstall the official SenseCraft
+firmware with Seeed's tools: Bắp never writes the `nvsfactory` partition (`0x9000`), so the device
+keys are still there.

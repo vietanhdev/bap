@@ -73,7 +73,7 @@ index 80161a1..f92ccfb 100644
 +    depends on USE_GEMINI_LIVE
 +endmenu
 diff --git a/main/application.cc b/main/application.cc
-index 300a36c..e3f5cfa 100644
+index 300a36c..735417d 100644
 --- a/main/application.cc
 +++ b/main/application.cc
 @@ -1,3 +1,4 @@
@@ -201,7 +201,20 @@ index 300a36c..e3f5cfa 100644
              audio_service_.EnableVoiceProcessing(false);
              audio_service_.EnableWakeWordDetection(audio_service_.IsAfeWakeWord());
              break;
-@@ -1261,6 +1308,59 @@ void Application::StopNotification() {
+@@ -1107,6 +1154,12 @@ void Application::HandleStateChangedEvent() {
+ }
+ 
+ void Application::ShowStartupWakeWordHint() {
++#if CONFIG_USE_GEMINI_LIVE
++    // Bắp shows its own localized date line on the resting screen; the upstream hint lists raw
++    // wake-word ids ("Hi,Lily or Hi,莉莉") and can resurface over a character preview.
++    pending_startup_wake_word_hint_ = false;
++    return;
++#endif
+     // A coalesced activation/state event can queue another idle UI cleanup.
+     // Wait for it before adding the hint, or ClearChatMessages() would erase it.
+     if (!pending_startup_wake_word_hint_ ||
+@@ -1261,6 +1314,59 @@ void Application::StopNotification() {
      }
  }
  

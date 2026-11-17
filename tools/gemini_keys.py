@@ -43,7 +43,7 @@ ACTIVE_KEY_FILE = SECRETS_DIR / "GEMINI_API_KEY"
 
 API_SERVICE = "generativelanguage.googleapis.com"
 MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-DEFAULT_DEVICE = os.environ.get("BAP_DEVICE", "")  # e.g. bap-ced0.local or an IP
+DEFAULT_DEVICE = os.environ.get("BAP_DEVICE", "")  # e.g. bap-1a2b.local or an IP
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$")
 UID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
@@ -400,7 +400,7 @@ def cmd_rotate(a: argparse.Namespace) -> int:
         elif not dry:
             print("  current key not found in this project (it may live elsewhere)")
     if a.device == "":  # bare --device without $BAP_DEVICE
-        raise ToolError("bare --device needs BAP_DEVICE (e.g. bap-ced0.local); or pass --device HOST")
+        raise ToolError("bare --device needs BAP_DEVICE (e.g. bap-1a2b.local); or pass --device HOST")
     if a.device:
         print(f"Step 1b: check device {a.device} is reachable")
         print(f"  device currently uses: {device_masked(a.device) or '(no key)'}")

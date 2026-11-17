@@ -1,0 +1,41 @@
+---
+title: Contributing
+description: Branches, commits, checks and the never-commit list.
+---
+
+# Contributing
+
+- `main` always builds. Open a pull request from a branch such as `feat/<short-name>` or
+  `fix/<short-name>`.
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`,
+  `docs:`, `refactor:`, `test:`, `chore:`.
+- Code, file names, function names and tool names are in English. Vietnamese is for what the user
+  hears and reads.
+- Changes in `vendor/` must come with a regenerated patch: `firmware/scripts/export_patch.sh`.
+
+## Before opening a PR
+
+```bash
+for t in firmware/tests/*.cc; do g++ -std=c++17 -I firmware/src/assistant -o /tmp/t "$t" && /tmp/t || echo "FAIL $t"; done
+python3 firmware/scripts/validate_data.py
+clang-format -i firmware/src/*/*.cc firmware/src/*/*.h
+firmware/build.sh
+```
+
+CI runs the host tests, the data check, clang-format, a firmware build with an empty API key and a
+gitleaks secret scan.
+
+## Never commit
+
+`secrets/`, `backup/` (flash dumps contain device keys), `server/.env`, `vendor/`,
+`firmware/build/`, build logs, or a built `xiaozhi.bin` (it can contain your API key). If a key
+ever reaches GitHub, revoke it right away.
+
+## This site
+
+The documentation site lives in `site/` (Next.js + Nextra). Pages are MDX files in
+`site/content/<locale>/`, one folder per language.
+
+```bash
+cd site && pnpm install && pnpm dev
+```

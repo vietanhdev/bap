@@ -1,0 +1,69 @@
+---
+title: 网页设置与 OTA
+description: 设备提供的设置页、JSON API、密码保护以及通过 Wi-Fi 更新固件。
+---
+
+import { Callout } from 'nextra/components'
+
+# 网页设置与 OTA
+
+每台 Bắp 都在 **`http://bap-xxxx.local`** 提供设置页，`xxxx` 是 MAC 地址最后四位十六进制数（屏幕上显示的 IP
+也可以）。这是一个带三个标签页的单页应用，在手机上也很好用。
+
+<div className="bap-shots" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+  <figure><img src="/web/web-chat.png" alt="聊天标签页" /><figcaption>聊天</figcaption></figure>
+  <figure><img src="/web/web-me.png" alt="个性化标签页" /><figcaption>个性化</figcaption></figure>
+  <figure><img src="/web/web-sys.png" alt="系统标签页" /><figcaption>系统</figcaption></figure>
+  <figure><img src="/web/web-health.png" alt="设备状态" /><figcaption>设备状态</figcaption></figure>
+</div>
+
+## 可以修改什么
+
+- **聊天：**对话记录、打字聊天的输入框、快捷问题、电台、应用列表、计时器和闹钟、笔记，以及带停止按钮的播放栏。
+- **个性化：**角色及其名字、声音和性格；长期记忆；语言；城市（用于天气和空气质量）。
+- **系统：**音量和亮度（即时生效）、有人感知、早安问候、夜间免打扰、夜间模式、自动休息时间、Gemini 密钥和模型、
+  Google 搜索、扩展（Webhook）、已保存的 Wi-Fi、设置页密码、设备状态（运行时间、CPU、片内 RAM、PSRAM、
+  Wi-Fi 信号、最忙的任务）、固件更新和重启。
+
+**保存**栏只在有改动时滑出。大部分设置在下一次对话时生效。
+
+## 密码
+
+设置密码（系统标签页）之前，同一 Wi-Fi 下的任何人都能打开该页面。设置后浏览器会要求输入密码（用户名随意）。
+设备只保存加盐并多次迭代的 SHA-256 哈希。忘了密码？长按滚轮 20 秒恢复出厂设置。
+
+## 通过 Wi-Fi 更新固件（OTA）
+
+在系统标签页选择 `xiaozhi.bin`，或在电脑上运行：
+
+```bash
+firmware/ota.sh bap-xxxx.local
+```
+
+一次更新约 **30 秒**。上传期间唤醒词、摄像头推理和触摸轮询会暂停，把 Wi-Fi 和 CPU 都留给传输；镜像校验通过后
+设备重启进入新分区。Bắp 只在你要求时更新，绝不会打断对话。
+
+## JSON API
+
+| 路径 | 用途 |
+| --- | --- |
+| `GET /api/config`、`POST /api/config` | 读取（密钥已遮盖）和保存设置 |
+| `GET /api/status` | 状态、正在播放、运行时间、记录、闹钟、版本 |
+| `GET /api/perf` | 各任务 CPU 和栈余量、堆、运行时间、RSSI |
+| `POST /api/say` | 像说话一样发送文字 |
+| `POST /api/action` | 设备操作（对话、停止、滚轮事件、Wi-Fi 配置、重启） |
+| `POST /api/tool` | 直接调用工具 |
+| `POST /api/app` | 启动应用 |
+| `GET/POST /api/wifi` | 已保存的网络 |
+| `POST /api/ota` | 上传固件 |
+| `GET /face`、`GET /screen.jpg` | 表情预览、屏幕实时截图 |
+
+<Callout type="warning">
+每个 `POST` 都需要 `X-Bap` 请求头。浏览器无法给跨站表单添加自定义请求头，所以陌生网页无法操控你的设备。
+即便如此，也请只在可信网络中使用，不要把 80 端口暴露到互联网。远程访问请使用 Tailscale 或 WireGuard 等 VPN。
+</Callout>
+
+## 桌面伴侣（可选）
+
+`tools/bap-desktop` 是一个向设备推送状态卡片的小型 Rust 程序（`POST /api/notify`）。用
+`--device bap-xxxx.local` 或 `BAP_DEVICE` 指定设备；设置页有密码时再设置 `BAP_PASSWORD`。

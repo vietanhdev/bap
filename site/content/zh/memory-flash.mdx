@@ -1,0 +1,45 @@
+---
+title: 内存与闪存
+description: 32 MB 闪存布局，以及 Bắp 如何使用 ESP32-S3 的片内 RAM。
+---
+
+import { Callout } from 'nextra/components'
+
+# 内存与闪存
+
+![闪存布局](/diagrams/flash-layout.svg)
+
+## 闪存（32 MB）
+
+| 偏移 | 内容 | 写入者 |
+| --- | --- | --- |
+| `0x0` | 引导程序 | `flash.sh` |
+| `0x8000` | 分区表（`partitions/v2/32m.csv`） | `flash.sh` |
+| `0x9000` | `nvsfactory`，200 KB：Seeed 设备 EUI 和密钥 | **从不写入** |
+| `0x3B000` | `nvs`，840 KB：设置、笔记、记忆、闹钟 | 固件 |
+| `0x10D000` | `otadata` | `flash.sh`、OTA |
+| `0x200000` | `ota_0`，4 MB：应用 | `flash.sh`、`flash_app.sh`、OTA |
+| `0x600000` | `ota_1`，4 MB：另一个 OTA 分区 | OTA |
+| `0xA00000` | `assets`，16 MB：字体、表情、唤醒词模型 | `flash.sh`、`flash_assets.sh` |
+
+<Callout type="warning">
+`nvsfactory` 存放 Seeed 预置在设备上的密钥。Bắp 的脚本从不写入它，所以你随时可以回到官方固件。
+</Callout>
+
+## RAM
+
+ESP32-S3 有约 512 KB 片内 SRAM，Watcher 另有 8 MB PSRAM。稀缺的是片内 RAM：Wi-Fi、TLS（硬件 AES 的 DMA
+缓冲区）、音频和 LVGL 都需要它。
+
+| | 空闲时 | 观测到的最低值 |
+| --- | --- | --- |
+| 片内 RAM 余量 | 55–60 KB | 约 33 KB |
+| PSRAM 余量 | 约 3.2 MB | |
+
+Bắp 的做法：
+
+- cJSON 和小块分配放在 PSRAM；只有 256 字节以内的请求留在片内。
+- 不访问闪存的任务栈放在 PSRAM（`xTaskCreateWithCaps`）：Opus 编解码器、通知播放器和 Zing 播放器。
+- Wi-Fi 和 lwIP 缓冲区放在 PSRAM，腾出空间给 16 KB 的 TCP 窗口，让 Gemini 音频流畅到达。
+- LVGL 任务栈为 12 KB（以前曾溢出），`/api/perf` 报告每个任务的最小栈余量，便于及早发现问题。
+- 网页服务器最多 4 个连接，lwIP 总共最多 16 个套接字。

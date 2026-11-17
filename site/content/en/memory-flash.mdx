@@ -1,0 +1,49 @@
+---
+title: Memory and flash
+description: The 32 MB flash layout and how Bắp spends the ESP32-S3's internal RAM.
+---
+
+import { Callout } from 'nextra/components'
+
+# Memory and flash
+
+![Flash layout](/diagrams/flash-layout.svg)
+
+## Flash (32 MB)
+
+| Offset | Content | Written by |
+| --- | --- | --- |
+| `0x0` | bootloader | `flash.sh` |
+| `0x8000` | partition table (`partitions/v2/32m.csv`) | `flash.sh` |
+| `0x9000` | `nvsfactory`, 200 KB: Seeed device EUI and keys | **never** |
+| `0x3B000` | `nvs`, 840 KB: settings, notes, memories, alarms | the firmware |
+| `0x10D000` | `otadata` | `flash.sh`, OTA |
+| `0x200000` | `ota_0`, 4 MB: the app | `flash.sh`, `flash_app.sh`, OTA |
+| `0x600000` | `ota_1`, 4 MB: the other OTA slot | OTA |
+| `0xA00000` | `assets`, 16 MB: fonts, faces, wake word model | `flash.sh`, `flash_assets.sh` |
+
+<Callout type="warning">
+`nvsfactory` holds the keys Seeed put on your device. No Bắp script writes it, so you can always go
+back to the official firmware.
+</Callout>
+
+## RAM
+
+The ESP32-S3 has about 512 KB of internal SRAM and the Watcher adds 8 MB of PSRAM. Internal RAM is
+the scarce one: Wi-Fi, TLS (hardware AES DMA buffers), audio and LVGL all want it.
+
+| | Idle | Lowest seen |
+| --- | --- | --- |
+| Free internal RAM | 55–60 KB | ~33 KB |
+| Free PSRAM | ~3.2 MB | |
+
+How Bắp keeps it that way:
+
+- cJSON and small allocations go to PSRAM; requests up to 256 bytes stay internal.
+- Task stacks that never touch flash run in PSRAM (`xTaskCreateWithCaps`): the Opus codec, the
+  notification player and the Zing player.
+- Wi-Fi and lwIP buffers live in PSRAM, which leaves room for a 16 KB TCP window so Gemini audio
+  arrives smoothly.
+- The LVGL task has a 12 KB stack (it used to overflow), and `/api/perf` reports each task's
+  minimum free stack so regressions show up early.
+- The web server is limited to 4 open sockets and lwIP to 16 in total.

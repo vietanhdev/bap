@@ -1,0 +1,34 @@
+---
+title: Camera và tính năng thông minh
+description: Nhận biết có người, chào buổi sáng, chế độ đêm và giờ yên tĩnh.
+---
+
+import { Callout } from 'nextra/components'
+
+# Camera và tính năng thông minh
+
+Camera của Watcher có chip AI riêng, Himax HX6538, chạy bộ phát hiện người **ngay trên chip**. Bắp
+dùng nó cho những điều nhỏ mà riêng tư: không ảnh nào được gửi đi, không tốn lượt Gemini.
+
+| Tính năng | Điều gì xảy ra | Mặc định |
+| --- | --- | --- |
+| **Nhận biết có người** | Khi có người xuất hiện, màn hình sáng lên và nhân vật mừng rỡ | tắt |
+| **Chào buổi sáng** | Lần đầu thấy bạn trong khoảng 6 đến 10 giờ sáng, nhân vật chào và đọc bản tin sáng (thời tiết, lịch âm, tin chính). Mỗi ngày một lần; cần bật *Nhận biết có người* | tắt |
+| **Thấy người thì chào** | Chào khi có người đến | tắt |
+| **Chế độ đêm** | 22:00 đến 06:00: màn hình dịu, loa tối đa 35%, gương mặt yên (không thở, "zzz" đứng yên) | bật |
+| **Không làm phiền ban đêm** | 22:00 đến 06:00: tắt từ đánh thức, TV hay tiếng nói chuyện không làm máy thức dậy. Chạm đúp màn hình hoặc nhấn núm xoay để nói | tắt |
+| **Pin yếu** | Nhắc bạn cắm sạc | bật |
+
+Bật các tính năng này trong trang cài đặt (thẻ Hệ thống) hoặc menu tròn → Thiết lập.
+
+<Callout type="info">
+Ảnh camera chỉ được gửi lên Gemini khi trợ lý gọi `self.camera.take_photo`, ví dụ trong ứng dụng
+*Nhìn và kể* hoặc khi bạn hỏi "mình đang cầm gì đây?".
+</Callout>
+
+## Cảm biến và phần cứng khác
+
+- **Dãy micro** với AFE của Espressif (giảm ồn, khử tiếng vang) và mô hình từ đánh thức "Hi Lili"
+  chạy trên máy.
+- **Thẻ SD** cho nhạc offline (dùng chung bus SPI với camera).
+- **Pin**: mức pin và trạng thái sạc hiện trên thanh trạng thái.

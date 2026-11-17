@@ -1,0 +1,79 @@
+---
+title: 도구
+description: 음력부터 Zing MP3까지, 비서가 호출할 수 있는 모든 도구.
+---
+
+import { Callout } from 'nextra/components'
+
+# 도구
+
+도구는 대화 중에 모델이 호출할 수 있는 함수입니다. **기기에서 직접** 실행되고, 공개 데이터 소스를
+바로 호출해 캐릭터가 읽어 줄 짧은 답을 돌려줍니다. 별도의 API 키는 필요 없습니다.
+
+## 생활 정보 (베트남)
+
+| 도구 | 하는 일 | 소스 |
+| --- | --- | --- |
+| `vn.lunar_date` | 아무 양력 날짜의 음력, 간지, 음력 명절 | 기기 내 알고리즘 |
+| `vn.lunar_to_solar` | 음력을 양력으로 변환 ("내년 설날은 언제?") | 기기 내 알고리즘 |
+| `vn.weather` | 어디든 현재 날씨와 3일 예보 | Open-Meteo |
+| `vn.air_quality` | AQI와 PM2.5, 마스크·환기 조언 | Open-Meteo |
+| `vn.news` | 주제별 최신 헤드라인 (최신, 세계, 경제, 스포츠, 기술…) | VnExpress RSS |
+| `vn.exchange_rate` | 환율 (USD, EUR, JPY, KRW, CNY…) | Vietcombank |
+| `vn.gold_price` | SJC 골드바, 9999 반지 등 금 시세 | PNJ |
+| `vn.gold_price_hai_hong` | Hải Hồng 금은방의 금·은 시세판 | 매장 시세판 |
+| `vn.stocks` | VN-Index, VN30, HNX-Index, UPCoM | CafeF |
+| `vn.lottery` | 북부·중부·남부 최신 복권 결과 | RSS |
+| `sports.football` | 베트남 시간 기준 경기 일정과 결과: 프리미어리그, 챔피언스리그, 라리가, 세리에 A, 분데스리가, 리그 1 | ESPN |
+
+## 시간, 메모, 기억
+
+| 도구 | 하는 일 |
+| --- | --- |
+| `timer.set` | 카운트다운 타이머 ("10분 뒤에 알려 줘") |
+| `alarm.set` | 특정 시각의 알람이나 알림, 매일 반복 가능 |
+| `timer.list` | 실행 중인 타이머와 알람 목록 |
+| `timer.cancel` | 하나를 취소, `number=0`이면 전부 |
+| `notes.add`, `notes.list`, `notes.remove` | 할 일·장보기 목록 (최대 30개) |
+| `memory.save`, `memory.forget` | 이름, 취향, 가족 등 당신에 대한 장기 기억. 모든 세션에 포함 |
+
+## 음악, 라디오, 앱
+
+| 도구 | 하는 일 |
+| --- | --- |
+| `music.search` | Zing MP3에서 검색해 짧은 목록을 읽어 줘요 |
+| `music.play` | 이름이나 id로 Zing MP3 곡 재생, 가사 동기화 |
+| `music.sd_card` | SD 카드 음악 재생, 오프라인, 성조 무시 검색 |
+| `radio.play` | 라디오 재생 (VOV1–3, VOV 교통, 하노이 FM, RFI) |
+| `music.stop` | 음악이나 라디오 정지 |
+| `app.open` | [음성 앱](/ko/apps) 열기 |
+| `character.switch` | 다른 [캐릭터](/ko/characters)로 전환 |
+
+## 기기와 확장
+
+| 도구 | 하는 일 |
+| --- | --- |
+| `system.wifi_setup` | 기기를 Wi-Fi 설정 모드로 (명확히 요청할 때만) |
+| `extension.call` | 웹 설정에 등록한 웹훅 호출 (Home Assistant, n8n, 자체 서버) |
+| `self.camera.take_photo` | 사진을 찍어 모델이 보게 함 (업스트림 도구) |
+| `self.audio_speaker.set_volume`, `self.screen.set_brightness` | 음량과 밝기 (업스트림 도구) |
+
+<Callout type="info">
+도구 이름은 영어 `group.action` 식별자입니다. Gemini 함수 이름에는 점을 쓸 수 없어서, 브리지가
+`vn.weather`를 `vn_weather`로 바꿨다가 되돌립니다. 모델이 언제 도구를 부를지 판단할 때 읽는 설명은
+예시 문장과 함께 베트남어로 쓰여 있습니다.
+</Callout>
+
+## 선택: Google 검색
+
+결제가 켜진 키가 있으면 웹 설정에서 Google 검색을 켤 수 있습니다. 검색을 켠 상태로 세션이
+거절되면 기기가 검색을 끄고 한 번 다시 시도합니다.
+
+## 말하지 않고 도구 테스트
+
+웹 서버가 기기의 MCP 서버를 열어 둡니다.
+
+```bash
+curl -s -X POST http://bap-xxxx.local/api/tool -H 'X-Bap: 1' -H 'Content-Type: application/json' \
+  -d '{"name":"vn.weather","arguments":{"place":"Hà Nội"}}'
+```
