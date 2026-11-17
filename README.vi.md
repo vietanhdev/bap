@@ -38,6 +38,16 @@ các tiện ích đời sống Việt Nam, tất cả chạy trên một con ESP
 
 ## Hình ảnh
 
+<p align="center"><img src="docs/images/screens/emotions.gif" alt="Năm nhân vật, mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL" width="760"><br><sub>Năm nhân vật, mỗi nhân vật 23 biểu cảm, vẽ trực tiếp bằng LVGL</sub></p>
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="240"><br><sub>Hỏi là trả lời, có phụ đề, rồi mở bài hát</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="240"><br><sub>Vuốt hoặc xoay núm để đổi nhân vật</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="240"><br><sub>Giữ núm xoay để mở menu tròn</sub></td>
+</tr>
+</table>
+
 Mọi ảnh màn hình đều chụp trực tiếp từ thiết bị (`GET /screen.jpg`).
 
 <table>

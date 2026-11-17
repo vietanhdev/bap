@@ -38,6 +38,16 @@ everyday tools, all running on one ESP32-S3.
 
 ## What it looks like
 
+<p align="center"><img src="docs/images/screens/emotions.gif" alt="Five characters, 23 expressions each, drawn natively with LVGL" width="760"><br><sub>Five characters, 23 expressions each, drawn natively with LVGL</sub></p>
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="240"><br><sub>Ask, and it answers with subtitles, then plays the song</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="240"><br><sub>Swipe or turn the wheel to switch characters</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="240"><br><sub>Hold the wheel for the round menu</sub></td>
+</tr>
+</table>
+
 All screenshots are taken from the device itself (`GET /screen.jpg`).
 
 <table>
