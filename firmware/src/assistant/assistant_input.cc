@@ -257,6 +257,15 @@ void OnTouch(TouchEvent event, int x, int y) {
                 } else {
                     t.last_tap_us = now;
                     Giggle();
+                    // With voice wake-up off by default, a single tap teaches how to start.
+                    static int64_t last_hint_us = -60LL * 1000 * 1000;
+                    if (now - last_hint_us > 20LL * 1000 * 1000) {
+                        last_hint_us = now;
+                        app.Schedule([]() {
+                            Board::GetInstance().GetDisplay()->ShowNotification(
+                                Localize("Chạm 2 lần để nói chuyện"), 1800);
+                        });
+                    }
                 }
             }
             break;
