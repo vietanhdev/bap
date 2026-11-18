@@ -334,7 +334,15 @@ esp_err_t HandleAction(httpd_req_t* req) {
         MenuIsOpen() ? MenuBack() : MenuOpen();
     } else if (action == "wheel_left" || action == "wheel_right") {
         bool clockwise = action == "wheel_right";
-        MenuIsOpen() ? MenuRotate(clockwise) : (void)OnWheelRotate(clockwise);
+        if (MenuIsOpen()) {
+            MenuRotate(clockwise);
+        } else if (!OnWheelRotate(clockwise)) {  // resting or talking: volume, like the real wheel
+            auto codec = Board::GetInstance().GetAudioCodec();
+            int volume = std::max(0, std::min(100, codec->output_volume() + (clockwise ? -5 : 5)));
+            codec->SetOutputVolume(volume);
+            Board::GetInstance().GetDisplay()->ShowNotification(Localize("Âm lượng") + ": " +
+                                                                std::to_string(volume));
+        }
     } else if (action == "wheel_click") {
         if (MenuIsOpen())
             MenuClick();

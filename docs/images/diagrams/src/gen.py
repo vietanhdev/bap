@@ -354,22 +354,21 @@ def controls():
 
     tx, tw = 470, 480
     t1, h1 = table(tx, 104, tw, "Wheel", "accentf", [
-        ("idle", "Rotate", "switch character"),
-        ("talking", "Rotate", "volume"),
+        ("any", "Rotate", "volume"),
         ("any", "Press", "talk · pause · resume"),
         ("idle", "Double press", "apps list"),
         ("any", "Hold 1 s", "menu (hold again: back)"),
+        ("any", "Press 3 times", "power off"),
         ("any", "Hold 20 s", "factory reset"),
     ])
     b += t1
     t2, h2 = table(tx, 104 + h1 + 16, tw, "Touch", "pinkf", [
         ("idle", "Tap", "giggle"),
         ("idle", "Double tap", "start talking"),
-        ("idle", "Swipe ← →", "switch character"),
         ("idle", "Hold", "menu"),
         ("talking", "Tap", "interrupt"),
         ("music", "Double tap", "stop music"),
-        ("menu", "Swipe / tap", "move · centre opens"),
+        ("menu", "Drag / tap", "move · centre opens"),
     ])
     b += t2
     H = max(H, 104 + h1 + 16 + h2 + 28)

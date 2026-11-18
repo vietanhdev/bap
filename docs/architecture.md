@@ -191,10 +191,10 @@ How each field is used (`assistant_config.cc` unless noted):
 | Field | Used by |
 | --- | --- |
 | `id` | NVS key for overrides (`"c_" + id`), active character in `Config::character`, face asset names `<id>_<emotion>.gif` |
-| `name`, `kind` | `SystemPrompt()` (list of other characters), `character.switch` tool (`SetActiveCharacter()` matches id or name), wheel preview |
+| `name`, `kind` | Settings menu and web UI (`SetActiveCharacter()` matches id or name) |
 | `voice` | `prebuiltVoiceConfig.voiceName` in the session setup |
 | `persona` | First part of `SystemPrompt()` |
-| `tagline` | Shown when choosing the character with the wheel (`OnWheelRotate()`) and in the web UI |
+| `tagline` | Shown in the web UI |
 | `look.shape` | `BuildBody()` in `assistant_face.cc`: `cloud` (default), `corn`, `avocado`, `mochi`, `robot` |
 | `look.body/accent/ink/cheek` | Colors for the body, details, eyes and mouth, cheeks |
 | `apps[]` | `Apps()`: wheel app launcher (`OnWheelClick()` sends the prompt via `Say()`), `app.open` tool, list in `SystemPrompt()` |

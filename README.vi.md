@@ -30,7 +30,7 @@ Quay trực tiếp từ màn hình của máy (`GET /screen.jpg`), đúng tốc 
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="260" alt="Trò chuyện"><br><b>Hỏi gì cũng được</b><br><sub>Trả lời bằng giọng nói, có phụ đề, rồi mở bài hát</sub></td>
-<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="260" alt="Đổi nhân vật"><br><b>Năm nhân vật</b><br><sub>Vuốt màn hình hoặc xoay núm</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="260" alt="Đổi nhân vật"><br><b>Năm nhân vật</b><br><sub>Chọn trong Thiết lập</sub></td>
 <td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="260" alt="Menu tròn"><br><b>Menu tròn</b><br><sub>Giữ núm xoay hoặc giữ màn hình</sub></td>
 </tr>
 </table>
@@ -73,8 +73,8 @@ màn hình tròn. Chạm đúp màn hình hoặc nhấn núm xoay (hoặc nói *
 <td width="50%" valign="top">
 
 ### 👆 Sinh ra để được chạm vào
-Chạm là cười khúc khích, chạm đúp để nói chuyện, vuốt để đổi nhân vật, giữ để mở menu. Núm xoay
-làm được y như vậy, thêm cả chỉnh âm lượng.
+Chạm là cười khúc khích, chạm đúp để nói chuyện, giữ để mở menu. Núm xoay dùng để trò chuyện,
+chỉnh âm lượng, và nhấn nhanh 3 lần để tắt máy.
 
 </td>
 </tr>
@@ -97,7 +97,7 @@ dụng và ngôn ngữ đều là dữ liệu, thêm mới không cần viết C
 <tr>
 <td valign="top">
 
-### 🛠️ 29 công cụ trên máy
+### 🛠️ 28 công cụ trên máy
 Lịch âm, thời tiết và chất lượng không khí, tin tức, giá vàng, tỷ giá, chứng khoán, bóng đá, xổ
 số, hẹn giờ, báo thức, ghi chú, ghi nhớ lâu dài. Không cần thêm API key.
 
@@ -152,7 +152,7 @@ người thì màn hình dịu dần rồi tắt hẳn.
 | Gọi → bắt đầu nghe | Tùy máy chủ trung gian | **1,4–2,3 giây**, TLS nối lại trong 0,1 giây |
 | Gương mặt | Emoji GIF | **5 nhân vật vẽ bằng LVGL**, 23 biểu cảm, nhép miệng |
 | Ngôn ngữ | Do máy chủ quyết định | **Việt, Anh, Hàn, Trung** |
-| Màn hình cảm ứng | Chưa dùng | **Chạm, chạm đúp, vuốt, giữ** |
+| Màn hình cảm ứng | Chưa dùng | **Chạm, chạm đúp, kéo, giữ** |
 | AI camera | Luồng tác vụ SenseCraft | **Nhận biết người ngay trên chip** để chào |
 | Cài đặt | Ứng dụng hoặc trang quản trị của hãng | **Trang web trong mạng nhà**, mật khẩu, tình trạng máy, OTA |
 | Ban đêm | Như ban ngày | **Chế độ đêm**, không làm phiền, nghỉ màn hình |
@@ -289,11 +289,11 @@ gian chạy và sóng Wi-Fi.
 
 | Trạng thái | Núm xoay | Cảm ứng |
 | --- | --- | --- |
-| Đang nghỉ | xoay: đổi nhân vật · nhấn đúp: ứng dụng | chạm: cười khúc khích · chạm đúp: trò chuyện · vuốt: đổi nhân vật |
+| Đang nghỉ | xoay: âm lượng · nhấn đúp: ứng dụng · nhấn 3 lần: tắt máy | chạm: cười khúc khích · chạm đúp: trò chuyện |
 | Đang trò chuyện | xoay: âm lượng · nhấn: dừng / tiếp tục | chạm: ngắt lời · chạm đúp: kết thúc |
 | Đang phát nhạc | — | chạm đúp: dừng nhạc |
 | Bất kỳ | giữ 1 giây: menu · giữ 20 giây: xóa cài đặt | giữ: menu |
-| Trong menu | xoay / nhấn: di chuyển / mở | vuốt hoặc chạm trên / dưới: di chuyển · chạm giữa: mở |
+| Trong menu | xoay / nhấn: di chuyển / mở | kéo hoặc chạm trên / dưới: di chuyển · chạm giữa: mở |
 
 ## ⚙️ Trang cài đặt
 

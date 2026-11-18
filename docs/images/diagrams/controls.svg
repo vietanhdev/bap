@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="690" viewBox="0 0 980 690" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="656" viewBox="0 0 980 656" role="img" aria-labelledby="t d">
 <title id="t">Wheel and touch controls</title>
 <desc id="d">Illustration of the Watcher with its wheel and a table of every wheel and touch gesture.</desc>
 
@@ -60,7 +60,7 @@
     <stop offset="0" stop-color="#ffd84d"/><stop offset="1" stop-color="#ff9eb5"/>
   </linearGradient>
 </defs>
-<rect class="bg" x="0" y="0" width="980" height="690" rx="22"/>
+<rect class="bg" x="0" y="0" width="980" height="656" rx="22"/>
 <text x="32" y="48" class="t-title">Wheel and touch</text>
 <text x="32" y="72" class="t-sub">Every gesture, by state. Hold anywhere for the round menu.</text>
 <circle cx="220" cy="360" r="164" fill="#2b2838" stroke="#4a4466" stroke-width="2" filter="url(#sh)"/>
@@ -83,36 +83,36 @@
 <rect x="470" y="104" width="480" height="254" rx="18" class="card" filter="url(#sh)"/>
 <circle cx="494" cy="131" r="7" class="accentf"/>
 <text x="510" y="136" class="t-h">Wheel</text>
-<rect x="488" y="152" width="41" height="22" rx="11.0" class="chip"/>
-<text x="508.5" y="167.5" class="t-xs" text-anchor="middle">idle</text>
+<rect x="488" y="152" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="167.5" class="t-xs" text-anchor="middle">any</text>
 <text x="578" y="168" class="t-b">Rotate</text>
-<text x="722" y="168" class="t-s">switch character</text>
+<text x="722" y="168" class="t-s">volume</text>
 <line x1="488" y1="182" x2="932" y2="182" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="186" width="60" height="22" rx="11.0" class="chip"/>
-<text x="518.0" y="201.5" class="t-xs" text-anchor="middle">talking</text>
-<text x="578" y="202" class="t-b">Rotate</text>
-<text x="722" y="202" class="t-s">volume</text>
+<rect x="488" y="186" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="201.5" class="t-xs" text-anchor="middle">any</text>
+<text x="578" y="202" class="t-b">Press</text>
+<text x="722" y="202" class="t-s">talk · pause · resume</text>
 <line x1="488" y1="216" x2="932" y2="216" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="220" width="35" height="22" rx="11.0" class="chip"/>
-<text x="505.5" y="235.5" class="t-xs" text-anchor="middle">any</text>
-<text x="578" y="236" class="t-b">Press</text>
-<text x="722" y="236" class="t-s">talk · pause · resume</text>
+<rect x="488" y="220" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="235.5" class="t-xs" text-anchor="middle">idle</text>
+<text x="578" y="236" class="t-b">Double press</text>
+<text x="722" y="236" class="t-s">apps list</text>
 <line x1="488" y1="250" x2="932" y2="250" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="254" width="41" height="22" rx="11.0" class="chip"/>
-<text x="508.5" y="269.5" class="t-xs" text-anchor="middle">idle</text>
-<text x="578" y="270" class="t-b">Double press</text>
-<text x="722" y="270" class="t-s">apps list</text>
+<rect x="488" y="254" width="35" height="22" rx="11.0" class="chip"/>
+<text x="505.5" y="269.5" class="t-xs" text-anchor="middle">any</text>
+<text x="578" y="270" class="t-b">Hold 1 s</text>
+<text x="722" y="270" class="t-s">menu (hold again: back)</text>
 <line x1="488" y1="284" x2="932" y2="284" stroke="var(--line)" stroke-width="1"/>
 <rect x="488" y="288" width="35" height="22" rx="11.0" class="chip"/>
 <text x="505.5" y="303.5" class="t-xs" text-anchor="middle">any</text>
-<text x="578" y="304" class="t-b">Hold 1 s</text>
-<text x="722" y="304" class="t-s">menu (hold again: back)</text>
+<text x="578" y="304" class="t-b">Press 3 times</text>
+<text x="722" y="304" class="t-s">power off</text>
 <line x1="488" y1="318" x2="932" y2="318" stroke="var(--line)" stroke-width="1"/>
 <rect x="488" y="322" width="35" height="22" rx="11.0" class="chip"/>
 <text x="505.5" y="337.5" class="t-xs" text-anchor="middle">any</text>
 <text x="578" y="338" class="t-b">Hold 20 s</text>
 <text x="722" y="338" class="t-s">factory reset</text>
-<rect x="470" y="374" width="480" height="288" rx="18" class="card" filter="url(#sh)"/>
+<rect x="470" y="374" width="480" height="254" rx="18" class="card" filter="url(#sh)"/>
 <circle cx="494" cy="401" r="7" class="pinkf"/>
 <text x="510" y="406" class="t-h">Touch</text>
 <rect x="488" y="422" width="41" height="22" rx="11.0" class="chip"/>
@@ -127,26 +127,21 @@
 <line x1="488" y1="486" x2="932" y2="486" stroke="var(--line)" stroke-width="1"/>
 <rect x="488" y="490" width="41" height="22" rx="11.0" class="chip"/>
 <text x="508.5" y="505.5" class="t-xs" text-anchor="middle">idle</text>
-<text x="578" y="506" class="t-b">Swipe ← →</text>
-<text x="722" y="506" class="t-s">switch character</text>
+<text x="578" y="506" class="t-b">Hold</text>
+<text x="722" y="506" class="t-s">menu</text>
 <line x1="488" y1="520" x2="932" y2="520" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="524" width="41" height="22" rx="11.0" class="chip"/>
-<text x="508.5" y="539.5" class="t-xs" text-anchor="middle">idle</text>
-<text x="578" y="540" class="t-b">Hold</text>
-<text x="722" y="540" class="t-s">menu</text>
+<rect x="488" y="524" width="60" height="22" rx="11.0" class="chip"/>
+<text x="518.0" y="539.5" class="t-xs" text-anchor="middle">talking</text>
+<text x="578" y="540" class="t-b">Tap</text>
+<text x="722" y="540" class="t-s">interrupt</text>
 <line x1="488" y1="554" x2="932" y2="554" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="558" width="60" height="22" rx="11.0" class="chip"/>
-<text x="518.0" y="573.5" class="t-xs" text-anchor="middle">talking</text>
-<text x="578" y="574" class="t-b">Tap</text>
-<text x="722" y="574" class="t-s">interrupt</text>
+<rect x="488" y="558" width="48" height="22" rx="11.0" class="chip"/>
+<text x="512.0" y="573.5" class="t-xs" text-anchor="middle">music</text>
+<text x="578" y="574" class="t-b">Double tap</text>
+<text x="722" y="574" class="t-s">stop music</text>
 <line x1="488" y1="588" x2="932" y2="588" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="592" width="48" height="22" rx="11.0" class="chip"/>
-<text x="512.0" y="607.5" class="t-xs" text-anchor="middle">music</text>
-<text x="578" y="608" class="t-b">Double tap</text>
-<text x="722" y="608" class="t-s">stop music</text>
-<line x1="488" y1="622" x2="932" y2="622" stroke="var(--line)" stroke-width="1"/>
-<rect x="488" y="626" width="41" height="22" rx="11.0" class="chip"/>
-<text x="508.5" y="641.5" class="t-xs" text-anchor="middle">menu</text>
-<text x="578" y="642" class="t-b">Swipe / tap</text>
-<text x="722" y="642" class="t-s">move · centre opens</text>
+<rect x="488" y="592" width="41" height="22" rx="11.0" class="chip"/>
+<text x="508.5" y="607.5" class="t-xs" text-anchor="middle">menu</text>
+<text x="578" y="608" class="t-b">Drag / tap</text>
+<text x="722" y="608" class="t-s">move · centre opens</text>
 </svg>

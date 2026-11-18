@@ -228,7 +228,6 @@ CHAT = [
     # not need music.stop at all: what matters is that the radio is off afterwards.
     ("Dừng nhạc đi", "music.stop", "stopped"),
     ("Mở ứng dụng đố vui", "app.open", None),
-    ("Gọi Bắp ra đây", "character.switch", None),
 ]
 
 

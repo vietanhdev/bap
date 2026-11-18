@@ -30,7 +30,7 @@ Recorded from the device's own screen (`GET /screen.jpg`), in real time.
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/images/demo/conversation.gif" width="260" alt="Conversation demo"><br><b>Ask anything</b><br><sub>It answers with live subtitles, then plays the song</sub></td>
-<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="260" alt="Switching characters"><br><b>Five characters</b><br><sub>Swipe the screen or turn the wheel</sub></td>
+<td align="center" width="33%"><img src="docs/images/demo/characters.gif" width="260" alt="Switching characters"><br><b>Five characters</b><br><sub>Chosen in Settings</sub></td>
 <td align="center" width="33%"><img src="docs/images/demo/menu.gif" width="260" alt="Round menu"><br><b>Round menu</b><br><sub>Hold the wheel or the screen</sub></td>
 </tr>
 </table>
@@ -73,8 +73,8 @@ Double-tap the screen or press the wheel (or say **"Hi Lili"** once voice wake-u
 <td width="50%" valign="top">
 
 ### 👆 Made to be touched
-Tap and it giggles, double-tap to talk, swipe to switch characters, hold for the menu. The scroll
-wheel does the same, plus volume.
+Tap and it giggles, double-tap to talk, hold for the menu. The scroll wheel talks, sets the
+volume, and three quick presses power it off.
 
 </td>
 </tr>
@@ -97,7 +97,7 @@ apps and languages are plain data, so no C++ is needed to add one.
 <tr>
 <td valign="top">
 
-### 🛠️ 29 on-device tools
+### 🛠️ 28 on-device tools
 Lunar calendar, weather and air quality, news, gold prices, exchange rates, stocks, football,
 lottery, timers, alarms, notes and long-term memory. No extra API keys.
 
@@ -151,7 +151,7 @@ dims, then switches off, when nobody is around.
 | Wake → listening | Depends on the relay server | **1.4–2.3 s**, TLS resumed in 0.1 s |
 | Faces | GIF emoji | **5 characters drawn in LVGL**, 23 expressions, lip sync |
 | Languages | Chosen by the server | **Vietnamese, English, Korean, Chinese** |
-| Touch screen | Not used | **Tap, double tap, swipe and hold** |
+| Touch screen | Not used | **Tap, double tap, drag and hold** |
 | Camera AI | SenseCraft task flows | **On-device person detection** for greetings |
 | Settings | Vendor app or server console | **Local web page**, password, health panel, OTA |
 | Overnight | Same as daytime | **Night mode**, do-not-disturb, screen rest |
@@ -288,11 +288,11 @@ camera paused. `GET /api/perf` reports per-task CPU, stack headroom, heap, uptim
 
 | State | Wheel | Touch |
 | --- | --- | --- |
-| Resting | rotate: character · double press: apps | tap: giggle · double tap: talk · swipe: character |
+| Resting | rotate: volume · double press: apps · triple press: power off | tap: giggle · double tap: talk |
 | Talking | rotate: volume · press: pause / resume | tap: interrupt · double tap: end |
 | Music | — | double tap: stop |
 | Anywhere | hold 1 s: menu · hold 20 s: factory reset | hold: menu |
-| Menu | rotate / press: move / open | swipe or tap top / bottom: move · tap centre: open |
+| Menu | rotate / press: move / open | drag or tap top / bottom: move · tap centre: open |
 
 ## ⚙️ Settings page
 

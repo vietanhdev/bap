@@ -64,8 +64,8 @@ Guidelines:
 - **Don't block for long.** Tool callbacks run in the MCP server context; keep network calls
   under about 10 seconds. For anything that should happen later (a reminder), store it and let the
   scheduler (`SchedulerTask()`) act on it.
-- **Need the device to do something after replying** (switch character, restart the session)?
-  Look at `character.switch`: it replies first and does the work in a short-lived FreeRTOS task.
+- **Need the device to do something after replying** (restart the session, for example)? Reply
+  first and do the work in a short-lived FreeRTOS task.
 - **No secrets in tools.** Use public endpoints, or keys stored in NVS via the web UI, never
   hard-coded keys.
 - Tools that only the user (web UI) should trigger: register them with `mcp.AddUserOnlyTool(...)`;

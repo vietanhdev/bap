@@ -8,9 +8,12 @@ bool MenuIsOpen();
 void MenuOpen();
 void MenuBack();  // one level up; closes the menu at the top level
 void MenuRotate(bool forward);
+void MenuDrag(int dy);  // finger position relative to where the drag started
+void MenuDragEnd();
 void MenuClick();
 void MenuTick();  // call about once a second; closes an idle menu
 // Board hook: cut power. Return false when it cannot (e.g. running on USB power).
 void SetPowerOffHandler(std::function<bool()> handler);
+void PowerOffNow();  // powers off, or says to unplug the cable first
 
 }  // namespace assistant

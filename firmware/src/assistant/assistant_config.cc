@@ -232,12 +232,6 @@ std::string SystemPrompt() {
         prompt += " Tên của bạn bây giờ là " + c.name + ", hãy xưng bằng tên này.";
     }
     prompt += "\n" + Str(Builtin(), "common_rules");
-    std::string others;
-    for (auto& o : Characters()) {
-        if (o.id != c.id)
-            others += (others.empty() ? "" : ", ") + o.name + " (" + o.kind + ")";
-    }
-    prompt += "\nCác nhân vật khác có thể đổi sang: " + others + ".";
     std::string apps;
     for (auto& a : Apps())
         apps += (apps.empty() ? "" : ", ") + a.id + " (" + a.title + ")";

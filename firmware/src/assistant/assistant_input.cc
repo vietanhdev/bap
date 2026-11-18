@@ -1,12 +1,10 @@
 // Scroll wheel behaviour:
-//   resting     : rotate = pick a character, double click = app launcher (rotate to choose,
-//                 click to start)
+//   resting     : rotate = volume, double click = app launcher (rotate to choose, click to start)
 //   conversation: rotate = volume (handled by the board), click = stop / start listening
 // Touch screen:
-//   resting: tap = the character giggles, double tap = talk, swipe sideways = next character,
-//            hold = menu
+//   resting: tap = the character giggles, double tap = talk, hold = menu
 //   talking: tap = stop / interrupt; music or radio: double tap = stop
-//   menu   : swipe up/down = move, tap = open, hold = back
+//   menu   : drag up/down = the list follows the finger, tap = open, hold = back
 #include <esp_log.h>
 #include <esp_timer.h>
 
@@ -59,6 +57,7 @@ void ShowApp() {
 }  // namespace
 
 std::atomic<bool> g_screen_off{false};
+static void (*g_panel_recovery)() = nullptr;
 
 void SetScreenOff(bool off) { g_screen_off = off; }
 bool ScreenIsOff() { return g_screen_off; }
@@ -66,12 +65,19 @@ bool ScreenIsOff() { return g_screen_off; }
 void NoteActivity() {
     g_activity_us = esp_timer_get_time();
     // Wake the backlight at once (the scheduler only checks once a second).
+    // Only the backlight goes dark while resting. Waking sets the panel up again first, so the
+    // backlight never comes back over a blank panel.
     if (g_screen_off.exchange(false)) {
-        Board::GetInstance().GetDisplay()->SetPanelOn(true);
-        if (auto backlight = Board::GetInstance().GetBacklight())
-            backlight->RestoreBrightness();
+        Application::GetInstance().Schedule([]() {
+            if (g_panel_recovery != nullptr)
+                g_panel_recovery();
+            if (auto backlight = Board::GetInstance().GetBacklight())
+                backlight->RestoreBrightness();
+        });
     }
 }
+
+void SetPanelRecovery(void (*recovery)()) { g_panel_recovery = recovery; }
 
 int SecondsSinceActivity() { return (int)((esp_timer_get_time() - g_activity_us) / 1000000); }
 
@@ -89,22 +95,7 @@ bool OnWheelRotate(bool clockwise) {
         ShowApp();
         return true;
     }
-    if (app.GetDeviceState() != kDeviceStateIdle)
-        return false;  // conversation: volume
-    auto chars = Characters();
-    if (chars.empty())
-        return false;
-    std::string active = LoadConfig().character;
-    int index = 0;
-    for (size_t i = 0; i < chars.size(); ++i) {
-        if (chars[i].id == active)
-            index = (int)i;
-    }
-    index = (index + (clockwise ? 1 : -1) + chars.size()) % chars.size();
-    SetActiveCharacter(chars[index].id);
-    g_preview_shown = true;
-    Show(chars[index].name, chars[index].tagline, "happy");
-    return true;
+    return false;  // resting or talking: volume (the board handles it)
 }
 
 bool OnWheelClick() {
@@ -156,6 +147,7 @@ struct Gesture {
     int64_t down_us = 0, last_tap_us = 0;
     int x0 = 0, y0 = 0, x = 0, y = 0;
     bool held = false;
+    bool dragging = false;
     bool edge = false;  // started on the outer rim of the round glass
 };
 Gesture g_touch;
@@ -198,6 +190,7 @@ void OnTouch(TouchEvent event, int x, int y) {
         t.x0 = t.x = x;
         t.y0 = t.y = y;
         t.held = false;
+        t.dragging = false;
         t.edge =
             (x - kCenter) * (x - kCenter) + (y - kCenter) * (y - kCenter) > kRimRadius * kRimRadius;
         if (!t.edge)
@@ -208,7 +201,7 @@ void OnTouch(TouchEvent event, int x, int y) {
     t.y = y;
     const int dx = t.x - t.x0, dy = t.y - t.y0;
     const bool still = abs(dx) < kSlop && abs(dy) < kSlop;
-    if (t.edge && still)
+    if (t.edge && still && !t.dragging)
         return;  // a finger resting on the rim
     if (event == TouchEvent::kUp && ScreenIsOff()) {
         NoteActivity();  // a dark screen: this touch only wakes it
@@ -216,7 +209,12 @@ void OnTouch(TouchEvent event, int x, int y) {
     }
     NoteActivity();
     if (event == TouchEvent::kMove) {
-        if (!t.held && still && now - t.down_us > kHoldUs) {
+        if (!t.held && !still && MenuIsOpen() && (t.dragging || abs(dy) >= abs(dx))) {
+            t.dragging = true;
+            MenuDrag(dy);  // the list follows the finger
+            return;
+        }
+        if (!t.held && !t.dragging && still && now - t.down_us > kHoldUs) {
             t.held = true;
             if (MenuIsOpen()) {
                 MenuBack();
@@ -233,6 +231,11 @@ void OnTouch(TouchEvent event, int x, int y) {
     ESP_LOGI("Touch", "up at %d,%d (moved %d,%d)", x, y, dx, dy);
     const bool vertical = abs(dy) > kSwipe && abs(dy) > abs(dx);
     const bool sideways = abs(dx) > kSwipe && abs(dx) > abs(dy);
+    if (t.dragging) {
+        t.dragging = false;
+        MenuDragEnd();
+        return;
+    }
     if (MenuIsOpen()) {
         if (vertical)
             MenuRotate(dy < 0);
@@ -248,9 +251,7 @@ void OnTouch(TouchEvent event, int x, int y) {
     }
     switch (app.GetDeviceState()) {
         case kDeviceStateIdle:
-            if (sideways) {
-                OnWheelRotate(dx < 0);
-            } else if (still) {
+            if (still) {
                 if (now - t.last_tap_us < kDoubleTapUs) {
                     t.last_tap_us = 0;
                     app.Schedule([]() { Application::GetInstance().ToggleChatState(); });

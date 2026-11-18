@@ -46,6 +46,7 @@ void NoteActivity();
 int SecondsSinceActivity();
 // After a longer quiet spell the backlight goes off; the first touch or wheel turn only wakes it.
 void SetScreenOff(bool off);
+void SetPanelRecovery(void (*recovery)());  // board hook: send the LCD setup commands again
 // Power: the CPU runs at 80 MHz while resting and at 240 MHz whenever the device is busy
 // (a session, music, an update). SetBusy() is cheap and idempotent.
 void InitPowerManagement();

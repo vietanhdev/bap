@@ -470,8 +470,21 @@ index 1c48fad..fbd5c94 100644
      config.show_sleep_config = true;
  
      // Set a DHCP hostname so the router shows a friendly name instead of "espressif".
+diff --git a/main/boards/sensecap-watcher/config.h b/main/boards/sensecap-watcher/config.h
+index 8d1f5dc..3c93322 100644
+--- a/main/boards/sensecap-watcher/config.h
++++ b/main/boards/sensecap-watcher/config.h
+@@ -121,7 +121,7 @@
+ #define BSP_TOUCH_I2C_CLK  (400000)
+ 
+ /* Settings */
+-#define DRV_LCD_PIXEL_CLK_HZ      (40 * 1000 * 1000)
++#define DRV_LCD_PIXEL_CLK_HZ      (20 * 1000 * 1000)  // 40 MHz is marginal on some units on battery
+ #define DRV_LCD_CMD_BITS          (32)
+ #define DRV_LCD_PARAM_BITS        (8)
+ #define DRV_LCD_RGB_ELEMENT_ORDER (LCD_RGB_ELEMENT_ORDER_RGB)
 diff --git a/main/boards/sensecap-watcher/sensecap_watcher.cc b/main/boards/sensecap-watcher/sensecap_watcher.cc
-index 31ee1e4..7ad5a56 100644
+index 31ee1e4..ba02551 100644
 --- a/main/boards/sensecap-watcher/sensecap_watcher.cc
 +++ b/main/boards/sensecap-watcher/sensecap_watcher.cc
 @@ -5,6 +5,12 @@
@@ -487,7 +500,17 @@ index 31ee1e4..7ad5a56 100644
  #include "config.h"
  #include "led/single_led.h"
  #include "power_save_timer.h"
-@@ -22,6 +28,10 @@
+@@ -12,7 +18,9 @@
+ #include "lvgl_theme.h"
+ 
+ #include <esp_log.h>
++#include <esp_timer.h>
+ #include <esp_check.h>
++#include <atomic>
+ #include <esp_lcd_panel_io.h>
+ #include <esp_lcd_panel_ops.h>
+ #include <esp_lcd_spd2010.h>
+@@ -22,6 +30,10 @@
  #include <driver/spi_common.h>
  #include <iot_button.h>
  #include <iot_knob.h>
@@ -498,7 +521,7 @@ index 31ee1e4..7ad5a56 100644
  #include <esp_io_expander_tca95xx_16bit.h>
  #include <esp_sleep.h>
  #include <esp_console.h>
-@@ -56,18 +66,20 @@ class CustomLcdDisplay : public SpiLcdDisplay {
+@@ -56,18 +68,20 @@ class CustomLcdDisplay : public SpiLcdDisplay {
              DisplayLockGuard lock(this);
              auto lvgl_theme = static_cast<LvglTheme*>(current_theme_);
              auto text_font = lvgl_theme->text_font()->font();
@@ -522,7 +545,7 @@ index 31ee1e4..7ad5a56 100644
              lv_obj_add_flag(status_bar_, LV_OBJ_FLAG_IGNORE_LAYOUT);
  
              // Reparent mute and battery labels to top_bar_ to allow absolute positioning
-@@ -99,7 +111,40 @@ class CustomLcdDisplay : public SpiLcdDisplay {
+@@ -99,7 +113,40 @@ class CustomLcdDisplay : public SpiLcdDisplay {
              // 针对圆形屏幕调整底部对话框位置，避免被圆角遮挡
              lv_obj_set_style_pad_bottom(bottom_bar_, 30, 0);
              lv_obj_set_width(chat_message_label_, LV_HOR_RES * 0.75); // 限制宽度，避免文字贴边
@@ -563,24 +586,109 @@ index 31ee1e4..7ad5a56 100644
  };
  
  class SensecapWatcher : public WifiBoard {
-@@ -130,6 +175,14 @@ private:
+@@ -118,7 +165,13 @@ private:
+     SscmaCamera* camera_ = nullptr;
+ 
+     void InitializePowerSaveTimer() {
++#if CONFIG_USE_GEMINI_LIVE
++        // The assistant dims and switches off the screen itself (ApplyScreenRest), so a touch can
++        // still wake it. Power off only after 30 quiet minutes on battery.
++        power_save_timer_ = new PowerSaveTimer(-1, -1, 30 * 60);
++#else
+         power_save_timer_ = new PowerSaveTimer(-1, 60, 300);
++#endif
+         power_save_timer_->OnEnterSleepMode([this]() {
+             GetDisplay()->SetPowerSaveMode(true);
+             GetBacklight()->SetBrightness(10);
+@@ -130,6 +183,22 @@ private:
          power_save_timer_->OnShutdownRequest([this]() {
              ESP_LOGI(TAG, "Shutting down");
              bool is_charging = (IoExpanderGetLevel(BSP_PWR_VBUS_IN_DET) == 0);
 +#if CONFIG_USE_GEMINI_LIVE
 +            // A timer or alarm must still ring: keep running with the screen off instead.
-+            if (!is_charging && assistant::HasPendingAlarms()) {
++            if (is_charging)
++                return;  // plugged in: the screen rest logic is all that is needed
++            if (assistant::SecondsSinceActivity() < 15 * 60) {
++                power_save_timer_->WakeUp();  // someone was in view: look again later
++                return;
++            }
++            if (assistant::HasPendingAlarms()) {
 +                ESP_LOGI(TAG, "Alarm pending: screen off instead of power off");
++                assistant::SetScreenOff(true);  // the next touch or wheel turn wakes it
 +                GetBacklight()->SetBrightness(0);
++                power_save_timer_->WakeUp();  // power off once the alarms are done
 +                return;
 +            }
 +#endif
              if (is_charging) {
                  ESP_LOGI(TAG, "charging");
                  // Serialize with battery polling on the main task. USB may have
-@@ -220,6 +273,17 @@ private:
+@@ -206,12 +275,20 @@ private:
+ 
+         ret |= esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_INPUT_MASK, IO_EXPANDER_INPUT);
+         ret |= esp_io_expander_set_dir(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, IO_EXPANDER_OUTPUT);
+-        ret |= esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK, 0);
++        // BSP_PWR_SYSTEM is the battery power latch: it must never go low here. After a restart on
++        // battery (update, crash, brownout) nobody is holding the wheel, so a low pulse powers the
++        // device off.
+         ret |= esp_io_expander_set_level(io_exp_handle, BSP_PWR_SYSTEM, 1);
+-        vTaskDelay(100 / portTICK_PERIOD_MS);
++        ret |= esp_io_expander_set_level(io_exp_handle, DRV_IO_EXP_OUTPUT_MASK & ~BSP_PWR_SYSTEM, 0);
++        vTaskDelay(pdMS_TO_TICKS(kPanelOffMs));
++        // The display chip boots from its own flash after its rail rises; commands sent earlier
++        // are lost and the screen stays blank with the backlight on. It starts alone, so the surge
++        // from the other rails cannot pull its supply down on battery.
++        ret |= esp_io_expander_set_level(io_exp_handle, BSP_PWR_LCD, 1);
++        vTaskDelay(pdMS_TO_TICKS(kPanelBootMs));
+         ret |= esp_io_expander_set_level(io_exp_handle, BSP_PWR_START_UP, 1);
+-        vTaskDelay(50 / portTICK_PERIOD_MS);
+-    
++        vTaskDelay(pdMS_TO_TICKS(100));
++
+         uint32_t pin_val = 0;
+         ret |= esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
+         ESP_LOGI(TAG, "IO expander initialized: %x", DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val);
+@@ -219,7 +296,55 @@ private:
+         assert(ret == ESP_OK);
      }
  
++    static constexpr int kPanelOffMs = 300;    // long enough for the display rail to discharge
++    static constexpr int kPanelBootMs = 800;   // display chip boot time after its rail rises
++    static constexpr int kPanelResetMs = 120;  // the driver itself only waits 20 ms after a reset
++    static constexpr int kPanelKeepAliveMs = 3000;
++
++    // Sends the panel's setup commands again. No reset: the touch controller lives in the same chip.
++    void ReinitPanel() {
++        if (panel_ == nullptr || display_ == nullptr) {
++            return;
++        }
++        DisplayLockGuard lock(display_);
++        esp_err_t err = esp_lcd_panel_init(panel_);
++        if (err == ESP_OK) {
++            err = esp_lcd_panel_mirror(panel_, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
++        }
++        if (err == ESP_OK) {
++            err = esp_lcd_panel_disp_on_off(panel_, true);
++        }
++        if (err != ESP_OK) {
++            ESP_LOGW(TAG, "panel setup failed: %s", esp_err_to_name(err));
++        }
++        lv_obj_invalidate(lv_screen_active());
++    }
++
++    // The SPD2010 does not hold a still picture for long: with no pixel data arriving it fades to
++    // blank while the backlight stays on. Resend the whole frame regularly while the screen is lit.
++    void StartPanelKeepAlive() {
++        DisplayLockGuard lock(display_);
++        lv_timer_create(
++            [](lv_timer_t*) {
++                if (!assistant::ScreenIsOff() && !assistant::OtaInProgress()) {
++                    lv_obj_invalidate(lv_screen_active());
++                }
++            },
++            kPanelKeepAliveMs, nullptr);
++    }
++
      void OnKnobRotate(bool clockwise) {
 +#if CONFIG_USE_GEMINI_LIVE
 +        if (assistant::MenuIsOpen()) {
@@ -596,7 +704,7 @@ index 31ee1e4..7ad5a56 100644
          auto codec = GetAudioCodec();
          int current_volume = codec->output_volume();
          int new_volume = current_volume + (clockwise ? -5 : 5); 
-@@ -245,6 +309,107 @@ private:
+@@ -245,6 +370,107 @@ private:
          power_save_timer_->WakeUp();
      }
  
@@ -704,7 +812,7 @@ index 31ee1e4..7ad5a56 100644
      void InitializeKnob() {
          knob_ = std::make_unique<Knob>(BSP_KNOB_A_PIN, BSP_KNOB_B_PIN);
          knob_->OnRotate([this](bool clockwise) {
-@@ -265,7 +430,11 @@ private:
+@@ -265,7 +491,11 @@ private:
          }
  
          button_config_t btn_config = {
@@ -716,7 +824,7 @@ index 31ee1e4..7ad5a56 100644
              .short_press_time = 0
          };
          btn_driver_ = (button_driver_t*)calloc(1, sizeof(button_driver_t));
-@@ -275,6 +444,14 @@ private:
+@@ -275,6 +505,14 @@ private:
          };
          
          ESP_ERROR_CHECK(iot_button_create(&btn_config, btn_driver_, &btns));
@@ -731,7 +839,7 @@ index 31ee1e4..7ad5a56 100644
          
          iot_button_register_cb(btns, BUTTON_SINGLE_CLICK, nullptr, [](void* button_handle, void* usr_data) {
              auto self = static_cast<SensecapWatcher*>(usr_data);
-@@ -285,13 +462,37 @@ private:
+@@ -285,13 +523,43 @@ private:
                  self->EnterWifiConfigMode();
                  return;
              }
@@ -748,6 +856,12 @@ index 31ee1e4..7ad5a56 100644
 +        iot_button_register_cb(btns, BUTTON_DOUBLE_CLICK, nullptr, [](void* button_handle, void* usr_data) {
 +            static_cast<SensecapWatcher*>(usr_data)->power_save_timer_->WakeUp();
 +            assistant::OnWheelDoubleClick();
++        }, this);
++        // Three quick presses: power off.
++        button_event_args_t triple_click = {};
++        triple_click.multiple_clicks.clicks = 3;
++        iot_button_register_cb(btns, BUTTON_MULTIPLE_CLICK, &triple_click, [](void* button_handle, void* usr_data) {
++            Application::GetInstance().Schedule([]() { assistant::PowerOffNow(); });
 +        }, this);
 +#endif
          
@@ -770,7 +884,7 @@ index 31ee1e4..7ad5a56 100644
              if (is_charging) {
                  ESP_LOGI(TAG, "charging");
              } else {
-@@ -304,7 +505,11 @@ private:
+@@ -304,7 +572,11 @@ private:
              auto self = static_cast<SensecapWatcher*>(usr_data);
              self->long_press_cnt_++; // 每隔20ms加一
              // 长按10s 恢复出厂设置: 2+0.02*400 = 10
@@ -782,12 +896,35 @@ index 31ee1e4..7ad5a56 100644
                  ESP_LOGI(TAG, "Factory reset");
                  nvs_flash_erase();
                  esp_restart();
-@@ -605,6 +810,18 @@ public:
+@@ -369,6 +641,7 @@ private:
+         esp_lcd_new_panel_spd2010(panel_io_, &panel_config, &panel_);
+ 
+         esp_lcd_panel_reset(panel_);
++        vTaskDelay(pdMS_TO_TICKS(kPanelResetMs));
+         esp_lcd_panel_init(panel_);
+         esp_lcd_panel_mirror(panel_, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
+         esp_lcd_panel_disp_on_off(panel_, true);
+@@ -597,14 +870,33 @@ public:
+         ESP_LOGI(TAG, "Initialize Sensecap Watcher");
+         InitializePowerSaveTimer();
+         InitializeI2c();
+-        InitializeSpi();
++        // Rails first: an idle SPI bus holds its lines high and would feed the unpowered display chip.
+         InitializeExpander();
++        InitializeSpi();
+         InitializeCmd();  //工厂生产测试使用
+         InitializeButton();
+         InitializeKnob();
          Initializespd2010Display();
++#if !CONFIG_USE_GEMINI_LIVE
          GetBacklight()->RestoreBrightness();  // 对于不带摄像头的版本，InitializeCamera需要3s, 所以先恢复背光亮度
++#endif
          InitializeCamera();
 +#if CONFIG_USE_GEMINI_LIVE
 +        InitializeSdCard();
++        ReinitPanel();  // the display chip has certainly finished booting by now
++        StartPanelKeepAlive();
++        GetBacklight()->RestoreBrightness();
 +        InitializeTouch();
 +        assistant::SetVisionHandler([](bool enabled) {
 +            auto& board = static_cast<SensecapWatcher&>(Board::GetInstance());
@@ -797,10 +934,26 @@ index 31ee1e4..7ad5a56 100644
 +            auto& board = static_cast<SensecapWatcher&>(Board::GetInstance());
 +            board.power_save_timer_->WakeUp();
 +        });
++        assistant::SetPanelRecovery([]() { instance_->ReinitPanel(); });
 +#endif
      }
  
      virtual AudioCodec* GetAudioCodec() override {
+@@ -651,6 +943,14 @@ public:
+     virtual bool GetBatteryLevel(int& level, bool& charging, bool& discharging) override {
+         charging = (IoExpanderGetLevel(BSP_PWR_VBUS_IN_DET) == 0);
+         discharging = !charging;
++#if CONFIG_USE_GEMINI_LIVE
++        // Plugging or unplugging the cable disturbs the supply: set the panel up again.
++        static int last_charging = -1;
++        if (last_charging >= 0 && last_charging != (int)charging) {
++            Application::GetInstance().Schedule([this]() { ReinitPanel(); });
++        }
++        last_charging = charging;
++#endif
+         level = (int)BatterygetPercent(false);
+ 
+         // Always synchronize, including the first snapshot and a short USB
 diff --git a/main/boards/sensecap-watcher/sscma_camera.cc b/main/boards/sensecap-watcher/sscma_camera.cc
 index 6abd9ee..6b7c8ed 100644
 --- a/main/boards/sensecap-watcher/sscma_camera.cc
@@ -875,18 +1028,6 @@ index d2d11f6..0bd7d89 100644
      // 翻转控制函数
      virtual bool SetHMirror(bool enabled) override;
      virtual bool SetVFlip(bool enabled) override;
-diff --git a/main/display/display.h b/main/display/display.h
-index c5b0c42..b5fa906 100644
---- a/main/display/display.h
-+++ b/main/display/display.h
-@@ -56,6 +56,7 @@ public:
-     virtual Theme* GetTheme() { return current_theme_; }
-     virtual void UpdateStatusBar(bool update_all = false);
-     virtual void SetPowerSaveMode(bool on);
-+    virtual void SetPanelOn(bool on) {}  // sleep the panel itself while the backlight is off
-     virtual bool AddTextGlyphs(const std::vector<TextGlyph>& glyphs, uint8_t bpp) { return false; }
-     virtual void ClearTextGlyphs() {}
-     virtual void SetEmojiCollection(std::shared_ptr<EmojiCollection>) {}
 diff --git a/main/display/lcd_display.cc b/main/display/lcd_display.cc
 index 7be9bad..53f7df7 100644
 --- a/main/display/lcd_display.cc
@@ -961,19 +1102,14 @@ index 7be9bad..53f7df7 100644
      if (image == nullptr) {
          auto lvgl_theme = static_cast<LvglTheme*>(current_theme_);
 diff --git a/main/display/lcd_display.h b/main/display/lcd_display.h
-index a10988e..9db318a 100644
+index a10988e..8f1577d 100644
 --- a/main/display/lcd_display.h
 +++ b/main/display/lcd_display.h
-@@ -16,6 +16,14 @@ protected:
+@@ -16,6 +16,9 @@ protected:
      esp_lcd_panel_io_handle_t panel_io_ = nullptr;
      esp_lcd_panel_handle_t panel_ = nullptr;
  
 +public:
-+    void SetPanelOn(bool on) override {
-+        if (panel_ != nullptr)
-+            esp_lcd_panel_disp_on_off(panel_, on);
-+    }
-+
 +protected:
 +
      lv_draw_buf_t draw_buf_;

@@ -20,6 +20,7 @@
 #include "application.h"
 #include "assets/lang_config.h"
 #include "assistant.h"
+#include "assistant_menu.h"
 #include "assistant_config.h"
 #include "assistant_face.h"
 #include "assistant_sd.h"
@@ -269,7 +270,7 @@ void ApplyScreenRest() {
     bool idle = app.GetDeviceState() == kDeviceStateIdle;
     if (!idle)
         NoteActivity();
-    SetBusy(!idle || OtaInProgress());
+    SetBusy(!idle || OtaInProgress() || MenuIsOpen());
     static bool enabled = true;
     static int checks = 0;
     if (checks++ % 15 == 0)  // the setting is read from NVS, so only every 15 s
@@ -280,8 +281,9 @@ void ApplyScreenRest() {
     bool night = idle && g_night_dim_now;
     int want = off ? 0 : rest ? 6 : night ? 20 : -1;
     if (off && !ScreenIsOff()) {
-        SetScreenOff(true);  // NoteActivity() turns the panel and the backlight back on
-        Board::GetInstance().GetDisplay()->SetPanelOn(false);
+        SetScreenOff(true);  // NoteActivity() brings the backlight back
+        if (SecondsSinceActivity() < kScreenOffS)
+            NoteActivity();  // a touch landed just now: stay on
     }
     if (!off && dim_level == 0)
         dim_level = -2;  // woken by NoteActivity(): re-apply whatever cap is due now
@@ -1217,40 +1219,6 @@ void RegisterTools() {
                 });
         }
     }
-
-    mcp.AddTool(
-        "character.switch",
-        "Đổi sang nhân vật trợ lý khác khi người dùng muốn nói chuyện với nhân vật đó, ví dụ: "
-        "\"gọi Bắp ra đây\", \"cho mình gặp Bơ\". name là tên nhân vật. Nhận dạng giọng nói hay "
-        "nghe "
-        "nhầm: Bắp có thể thành bắt/bát/báp; Bơ thành bờ/bở/bố; Bông thành bong/bống/buông; Tí "
-        "thành "
-        "ti/tý; Mochi thành mô chi/mộc chi.",
-        PropertyList({Property("name", kPropertyTypeString)}),
-        [](const PropertyList& p) -> ReturnValue {
-            std::string name = p["name"].value<std::string>();
-            if (!SetActiveCharacter(name))
-                return std::string("Không có nhân vật tên " + name);
-            // Voice and persona are fixed per session: restart it as the new character.
-            xTaskCreate(
-                [](void*) {
-                    auto& app = Application::GetInstance();
-                    vTaskDelay(pdMS_TO_TICKS(300));  // let the tool reply go out first
-                    app.Schedule([]() {
-                        if (auto* g = GeminiLiveProtocol::instance())
-                            g->CloseAudioChannel();
-                    });
-                    for (int i = 0; i < 40 && app.GetDeviceState() != kDeviceStateIdle; ++i) {
-                        vTaskDelay(pdMS_TO_TICKS(100));
-                    }
-                    vTaskDelay(pdMS_TO_TICKS(300));
-                    Say("<hệ thống>Người dùng vừa gọi bạn ra thay cho nhân vật trước. Hãy chào một "
-                        "câu ngắn đúng tính cách của bạn.</hệ thống>");
-                    vTaskDelete(nullptr);
-                },
-                "char_switch", 4096, nullptr, 2, nullptr);
-            return std::string("Đang đổi nhân vật, không cần nói gì thêm.");
-        });
 
     {
         std::string list;
