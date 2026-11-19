@@ -209,7 +209,7 @@ pre{margin:0;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;col
 <section>
   <h2>Máy</h2>
   <small id="ver"></small>
-  <label>Cập nhật firmware<small>Chọn file xiaozhi.bin. Máy tự khởi động lại khi xong.</small><input type="file" id="fw" accept=".bin"></label>
+  <label>Cập nhật firmware<small>Chọn file bap.bin. Máy tự khởi động lại khi xong.</small><input type="file" id="fw" accept=".bin"></label>
   <div class="row"><button type="button" id="ota" disabled>Cập nhật</button><button type="button" id="reboot">Khởi động lại máy</button></div>
 </section>
 </div>
@@ -268,7 +268,7 @@ async function load(){try{cfg=await (await fetch('/api/config')).json()}catch(e)
   lists.notes=cfg.notes||[];lists.memory=cfg.memory||[];hooks=cfg.hooks||[];dirty=false;
   renderList('notes','Chưa có ghi chú. Thử nói: "Ghi chú mua sữa".');renderList('memory','Chưa nhớ gì. Thử nói: "Nhớ giúp mình là mình thích trà sữa".');renderHooks();renderChars();showChar();renderApps();renderStations()}
 async function post(url,body){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(body)});if(!r.ok)throw new Error(await r.text());return r.json()}
-async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,presence:$('presence').checked,morning:$('morning').checked,quiet:$('quiet').checked,rest:$('rest').checked,wake_word:$('wake_word').checked,language:$('language').value,volume:+$('volume').value,brightness:+$('brightness').value};
+async function save(){stash();const b={character:cfg.character,characters:chars.map(c=>({id:c.id,name:c.name,voice:c.voice,persona:c.persona})),city:$('city').value.trim(),lat:+$('lat').value,lon:+$('lon').value,idle_s:+$('idle_s').value,model:$('model').value.trim(),search:$('search').checked,greet:$('greet').checked,night_dim:$('night_dim').checked,presence:$('presence').checked,morning:$('morning').checked,quiet:$('quiet').checked,rest:$('rest').checked,wake_word:$('wake_word').checked,language:$('language').value};
   if($('api_key').value.trim())b.api_key=$('api_key').value.trim();
   if($('api_key_paid').value.trim())b.api_key_paid=$('api_key_paid').value.trim();
   if(dirty){b.notes=lists.notes;b.memory=lists.memory;b.hooks=hooks.filter(h=>h.name&&h.url)}

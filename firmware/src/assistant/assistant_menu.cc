@@ -464,7 +464,7 @@ Level SettingsMenu() {
                                "Độ sáng",
                                []() {
                                    auto bl = Board::GetInstance().GetBacklight();
-                                   return bl ? (int)bl->brightness() : 0;
+                                   return bl ? SavedBrightness() : 0;  // not the night dimming
                                },
                                [](int v) {
                                    if (auto bl = Board::GetInstance().GetBacklight())

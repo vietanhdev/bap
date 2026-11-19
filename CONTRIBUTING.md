@@ -37,6 +37,6 @@ Nếu đổi tính năng, hãy thử trên máy thật và ghi lại bạn đã 
   `server/data/.config.yaml`, `vendor/`, `firmware/build/`, `.gcp-project`, file log build.
 - Không dán API key (chuỗi bắt đầu bằng `AIza...`) vào code, tài liệu, issue hay ảnh chụp màn hình.
   Key chỉ nằm trong `secrets/GEMINI_API_KEY` trên máy bạn hoặc trong NVS của thiết bị.
-- File `xiaozhi.bin` build ở máy bạn có chứa API key: không chia sẻ, không đính kèm vào issue.
+- File `bap.bin` build ở máy bạn có chứa API key: không chia sẻ, không đính kèm vào issue.
 - Trước khi commit, chạy `gitleaks git --pre-commit --staged` hoặc `git diff --cached | grep -n AIza`.
   CI cũng chạy gitleaks, nhưng một key đã lên GitHub thì coi như đã lộ: hãy thu hồi key ngay.

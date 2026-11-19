@@ -61,15 +61,20 @@ SIGN_KEY="$HERE/../secrets/ota_signing_key.pem"
 if [[ "$MODE" == "gemini" && -f "$BIN" ]]; then
   if [[ -f "$SIGN_KEY" ]]; then
     if uv run -q --with esptool espsecure verify-signature --version 2 --keyfile "$SIGN_KEY" "$BIN" >/dev/null 2>&1; then
-      echo "xiaozhi.bin is already signed"
+      echo "bap.bin is already signed"
     else
       uv run -q --with esptool espsecure sign-data --version 2 --keyfile "$SIGN_KEY" --output "$BIN.signed" "$BIN" >/dev/null
       mv "$BIN.signed" "$BIN"
       uv run -q --with esptool espsecure verify-signature --version 2 --keyfile "$SIGN_KEY" "$BIN" >/dev/null
-      echo "Signed xiaozhi.bin for verified OTA updates"
+      echo "Signed bap.bin for verified OTA updates"
     fi
   else
-    echo "WARNING: secrets/ota_signing_key.pem not found: xiaozhi.bin is UNSIGNED and a device running"
+    echo "WARNING: secrets/ota_signing_key.pem not found: bap.bin is UNSIGNED and a device running"
     echo "         signed firmware will refuse it over Wi-Fi (create a key with firmware/scripts/ota_key.sh)."
   fi
+fi
+
+# The build system names the image after the upstream project; everything else uses bap.bin.
+if [[ -f "$BIN" ]]; then
+  cp "$BIN" "$SRC/build/bap.bin"
 fi

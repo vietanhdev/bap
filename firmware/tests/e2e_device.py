@@ -177,7 +177,13 @@ DIRECT = [
 
 def test_tools(host):
     before = status(host)["uptime_s"]
+    # timer.cancel and notes.remove with number=0 delete everything, so never run them over real data.
+    cfg = json.loads(get(host, "/api/config")[2])
+    has_user_data = bool(cfg.get("notes")) or "Không có" not in (status(host).get("alarms") or "")
     for name, args, ok in DIRECT:
+        if has_user_data and name.startswith(("timer.", "alarm.", "notes.")):
+            print(f"SKIP  tool {name}: this device holds real timers or notes", flush=True)
+            continue
         t0 = time.time()
         try:
             code, j, text = tool(host, name, args)

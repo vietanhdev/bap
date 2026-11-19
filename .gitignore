@@ -19,7 +19,7 @@ server/data/.config.yaml
 *api_key*
 GEMINI_API_KEY*
 
-# Flash dumps and any local firmware images (a locally built xiaozhi.bin contains the API key)
+# Flash dumps and any local firmware images (a locally built bap.bin contains the API key)
 *.bin
 !firmware/assets/fonts/*.bin
 *.bin.sha256

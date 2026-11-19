@@ -311,7 +311,7 @@ gian chạy và sóng Wi-Fi.
 ## 🔒 An toàn và quyền riêng tư
 
 - **API key nằm trên thiết bị** (NVS, hoặc nhúng lúc build từ `secrets/`). Trình duyệt chỉ thấy key
-  đã che, và máy chỉ gửi key tới Google qua TLS. Ai có máy hoặc file `xiaozhi.bin` bạn tự build đều
+  đã che, và máy chỉ gửi key tới Google qua TLS. Ai có máy hoặc file `bap.bin` bạn tự build đều
   đọc được key, vì vậy hãy dùng key riêng có giới hạn quota và không chia sẻ file đã build.
 - **Trang cài đặt chỉ dùng trong mạng LAN**, có thể đặt mật khẩu (HTTP Basic, lưu dạng băm SHA-256
   có salt và lặp nhiều vòng). Mọi thay đổi phải có header `X-Bap`, chặn được trang web lạ gửi form

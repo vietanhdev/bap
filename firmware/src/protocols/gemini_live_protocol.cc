@@ -158,6 +158,11 @@ bool GeminiLiveProtocol::OpenAudioChannel() {
     assistant::SetBusy(
         true);  // full speed for the TLS handshake; the scheduler lowers it when idle
     auto cfg = assistant::LoadConfig();
+    // Set when this key was refused with Google Search on. Lasts until the next restart only: a
+    // refusal can be temporary, so the user's setting is never changed.
+    static bool search_refused = false;
+    if (search_refused)
+        cfg.search = false;
     idle_timeout_s_ = cfg.idle_s;
     // Free key first. The paid key (a separate billing-enabled project) only takes over when the
     // free one is rejected, and only until the free key's rest ends.
@@ -174,9 +179,8 @@ bool GeminiLiveProtocol::OpenAudioChannel() {
     }
     if (result == OpenResult::kRejected && cfg.search) {
         // Google Search grounding is not in the free quota: turn it off and retry once.
-        ESP_LOGW(TAG, "Session rejected with Google Search on; disabling it and retrying");
-        cfg.search = false;
-        assistant::SaveConfig(cfg);
+        ESP_LOGW(TAG, "Session rejected with Google Search on; retrying without it");
+        search_refused = true;
         return OpenAudioChannel();
     }
     if (result == OpenResult::kConnectFailed) {

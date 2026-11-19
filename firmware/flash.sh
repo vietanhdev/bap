@@ -12,5 +12,5 @@ uv run -q --with esptool esptool --chip esp32s3 --port "$PORT" --baud 921600 \
   0x0      "$B/bootloader/bootloader.bin" \
   0x8000   "$B/partition_table/partition-table.bin" \
   0x10d000 "$B/ota_data_initial.bin" \
-  0x200000 "$B/xiaozhi.bin" \
+  0x200000 "$B/bap.bin" \
   0xa00000 "$ASSETS"

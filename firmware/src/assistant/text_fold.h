@@ -6,6 +6,17 @@
 #include <string>
 
 namespace assistant {
+
+// Shortens s to at most max bytes without cutting a UTF-8 character in half: a broken character
+// makes the whole tool reply invalid JSON.
+inline void TruncateUtf8(std::string& s, size_t max) {
+    if (s.size() <= max)
+        return;
+    while (max > 0 && (static_cast<unsigned char>(s[max]) & 0xC0) == 0x80)
+        --max;
+    s.resize(max);
+}
+
 namespace fold_detail {
 
 // Decode one UTF-8 code point.

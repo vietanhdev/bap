@@ -44,6 +44,8 @@ struct Config {
 
 Config LoadConfig();
 void SaveConfig(const Config& c);
+// The brightness the user chose; the backlight itself may be dimmed for the night or for rest.
+int SavedBrightness();
 
 std::vector<Character> Characters();
 Character ActiveCharacter();

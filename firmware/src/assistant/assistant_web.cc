@@ -158,7 +158,7 @@ esp_err_t HandleGetConfig(httpd_req_t* req) {
     cJSON_AddItemToObject(r, "hooks", cJSON_Parse(LoadList("hooks").c_str()));
     cJSON_AddNumberToObject(r, "volume", board.GetAudioCodec()->output_volume());
     if (auto bl = board.GetBacklight())
-        cJSON_AddNumberToObject(r, "brightness", bl->brightness());
+        cJSON_AddNumberToObject(r, "brightness", SavedBrightness());  // not the night/rest dimming
     cJSON_AddItemToObject(r, "notes", cJSON_Parse(LoadList("notes").c_str()));
     cJSON_AddItemToObject(r, "memory", cJSON_Parse(LoadList("memory").c_str()));
     return SendJson(req, r);
@@ -403,7 +403,7 @@ esp_err_t HandleTool(httpd_req_t* req) {
     return httpd_resp_sendstr(req, pending->reply.c_str());
 }
 
-// Firmware update: the browser uploads xiaozhi.bin as the raw request body.
+// Firmware update: the browser uploads bap.bin as the raw request body.
 esp_err_t HandleOta(httpd_req_t* req) {
     if (!SameOrigin(req))
         return Reject(req, "missing header");

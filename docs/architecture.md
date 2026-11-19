@@ -226,7 +226,7 @@ namespace `model`.
 | `POST /api/action` | Device actions (talk, reboot) |
 | `POST /api/tool` | Call an MCP tool directly |
 | `POST /api/app` | Start an app |
-| `POST /api/ota` | Upload a new `xiaozhi.bin` (used by `firmware/ota.sh`) |
+| `POST /api/ota` | Upload a new `bap.bin` (used by `firmware/ota.sh`) |
 | `GET /face`, `GET /screen.jpg` | Face GIF preview, screenshot (rendered in a short-lived task with a 16 KB PSRAM stack, one at a time) |
 
 Every `POST` requires an `X-Bap` header (`SameOrigin()`); browsers cannot add custom headers to a
@@ -254,7 +254,7 @@ is no authentication: the UI is meant for a trusted LAN only.
 - **Signed OTA**: `CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT` with the RSA-3072 Secure Boot V2
   scheme and `SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT`: `esp_ota_end()` checks the new image against
   the public key in the running app's signature block, so an update must be signed with the same
-  key. `build.sh` signs `xiaozhi.bin` on the host with `secrets/ota_signing_key.pem`; CI builds stay
+  key. `build.sh` signs `bap.bin` on the host with `secrets/ota_signing_key.pem`; CI builds stay
   unsigned. The bootloader does not check signatures (no eFuses), so USB flashing remains the
   recovery path. Tested on a device: unsigned, tampered and wrong-key images are refused and the
   device keeps running; a correctly signed image installs.
@@ -270,5 +270,5 @@ is no authentication: the UI is meant for a trusted LAN only.
 | `0x8000` | partition table (`partitions/v2/32m.csv`) | `flash.sh` |
 | `0x9000` | `nvsfactory` (Seeed device EUI and keys) | **never** |
 | `0x10d000` | otadata | `flash.sh` |
-| `0x200000` | application `xiaozhi.bin` | `flash.sh`, `flash_app.sh`, `ota.sh` (OTA slot) |
+| `0x200000` | application `bap.bin` | `flash.sh`, `flash_app.sh`, `ota.sh` (OTA slot) |
 | `0xa00000` | assets (font, faces, wake word model) | `flash.sh`, `flash_assets.sh` |

@@ -71,6 +71,8 @@ Config LoadConfig() {
     return c;
 }
 
+int SavedBrightness() { return Settings("display").GetInt("brightness", 75); }
+
 void SaveConfig(const Config& c) {
     bool language_changed = false;
     {

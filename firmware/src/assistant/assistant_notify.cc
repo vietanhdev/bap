@@ -14,6 +14,7 @@
 #include "assistant.h"
 #include "board.h"
 #include "display/display.h"
+#include "text_fold.h"
 
 namespace assistant {
 namespace {
@@ -28,8 +29,7 @@ std::string Field(const cJSON* obj, const char* key, size_t max) {
     if (!cJSON_IsString(v))
         return "";
     std::string s = v->valuestring;
-    if (s.size() > max)
-        s.resize(max);
+    TruncateUtf8(s, max);
     return s;
 }
 

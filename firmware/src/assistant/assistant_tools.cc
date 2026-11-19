@@ -12,9 +12,11 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <freertos/queue.h>
 #include <cstring>
 #include <ctime>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 #include "application.h"
@@ -22,6 +24,7 @@
 #include "assistant.h"
 #include "assistant_menu.h"
 #include "assistant_config.h"
+#include "settings.h"
 #include "assistant_face.h"
 #include "assistant_sd.h"
 #include "assistant_zing.h"
@@ -43,22 +46,68 @@ namespace {
 // ---------- helpers ----------
 
 std::expected<std::string, std::string> HttpGet(const std::string& url) {
-    auto http = FastNetwork()->CreateHttp(2);
-    http->SetTimeout(8000);
-    http->SetHeader("User-Agent", "Mozilla/5.0 (Bap assistant)");
-    if (!http->Open("GET", url)) {
-        vTaskDelay(pdMS_TO_TICKS(500));  // one retry: DNS or Wi-Fi may still be settling
-        if (!http->Open("GET", url))
-            return std::unexpected("Không kết nối được máy chủ");
-    }
-    auto status = http->GetStatusCode();
-    if (!status || *status != 200) {
+    std::string error;
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        if (attempt > 0)
+            vTaskDelay(pdMS_TO_TICKS(500));  // one retry: Wi-Fi settling or a slow server
+        auto http = FastNetwork()->CreateHttp(2);
+        http->SetTimeout(8000);
+        http->SetHeader("User-Agent", "Mozilla/5.0 (Bap assistant)");
+        if (!http->Open("GET", url)) {
+            error = "Không kết nối được máy chủ";
+            continue;
+        }
+        auto status = http->GetStatusCode();
+        if (status && *status == 200) {
+            std::string body = http->ReadAll();
+            http->Close();
+            return body;
+        }
         http->Close();
-        return std::unexpected("Máy chủ trả về lỗi");
+        error = "Máy chủ trả về lỗi";
+        if (status && *status < 500)
+            break;  // the server gave a clear answer: asking again will not change it
     }
-    std::string body = http->ReadAll();
-    http->Close();
-    return body;
+    return std::unexpected(error);
+}
+
+struct ZingJob {
+    std::string id, url, title;
+};
+
+// Songs start from one long-lived task: a new network task for every song lost internal RAM each
+// time. Its stack lives in PSRAM because it only does network work.
+void ZingPlayTask(void* arg) {
+    auto queue = static_cast<QueueHandle_t>(arg);
+    auto& app = Application::GetInstance();
+    while (true) {
+        ZingJob* job = nullptr;
+        xQueueReceive(queue, &job, portMAX_DELAY);
+        for (ZingJob* newer = nullptr; xQueueReceive(queue, &newer, 0) == pdTRUE;) {
+            delete job;  // only the latest request matters
+            job = newer;
+        }
+        std::vector<NotifySubtitle> lyrics;
+        for (auto& [ms, text] : ZingLyrics(job->id))
+            lyrics.push_back({.start_ms = ms, .text = text});
+        // Let the short spoken intro finish first, then start the song.
+        for (int i = 0; i < 100 && app.GetDeviceState() == kDeviceStateSpeaking; ++i)
+            vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1500));
+        app.PlayStream("radio:" + job->url, "🎵 " + job->title, std::move(lyrics));
+        delete job;
+    }
+}
+
+void QueueZingPlay(const std::string& id, const std::string& url, const std::string& title) {
+    static QueueHandle_t queue = []() {
+        QueueHandle_t q = xQueueCreate(4, sizeof(ZingJob*));
+        xTaskCreateWithCaps(ZingPlayTask, "zing_play", 8192, q, 2, nullptr, MALLOC_CAP_SPIRAM);
+        return q;
+    }();
+    auto* job = new ZingJob{id, url, title};
+    if (xQueueSend(queue, &job, 0) != pdTRUE)
+        delete job;
 }
 
 std::string UrlEncode(const std::string& s) {
@@ -74,6 +123,45 @@ std::string UrlEncode(const std::string& s) {
         }
     }
     return out;
+}
+
+struct GeoPlace {
+    std::string query, name;
+    double lat, lon;
+};
+
+// Place name -> coordinates. Places do not move, so recent answers are kept: this saves a slow
+// request every time the weather or air quality of the same place is asked again.
+std::expected<std::optional<GeoPlace>, std::string> FindPlace(const std::string& query) {
+    static std::mutex mutex;
+    static std::vector<GeoPlace> recent;
+    constexpr size_t kMaxRecent = 6;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (auto& g : recent)
+            if (g.query == query)
+                return g;
+    }
+    auto geo = HttpGet("http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
+                       UrlEncode(query));
+    if (!geo)
+        return std::unexpected(geo.error());
+    cJSON* root = cJSON_Parse(geo->c_str());
+    cJSON* r = cJSON_GetArrayItem(cJSON_GetObjectItem(root, "results"), 0);
+    cJSON* name = cJSON_GetObjectItem(r, "name");
+    cJSON* lat = cJSON_GetObjectItem(r, "latitude");
+    cJSON* lon = cJSON_GetObjectItem(r, "longitude");
+    std::optional<GeoPlace> place;
+    if (cJSON_IsString(name) && cJSON_IsNumber(lat) && cJSON_IsNumber(lon))
+        place = GeoPlace{query, name->valuestring, lat->valuedouble, lon->valuedouble};
+    cJSON_Delete(root);
+    if (place) {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (recent.size() >= kMaxRecent)
+            recent.erase(recent.begin());
+        recent.push_back(*place);
+    }
+    return place;
 }
 
 std::string Between(const std::string& s, const char* a, const char* b, size_t from, size_t* end) {
@@ -374,18 +462,27 @@ void SchedulerTask(void*) {
                     });
                 }
             }
-            static int saved_volume = -1;
+            // Lower the speaker once when night starts. After that the volume belongs to the user:
+            // it is never forced down again, and the morning only undoes the night's own change.
             constexpr int kNightVolume = 35;
+            static bool night_applied = false;
             auto codec = Board::GetInstance().GetAudioCodec();
+            int saved_volume = Settings("night").GetInt("volume", -1);
             if (LoadConfig().night_dim && night) {
-                if (codec->output_volume() > kNightVolume) {
-                    if (saved_volume < 0)
-                        saved_volume = codec->output_volume();
-                    codec->SetOutputVolume(kNightVolume);
+                if (!night_applied && idle) {
+                    night_applied = true;
+                    if (saved_volume < 0 && codec->output_volume() > kNightVolume) {
+                        Settings("night", true).SetInt("volume", codec->output_volume());
+                        codec->SetOutputVolume(kNightVolume);
+                    }
                 }
-            } else if (saved_volume >= 0) {
-                codec->SetOutputVolume(saved_volume);
-                saved_volume = -1;
+            } else {
+                night_applied = false;
+                if (saved_volume >= 0) {
+                    if (codec->output_volume() == kNightVolume)
+                        codec->SetOutputVolume(saved_volume);
+                    Settings("night", true).EraseKey("volume");
+                }
             }
         }
         std::vector<Alarm> due;
@@ -675,21 +772,14 @@ void RegisterTools() {
             double lat = cfg.lat, lon = cfg.lon;
             auto place = p["place"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
-                auto geo = HttpGet(
-                    "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
-                    UrlEncode(place));
-                if (!geo)
-                    return std::unexpected(geo.error());
-                cJSON* root = cJSON_Parse(geo->c_str());
-                cJSON* r = cJSON_GetArrayItem(cJSON_GetObjectItem(root, "results"), 0);
-                if (r == nullptr) {
-                    cJSON_Delete(root);
+                auto found = FindPlace(place);
+                if (!found)
+                    return std::unexpected(found.error());
+                if (!*found)
                     return std::string("Không tìm thấy địa điểm " + place);
-                }
-                name = cJSON_GetObjectItem(r, "name")->valuestring;
-                lat = cJSON_GetObjectItem(r, "latitude")->valuedouble;
-                lon = cJSON_GetObjectItem(r, "longitude")->valuedouble;
-                cJSON_Delete(root);
+                name = (*found)->name;
+                lat = (*found)->lat;
+                lon = (*found)->lon;
             }
             char url[400];
             snprintf(
@@ -772,8 +862,7 @@ void RegisterTools() {
                 if (br != std::string::npos)
                     desc = desc.substr(br + 5);
                 desc = CleanXmlText(desc);
-                if (desc.size() > 220)
-                    desc.resize(220);
+                TruncateUtf8(desc, 220);
                 if (title.empty())
                     break;
                 out += std::to_string(n + 1) + ". " + title + (desc.empty() ? "" : " — " + desc) +
@@ -1083,21 +1172,14 @@ void RegisterTools() {
             double lat = cfg.lat, lon = cfg.lon;
             auto place = p["place"].value<std::string>();
             if (!place.empty() && place != cfg.city) {
-                auto geo = HttpGet(
-                    "http://geocoding-api.open-meteo.com/v1/search?count=1&language=vi&name=" +
-                    UrlEncode(place));
-                if (!geo)
-                    return std::unexpected(geo.error());
-                cJSON* root = cJSON_Parse(geo->c_str());
-                cJSON* r = cJSON_GetArrayItem(cJSON_GetObjectItem(root, "results"), 0);
-                if (r == nullptr) {
-                    cJSON_Delete(root);
+                auto found = FindPlace(place);
+                if (!found)
+                    return std::unexpected(found.error());
+                if (!*found)
                     return std::string("Không tìm thấy địa điểm " + place);
-                }
-                name = cJSON_GetObjectItem(r, "name")->valuestring;
-                lat = cJSON_GetObjectItem(r, "latitude")->valuedouble;
-                lon = cJSON_GetObjectItem(r, "longitude")->valuedouble;
-                cJSON_Delete(root);
+                name = (*found)->name;
+                lat = (*found)->lat;
+                lon = (*found)->lon;
             }
             char url[220];
             snprintf(
@@ -1152,8 +1234,7 @@ void RegisterTools() {
             std::string title = CleanXmlText(Between(*body, "<title>", "</title>", item, nullptr));
             std::string desc =
                 CleanXmlText(Between(*body, "<description>", "</description>", item, nullptr));
-            if (desc.size() > 900)
-                desc.resize(900);
+            TruncateUtf8(desc, 900);
             return title + "\n" + desc +
                    "\n(DB là giải đặc biệt, G.1 là giải nhất. Chỉ đọc giải đặc biệt và giải nhất "
                    "trừ khi được hỏi thêm.)";
@@ -1213,8 +1294,7 @@ void RegisterTools() {
                     http->Close();
                     if (!status || *status >= 400)
                         return std::unexpected("Tiện ích báo lỗi");
-                    if (reply.size() > 1200)
-                        reply.resize(1200);
+                    TruncateUtf8(reply, 1200);
                     return reply.empty() ? std::string("Đã thực hiện.") : reply;
                 });
         }
@@ -1351,30 +1431,7 @@ void RegisterTools() {
                 if (!url)
                     continue;
                 std::string title = song.title + (song.artists.empty() ? "" : " - " + song.artists);
-                // Let the short spoken intro finish first, then start the song.
-                xTaskCreateWithCaps(
-                    [](void* arg) {
-                        auto* job = static_cast<std::pair<std::string, std::string>*>(arg);
-                        auto& app = Application::GetInstance();
-                        // job->first = "<song id>\n<stream url>"
-                        std::string id = job->first.substr(0, job->first.find('\n'));
-                        std::string url = job->first.substr(job->first.find('\n') + 1);
-                        std::vector<NotifySubtitle> lyrics;
-                        for (auto& [ms, text] : ZingLyrics(id))
-                            lyrics.push_back({.start_ms = ms, .text = text});
-                        for (int i = 0; i < 100 && app.GetDeviceState() == kDeviceStateSpeaking;
-                             ++i) {
-                            vTaskDelay(pdMS_TO_TICKS(100));
-                        }
-                        vTaskDelay(pdMS_TO_TICKS(1500));
-                        app.PlayStream("radio:" + url, "🎵 " + job->second, std::move(lyrics));
-                        delete job;
-                        vTaskDeleteWithCaps(nullptr);
-                    },
-                    "zing_play", 8192,
-                    new std::pair<std::string, std::string>(song.id + "\n" + *url, title), 2,
-                    nullptr,
-                    MALLOC_CAP_SPIRAM);  // network only: stack can live in PSRAM
+                QueueZingPlay(song.id, *url, title);
                 return "Đang mở bài " + title + " (Zing MP3).";
             }
             return std::string("Không tìm thấy bài miễn phí nào cho \"" + query +

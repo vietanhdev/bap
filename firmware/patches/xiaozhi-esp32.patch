@@ -484,7 +484,7 @@ index 8d1f5dc..3c93322 100644
  #define DRV_LCD_PARAM_BITS        (8)
  #define DRV_LCD_RGB_ELEMENT_ORDER (LCD_RGB_ELEMENT_ORDER_RGB)
 diff --git a/main/boards/sensecap-watcher/sensecap_watcher.cc b/main/boards/sensecap-watcher/sensecap_watcher.cc
-index 31ee1e4..ba02551 100644
+index 31ee1e4..dcb2837 100644
 --- a/main/boards/sensecap-watcher/sensecap_watcher.cc
 +++ b/main/boards/sensecap-watcher/sensecap_watcher.cc
 @@ -5,6 +5,12 @@
@@ -506,7 +506,7 @@ index 31ee1e4..ba02551 100644
  #include <esp_log.h>
 +#include <esp_timer.h>
  #include <esp_check.h>
-+#include <atomic>
++#include <esp_timer.h>
  #include <esp_lcd_panel_io.h>
  #include <esp_lcd_panel_ops.h>
  #include <esp_lcd_spd2010.h>
@@ -648,7 +648,7 @@ index 31ee1e4..ba02551 100644
          uint32_t pin_val = 0;
          ret |= esp_io_expander_get_level(io_exp_handle, DRV_IO_EXP_INPUT_MASK, &pin_val);
          ESP_LOGI(TAG, "IO expander initialized: %x", DRV_IO_EXP_OUTPUT_MASK | (uint16_t)pin_val);
-@@ -219,7 +296,55 @@ private:
+@@ -219,7 +296,66 @@ private:
          assert(ret == ESP_OK);
      }
  
@@ -700,11 +700,22 @@ index 31ee1e4..ba02551 100644
 +            power_save_timer_->WakeUp();
 +            return;
 +        }
++        // A lone bump of the wheel must not change the volume: it takes two clicks in a row.
++        static int64_t last_turn_us = 0;
++        static bool last_clockwise = false;
++        const int64_t now_us = esp_timer_get_time();
++        const bool deliberate = clockwise == last_clockwise && now_us - last_turn_us < 600 * 1000;
++        last_turn_us = now_us;
++        last_clockwise = clockwise;
++        if (!deliberate) {
++            power_save_timer_->WakeUp();
++            return;
++        }
 +#endif
          auto codec = GetAudioCodec();
          int current_volume = codec->output_volume();
          int new_volume = current_volume + (clockwise ? -5 : 5); 
-@@ -245,6 +370,107 @@ private:
+@@ -245,6 +381,107 @@ private:
          power_save_timer_->WakeUp();
      }
  
@@ -804,7 +815,7 @@ index 31ee1e4..ba02551 100644
 +                    }
 +                }
 +            },
-+            "touch", 4096, this, 3, nullptr);
++            "touch", 3072, this, 3, nullptr);  // peak use ~1.7 KB (see /api/perf stack_free_min)
 +        ESP_LOGI(TAG, "touch ready");
 +    }
 +#endif
@@ -812,7 +823,7 @@ index 31ee1e4..ba02551 100644
      void InitializeKnob() {
          knob_ = std::make_unique<Knob>(BSP_KNOB_A_PIN, BSP_KNOB_B_PIN);
          knob_->OnRotate([this](bool clockwise) {
-@@ -265,7 +491,11 @@ private:
+@@ -265,7 +502,11 @@ private:
          }
  
          button_config_t btn_config = {
@@ -824,7 +835,7 @@ index 31ee1e4..ba02551 100644
              .short_press_time = 0
          };
          btn_driver_ = (button_driver_t*)calloc(1, sizeof(button_driver_t));
-@@ -275,6 +505,14 @@ private:
+@@ -275,6 +516,14 @@ private:
          };
          
          ESP_ERROR_CHECK(iot_button_create(&btn_config, btn_driver_, &btns));
@@ -839,7 +850,7 @@ index 31ee1e4..ba02551 100644
          
          iot_button_register_cb(btns, BUTTON_SINGLE_CLICK, nullptr, [](void* button_handle, void* usr_data) {
              auto self = static_cast<SensecapWatcher*>(usr_data);
-@@ -285,13 +523,43 @@ private:
+@@ -285,13 +534,43 @@ private:
                  self->EnterWifiConfigMode();
                  return;
              }
@@ -884,7 +895,7 @@ index 31ee1e4..ba02551 100644
              if (is_charging) {
                  ESP_LOGI(TAG, "charging");
              } else {
-@@ -304,7 +572,11 @@ private:
+@@ -304,7 +583,11 @@ private:
              auto self = static_cast<SensecapWatcher*>(usr_data);
              self->long_press_cnt_++; // 每隔20ms加一
              // 长按10s 恢复出厂设置: 2+0.02*400 = 10
@@ -896,7 +907,7 @@ index 31ee1e4..ba02551 100644
                  ESP_LOGI(TAG, "Factory reset");
                  nvs_flash_erase();
                  esp_restart();
-@@ -369,6 +641,7 @@ private:
+@@ -369,6 +652,7 @@ private:
          esp_lcd_new_panel_spd2010(panel_io_, &panel_config, &panel_);
  
          esp_lcd_panel_reset(panel_);
@@ -904,7 +915,7 @@ index 31ee1e4..ba02551 100644
          esp_lcd_panel_init(panel_);
          esp_lcd_panel_mirror(panel_, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y);
          esp_lcd_panel_disp_on_off(panel_, true);
-@@ -597,14 +870,33 @@ public:
+@@ -597,14 +881,35 @@ public:
          ESP_LOGI(TAG, "Initialize Sensecap Watcher");
          InitializePowerSaveTimer();
          InitializeI2c();
@@ -912,7 +923,9 @@ index 31ee1e4..ba02551 100644
 +        // Rails first: an idle SPI bus holds its lines high and would feed the unpowered display chip.
          InitializeExpander();
 +        InitializeSpi();
++#if !CONFIG_USE_GEMINI_LIVE
          InitializeCmd();  //工厂生产测试使用
++#endif
          InitializeButton();
          InitializeKnob();
          Initializespd2010Display();
@@ -939,7 +952,7 @@ index 31ee1e4..ba02551 100644
      }
  
      virtual AudioCodec* GetAudioCodec() override {
-@@ -651,6 +943,14 @@ public:
+@@ -651,6 +956,14 @@ public:
      virtual bool GetBatteryLevel(int& level, bool& charging, bool& discharging) override {
          charging = (IoExpanderGetLevel(BSP_PWR_VBUS_IN_DET) == 0);
          discharging = !charging;

@@ -31,5 +31,23 @@ int main() {
         std::string::npos;
     printf("%s accent-insensitive match\n", match ? "ok  " : "FAIL");
     failed += match ? 0 : 1;
+
+    // Cutting text never leaves half a UTF-8 character behind.
+    struct Cut {
+        const char* in;
+        size_t max;
+        const char* want;
+    } cuts[] = {
+        {"abc", 10, "abc"},   {"abcdef", 3, "abc"}, {"Hà", 2, "H"},   {"Hà", 3, "Hà"},
+        {"Việt", 3, "Vi"},    {"Việt", 4, "Vi"},    {"Việt", 5, "Việ"}, {"ệ", 1, ""},
+        {"ệ", 2, ""},         {"", 0, ""},
+    };
+    for (auto& c : cuts) {
+        std::string got = c.in;
+        assistant::TruncateUtf8(got, c.max);
+        bool ok = got == c.want;
+        failed += ok ? 0 : 1;
+        printf("%s cut %s at %zu -> %s\n", ok ? "ok  " : "FAIL", c.in, c.max, got.c_str());
+    }
     return failed == 0 ? 0 : 1;
 }
