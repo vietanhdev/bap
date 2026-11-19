@@ -56,7 +56,9 @@ firmware/ota.sh bap-xxxx.local
 | --- | --- |
 | `GET /api/config`、`POST /api/config` | 读取（密钥已遮盖）和保存设置 |
 | `GET /api/status` | 状态、正在播放、运行时间、记录、闹钟、版本 |
-| `GET /api/perf` | 各任务 CPU 和栈余量、堆、运行时间、RSSI |
+| `GET /api/perf` | 各任务 CPU 和栈余量、堆、运行时间、RSSI、发送到屏幕的画面数 |
+| `GET /api/log` | 设备日志最新的 2 KB |
+| `GET /api/lastlog` | 上次重启前日志的结尾（崩溃或看门狗重启后） |
 | `POST /api/say` | 像说话一样发送文字 |
 | `POST /api/action` | 设备操作（对话、停止、滚轮事件、Wi-Fi 配置、重启） |
 | `POST /api/tool` | 直接调用工具 |

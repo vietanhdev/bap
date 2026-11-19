@@ -1,12 +1,17 @@
 // GET /api/perf: per-task CPU share over one second, plus heap figures. Used to find what starves
 // the audio pipeline (choppy voice, mic ring buffer overflows).
+#include <esp_attr.h>
 #include <esp_heap_caps.h>
 #include <esp_http_server.h>
+#include <esp_log.h>
 #include <esp_pm.h>
 #include <esp_private/esp_clk.h>
 #include <esp_timer.h>
+#include <esp_system.h>
 #include <esp_wifi.h>
 #include <cJSON.h>
+#include <atomic>
+#include <cstdarg>
 #include <cstdio>
 
 #include <freertos/FreeRTOS.h>
@@ -14,6 +19,7 @@
 #include "assistant_auth.h"
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
@@ -22,6 +28,54 @@ namespace assistant {
 namespace {
 
 std::map<std::string, uint32_t> g_stack_free;  // task -> lowest free stack seen (bytes)
+std::atomic<uint32_t> g_panel_draws{0};
+
+// The end of the log survives a restart in RTC memory, so an unexplained restart leaves evidence.
+constexpr uint32_t kLogMagic = 0x4C414233;
+constexpr size_t kLogTail = 2048;
+struct LogTail {
+    uint32_t magic, head;
+    char data[kLogTail];
+};
+RTC_NOINIT_ATTR LogTail g_tail;
+portMUX_TYPE g_tail_lock = portMUX_INITIALIZER_UNLOCKED;
+vprintf_like_t g_next_log = nullptr;
+char* g_previous_log = nullptr;
+
+int TeeLog(const char* format, va_list args) {
+    char line[160];
+    va_list copy;
+    va_copy(copy, args);
+    int n = vsnprintf(line, sizeof(line), format, copy);
+    va_end(copy);
+    if (n > 0) {
+        n = std::min<int>(n, sizeof(line) - 1);
+        portENTER_CRITICAL_SAFE(&g_tail_lock);
+        for (int i = 0; i < n; ++i)
+            g_tail.data[(g_tail.head + i) % kLogTail] = line[i];
+        g_tail.head = (g_tail.head + n) % (kLogTail * 1024);
+        portEXIT_CRITICAL_SAFE(&g_tail_lock);
+    }
+    return g_next_log != nullptr ? g_next_log(format, args) : n;
+}
+
+// The newest lines, oldest first (the same 2 KB that survives a restart).
+esp_err_t HandleLog(httpd_req_t* req) {
+    std::string text(kLogTail, '\0');
+    portENTER_CRITICAL_SAFE(&g_tail_lock);
+    for (size_t i = 0; i < kLogTail; ++i)
+        text[i] = g_tail.data[(g_tail.head + i) % kLogTail];
+    portEXIT_CRITICAL_SAFE(&g_tail_lock);
+    const size_t start = text.find_first_not_of('\0');
+    text.erase(0, start == std::string::npos ? text.size() : start);
+    httpd_resp_set_type(req, "text/plain; charset=utf-8");
+    return httpd_resp_send(req, text.data(), text.size());
+}
+
+esp_err_t HandleLastLog(httpd_req_t* req) {
+    httpd_resp_set_type(req, "text/plain; charset=utf-8");
+    return httpd_resp_sendstr(req, g_previous_log != nullptr ? g_previous_log : "");
+}
 
 std::map<std::string, uint32_t> Snapshot(uint32_t* total) {
     std::map<std::string, uint32_t> out;
@@ -61,6 +115,7 @@ esp_err_t HandlePerf(httpd_req_t* req) {
     cJSON* stacks = cJSON_AddObjectToObject(r, "stack_free_min");
     for (auto& [name, bytes] : g_stack_free)
         cJSON_AddNumberToObject(stacks, name.c_str(), bytes);
+    cJSON_AddNumberToObject(r, "panel_draws", g_panel_draws.load());
     cJSON_AddNumberToObject(r, "free_internal", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(r, "min_free_internal",
                             heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
@@ -96,10 +151,38 @@ esp_err_t HandlePerf(httpd_req_t* req) {
 
 }  // namespace
 
+void NotePanelDraw() { g_panel_draws.fetch_add(1, std::memory_order_relaxed); }
+
+void StartCrashLog() {
+    const esp_reset_reason_t why = esp_reset_reason();
+    if (g_tail.magic == kLogMagic && why != ESP_RST_POWERON && why != ESP_RST_BROWNOUT) {
+        auto* text = static_cast<char*>(heap_caps_calloc(1, kLogTail + 1, MALLOC_CAP_SPIRAM));
+        if (text != nullptr) {
+            for (size_t i = 0; i < kLogTail; ++i)
+                text[i] = g_tail.data[(g_tail.head + i) % kLogTail];
+            // Before the buffer first wraps, its start is still empty.
+            size_t start = 0;
+            while (start < kLogTail && text[start] == '\0')
+                ++start;
+            memmove(text, text + start, kLogTail - start + 1);
+            g_previous_log = text;
+        }
+    }
+    memset(&g_tail, 0, sizeof(g_tail));
+    g_tail.magic = kLogMagic;
+    g_next_log = esp_log_set_vprintf(TeeLog);
+}
+
 void RegisterPerfRoutes(void* server) {
     static const httpd_uri_t route = {
         .uri = "/api/perf", .method = HTTP_GET, .handler = HandlePerf, .user_ctx = nullptr};
     RegisterGuarded(server, route);
+    static const httpd_uri_t last_log = {
+        .uri = "/api/lastlog", .method = HTTP_GET, .handler = HandleLastLog, .user_ctx = nullptr};
+    RegisterGuarded(server, last_log);
+    static const httpd_uri_t log = {
+        .uri = "/api/log", .method = HTTP_GET, .handler = HandleLog, .user_ctx = nullptr};
+    RegisterGuarded(server, log);
 }
 
 }  // namespace assistant

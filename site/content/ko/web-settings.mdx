@@ -60,7 +60,9 @@ CPU가 전송에 집중합니다. 이미지가 검증되면 새 슬롯으로 재
 | --- | --- |
 | `GET /api/config`, `POST /api/config` | 설정 읽기(키는 가려짐)와 저장 |
 | `GET /api/status` | 상태, 재생 중인 곡, 가동 시간, 기록, 알람, 버전 |
-| `GET /api/perf` | 작업별 CPU와 스택 여유, 힙, 가동 시간, RSSI |
+| `GET /api/perf` | 작업별 CPU와 스택 여유, 힙, 가동 시간, RSSI, 화면에 보낸 그림 수 |
+| `GET /api/log` | 기기 로그의 최신 2 KB |
+| `GET /api/lastlog` | 마지막 재시작 전 로그의 끝 (오류나 워치독 재시작 후) |
 | `POST /api/say` | 말한 것처럼 텍스트 보내기 |
 | `POST /api/action` | 기기 동작 (대화, 정지, 휠 이벤트, Wi-Fi 설정, 재부팅) |
 | `POST /api/tool` | 도구 직접 호출 |

@@ -63,7 +63,9 @@ lưu khóa.
 | --- | --- |
 | `GET /api/config`, `POST /api/config` | Đọc (key được che) và lưu thiết lập |
 | `GET /api/status` | Trạng thái, bài đang phát, thời gian chạy, nhật ký, báo thức, phiên bản |
-| `GET /api/perf` | CPU và stack còn trống của từng tác vụ, heap, thời gian chạy, RSSI |
+| `GET /api/perf` | CPU và stack còn trống của từng tác vụ, heap, thời gian chạy, RSSI, số hình đã gửi ra màn hình |
+| `GET /api/log` | 2 KB nhật ký mới nhất của máy |
+| `GET /api/lastlog` | Cuối nhật ký trước lần khởi động lại gần nhất (sau khi lỗi hoặc treo) |
 | `POST /api/say` | Gửi chữ như thể nói |
 | `POST /api/action` | Thao tác máy (nói chuyện, dừng, sự kiện núm xoay, cài Wi-Fi, khởi động lại) |
 | `POST /api/tool` | Gọi trực tiếp một công cụ |

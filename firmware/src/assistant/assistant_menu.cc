@@ -8,10 +8,21 @@
 #include "assistant_menu.h"
 
 #include <esp_app_desc.h>
+#include <esp_event.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
 #include <esp_mac.h>
 #include <esp_timer.h>
+#include <esp_wifi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/idf_additions.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <lvgl.h>
 
+#include <algorithm>
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <string>
@@ -20,11 +31,14 @@
 #include "application.h"
 #include "assistant.h"
 #include "assistant_config.h"
+#include "assistant_keyboard.h"
 #include "audio/audio_codec.h"
 #include "board.h"
 #include "boards/common/backlight.h"
 #include "boards/common/wifi_board.h"
 #include "display/display.h"
+#include "ssid_manager.h"
+#include "wifi_list.h"
 #include "wifi_manager.h"
 
 LV_FONT_DECLARE(font_chat_24);
@@ -33,6 +47,8 @@ namespace assistant {
 namespace {
 
 constexpr int64_t kIdleCloseUs = 20 * 1000000LL;
+constexpr int64_t kTypingCloseUs = 120 * 1000000LL;  // typing a password takes a while
+constexpr size_t kMaxNetworks = 12;
 constexpr int kArcStart = 120;  // degrees, LVGL: 0 = 3 o'clock, clockwise
 constexpr int kArcSweep = 300;  // open at the bottom where the hint sits
 
@@ -91,6 +107,7 @@ constexpr uint32_t kMenuRefreshMs = 20;  // 50 fps while the menu is open
 enum class Motion { kNone, kNext, kPrev, kIn, kOut, kDrag };
 
 int g_drag_applied = 0;
+std::atomic<int> g_scan_id{0};  // a newer id cancels the Wi-Fi scan in progress
 int64_t g_last_rotate_us = 0;
 int g_arc_a = 0, g_arc_b = 0, g_arc_from_a = 0, g_arc_from_b = 0, g_arc_to_a = 0, g_arc_to_b = 0;
 
@@ -377,8 +394,10 @@ void Push(Level level) {
 }
 
 void CloseAll() {
+    KeyboardClose();
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        ++g_scan_id;
         g_stack.clear();
     }
     Render();
@@ -434,6 +453,236 @@ Level Slider(const std::string& title, std::function<int()> get, std::function<v
     return l;
 }
 
+Item VolumeItem() {
+    return {"Âm lượng", []() {
+                Push(Slider(
+                    "Âm lượng", []() { return Board::GetInstance().GetAudioCodec()->output_volume(); },
+                    [](int v) { Board::GetInstance().GetAudioCodec()->SetOutputVolume(v); }));
+            }};
+}
+
+Item BrightnessItem() {
+    return {"Độ sáng", []() {
+                Push(Slider(
+                    "Độ sáng",
+                    []() {
+                        auto bl = Board::GetInstance().GetBacklight();
+                        return bl ? SavedBrightness() : 0;  // not the night dimming
+                    },
+                    [](int v) {
+                        if (auto bl = Board::GetInstance().GetBacklight())
+                            bl->SetBrightness(v, true);
+                    }));
+            }};
+}
+
+// Saves the network and restarts: the Wi-Fi code only picks a network when it starts looking.
+void JoinNetwork(const std::string& ssid, const std::string& password) {
+    SsidManager::GetInstance().AddSsid(ssid, password);
+    Board::GetInstance().GetDisplay()->ShowNotification(Localize("Đã lưu, đang khởi động lại"), 3000);
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    Application::GetInstance().Reboot();
+}
+
+Level NetworksLevel(const std::vector<WifiNetwork>& networks) {
+    Level l{.title = "Chọn mạng"};
+    const auto& saved = SsidManager::GetInstance().GetSsidList();
+    auto& wifi = WifiManager::GetInstance();
+    const std::string current = wifi.IsConnected() ? wifi.GetSsid() : "";
+    for (const auto& net : networks) {
+        const bool known = std::any_of(saved.begin(), saved.end(),
+                                       [&](const SsidItem& s) { return s.ssid == net.ssid; });
+        std::string detail = Localize(net.ssid == current ? "Đang dùng"
+                                      : known             ? "Đã lưu"
+                                                          : SignalWord(net.rssi));
+        if (!net.secured)
+            detail += " · " + Localize("Không mật khẩu");
+        Item item{net.ssid, nullptr, false, [detail]() { return detail; }};
+        if (net.secured) {
+            auto type_password = [ssid = net.ssid]() {
+                KeyboardOpen(ssid, [ssid](std::string password) {
+                    CloseAll();
+                    JoinNetwork(ssid, password);
+                });
+            };
+            item.on_click = type_password;
+            auto& wifi = WifiManager::GetInstance();
+            if (wifi.IsConnected() && wifi.GetSsid() == net.ssid) {
+                // A typo here would cut the watch off the network it is using, so ask first.
+                item.on_click = [type_password]() {
+                    Level ask{.title = "Đổi mật khẩu?"};
+                    ask.items.push_back({"Thôi", []() { MenuBack(); }});
+                    ask.items.push_back({"Đổi mật khẩu", [type_password]() {
+                                             MenuBack();
+                                             type_password();
+                                         }, true});
+                    Push(std::move(ask));
+                };
+            }
+        } else {
+            item.on_click = [ssid = net.ssid]() {
+                Push(Confirm("Nối mạng này?", [ssid]() { JoinNetwork(ssid, ""); }));
+            };
+        }
+        l.items.push_back(std::move(item));
+    }
+    return l;
+}
+
+struct ScanResult {
+    SemaphoreHandle_t done;
+    std::vector<WifiNetwork> found;
+    bool ok = false;
+};
+
+std::atomic<ScanResult*> g_pending_scan{nullptr};
+
+// The Wi-Fi library reads the results of every scan when "scan finished" arrives, which empties
+// the list, even for a blocking scan (seen on device logs with ESP-IDF 6.1). Handlers for the same
+// event run in the order they were registered, and this one is registered at boot before the
+// library's, so it reads the list first - but only for a scan the menu asked for.
+void OnScanDone(void*, esp_event_base_t base, int32_t id, void*) {
+    if (base != WIFI_EVENT || id != WIFI_EVENT_SCAN_DONE)
+        return;
+    ScanResult* result = g_pending_scan.exchange(nullptr);
+    if (result == nullptr)
+        return;
+    uint16_t count = 0;
+    esp_wifi_scan_get_ap_num(&count);
+    count = std::min<uint16_t>(count, 40);
+    auto* records = static_cast<wifi_ap_record_t*>(
+        heap_caps_calloc(count ? count : 1, sizeof(wifi_ap_record_t), MALLOC_CAP_SPIRAM));
+    if (records != nullptr && esp_wifi_scan_get_ap_records(&count, records) == ESP_OK) {
+        for (uint16_t i = 0; i < count; ++i) {
+            result->found.push_back({reinterpret_cast<const char*>(records[i].ssid),
+                                     records[i].rssi, records[i].authmode != WIFI_AUTH_OPEN});
+        }
+        result->ok = true;
+    }
+    heap_caps_free(records);
+    xSemaphoreGive(result->done);
+}
+
+void RunScan(int id) {
+    ScanResult result;
+    result.done = xSemaphoreCreateBinary();
+    esp_err_t err = result.done != nullptr ? ESP_OK : ESP_ERR_NO_MEM;
+    if (err == ESP_OK) {
+        g_pending_scan = &result;
+        wifi_scan_config_t config = {};
+        err = esp_wifi_scan_start(&config, false);
+        if (err == ESP_OK && xSemaphoreTake(result.done, pdMS_TO_TICKS(10000)) != pdTRUE)
+            err = ESP_ERR_TIMEOUT;
+        if (g_pending_scan.exchange(nullptr) == nullptr && err != ESP_OK)
+            xSemaphoreTake(result.done, pdMS_TO_TICKS(2000));  // the handler is still copying
+    }
+    if (err == ESP_OK && !result.ok)
+        err = ESP_FAIL;
+    if (result.done != nullptr)
+        vSemaphoreDelete(result.done);
+    std::vector<WifiNetwork> found = std::move(result.found);
+    ESP_LOGI("Menu", "Wi-Fi scan: %s, %d access points", esp_err_to_name(err), (int)found.size());
+    auto networks = BestNetworks(std::move(found), kMaxNetworks);
+    {
+        // The network in use goes first.
+        auto& wifi = WifiManager::GetInstance();
+        const std::string current = wifi.IsConnected() ? wifi.GetSsid() : "";
+        std::stable_partition(networks.begin(), networks.end(),
+                              [&](const WifiNetwork& n) { return n.ssid == current; });
+    }
+    {
+        DisplayLockGuard lock(Board::GetInstance().GetDisplay());  // always before g_mutex
+        std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        if (id == g_scan_id && !g_stack.empty()) {
+            if (err != ESP_OK) {
+                g_stack.back().info = Localize("Chưa tìm được mạng");
+            } else if (networks.empty()) {
+                g_stack.back().info = Localize("Không thấy mạng nào");
+            } else {
+                g_stack.back() = NetworksLevel(networks);
+            }
+            g_last_us = esp_timer_get_time();
+            Render(Motion::kIn);
+        }
+    }
+}
+
+// One long-lived task does every scan: creating and deleting a task for each scan lost about
+// 260 bytes of internal RAM every time (measured on the device, as with the Zing MP3 player).
+// Its stack is in PSRAM: it only scans and draws, it never writes to flash.
+void ScanWorker(void* arg) {
+    auto queue = static_cast<QueueHandle_t>(arg);
+    while (true) {
+        int id = 0;
+        xQueueReceive(queue, &id, portMAX_DELAY);
+        for (int newer = 0; xQueueReceive(queue, &newer, 0) == pdTRUE;)
+            id = newer;  // only the latest request matters
+        RunScan(id);
+    }
+}
+
+QueueHandle_t ScanQueue() {
+    static QueueHandle_t queue = []() -> QueueHandle_t {
+        QueueHandle_t q = xQueueCreate(2, sizeof(int));
+        if (q != nullptr && xTaskCreateWithCaps(ScanWorker, "wifi_scan", 6144, q, 2, nullptr,
+                                                MALLOC_CAP_SPIRAM) != pdPASS) {
+            vQueueDelete(q);
+            q = nullptr;
+        }
+        return q;
+    }();
+    return queue;
+}
+
+void StartWifiScan() {
+    Level l{.title = "Wi-Fi"};
+    l.info = Localize("Đang tìm mạng...");
+    Push(std::move(l));
+    const int id = ++g_scan_id;
+    QueueHandle_t queue = ScanQueue();
+    if (queue == nullptr || xQueueSend(queue, &id, 0) != pdTRUE) {
+        DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+        std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        if (!g_stack.empty())
+            g_stack.back().info = Localize("Chưa tìm được mạng");
+        Render();
+    }
+}
+
+Level WifiMenu() {
+    Level l{.title = "Wi-Fi"};
+    l.items.push_back({"Tìm mạng", []() { StartWifiScan(); }, false, []() {
+                           auto& wifi = WifiManager::GetInstance();
+                           return wifi.IsConnected() ? wifi.GetSsid() : Localize("Chưa nối mạng");
+                       }});
+    l.items.push_back({"Cài bằng điện thoại", []() {
+                           Push(Confirm("Cài Wi-Fi mới?", []() {
+                               static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode();
+                           }));
+                       }});
+    return l;
+}
+
+Level AppsLevel() {
+    Level l{.title = "Ứng dụng"};
+    for (auto& a : Apps()) {
+        l.items.push_back({a.title, Then([title = a.title, prompt = a.prompt]() {
+                               Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + title + "\". " +
+                                   prompt + "</hệ thống>");
+                           })});
+    }
+    return l;
+}
+
+Level QuickLevel() {
+    Level l{.title = "Cài đặt nhanh"};
+    l.items.push_back(VolumeItem());
+    l.items.push_back(BrightnessItem());
+    l.items.push_back({"Wi-Fi", []() { Push(WifiMenu()); }});
+    l.items.push_back(Toggle("Không làm phiền đêm", &Config::quiet));
+    return l;
+}
+
 Level SettingsMenu() {
     Level m{.title = "Thiết lập"};
     m.items.push_back({"Nhân vật", []() {
@@ -453,24 +702,8 @@ Level SettingsMenu() {
                            if (!l.items.empty())
                                Push(std::move(l));
                        }});
-    m.items.push_back(
-        {"Âm lượng", []() {
-             Push(Slider(
-                 "Âm lượng", []() { return Board::GetInstance().GetAudioCodec()->output_volume(); },
-                 [](int v) { Board::GetInstance().GetAudioCodec()->SetOutputVolume(v); }));
-         }});
-    m.items.push_back({"Độ sáng", []() {
-                           Push(Slider(
-                               "Độ sáng",
-                               []() {
-                                   auto bl = Board::GetInstance().GetBacklight();
-                                   return bl ? SavedBrightness() : 0;  // not the night dimming
-                               },
-                               [](int v) {
-                                   if (auto bl = Board::GetInstance().GetBacklight())
-                                       bl->SetBrightness(v, true);
-                               }));
-                       }});
+    m.items.push_back(VolumeItem());
+    m.items.push_back(BrightnessItem());
     m.items.push_back({"Ngôn ngữ", []() {
                            Level l{.title = "Ngôn ngữ"};
                            std::string active = LoadConfig().language;
@@ -501,11 +734,7 @@ Level SettingsMenu() {
                            l.info = DeviceInfo();
                            Push(std::move(l));
                        }});
-    m.items.push_back({"Cài Wi-Fi mới", []() {
-                           Push(Confirm("Cài Wi-Fi mới?", []() {
-                               static_cast<WifiBoard&>(Board::GetInstance()).EnterWifiConfigMode();
-                           }));
-                       }});
+    m.items.push_back({"Wi-Fi", []() { Push(WifiMenu()); }});
     m.items.push_back(
         {"Khởi động lại",
          []() { Push(Confirm("Khởi động lại?", []() { Application::GetInstance().Reboot(); })); }});
@@ -516,14 +745,7 @@ Level MainMenu() {
     Level m{.title = "Menu"};
     m.items.push_back({"Trò chuyện", Then([]() { Application::GetInstance().ToggleChatState(); })});
     m.items.push_back({"Ứng dụng", []() {
-                           Level l{.title = "Ứng dụng"};
-                           for (auto& a : Apps()) {
-                               l.items.push_back(
-                                   {a.title, Then([title = a.title, prompt = a.prompt]() {
-                                        Say("<hệ thống>Người dùng vừa mở ứng dụng \"" + title +
-                                            "\". " + prompt + "</hệ thống>");
-                                    })});
-                           }
+                           Level l = AppsLevel();
                            if (!l.items.empty())
                                Push(std::move(l));
                        }});
@@ -563,10 +785,45 @@ void MenuOpen() {
     Push(MainMenu());
 }
 
+void MenuInitWifiScan() {
+    esp_event_loop_create_default();  // already there is fine
+    esp_event_handler_instance_t handler = nullptr;
+    esp_err_t err = esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, OnScanDone,
+                                                        nullptr, &handler);
+    if (err != ESP_OK)
+        ESP_LOGW("Menu", "Wi-Fi scan handler: %s", esp_err_to_name(err));
+}
+
+void MenuOpenQuick() {
+    NoteActivity();
+    if (!MenuIsOpen())
+        Push(QuickLevel());
+}
+
+void MenuOpenApps() {
+    NoteActivity();
+    if (MenuIsOpen())
+        return;
+    Level l = AppsLevel();
+    if (!l.items.empty())
+        Push(std::move(l));
+}
+
+void MenuNoteTyping() {
+    std::lock_guard<std::recursive_mutex> guard(g_mutex);
+    g_last_us = esp_timer_get_time();
+}
+
 void MenuBack() {
     NoteActivity();
+    if (KeyboardIsOpen()) {
+        MenuNoteTyping();
+        KeyboardClose();
+        return;
+    }
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
+        ++g_scan_id;
         if (!g_stack.empty())
             g_stack.pop_back();
         g_last_us = esp_timer_get_time();
@@ -576,6 +833,11 @@ void MenuBack() {
 
 void MenuRotate(bool forward) {
     NoteActivity();
+    if (KeyboardIsOpen()) {
+        MenuNoteTyping();
+        KeyboardRotate(forward);
+        return;
+    }
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
         if (g_stack.empty())
@@ -635,6 +897,11 @@ void MenuDragEnd() {
 
 void MenuClick() {
     NoteActivity();
+    if (KeyboardIsOpen()) {
+        MenuNoteTyping();
+        KeyboardClick();
+        return;
+    }
     std::function<void()> action;
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
@@ -660,7 +927,8 @@ void MenuTick() {
     bool expired;
     {
         std::lock_guard<std::recursive_mutex> guard(g_mutex);
-        expired = !g_stack.empty() && esp_timer_get_time() - g_last_us > kIdleCloseUs;
+        expired = !g_stack.empty() && esp_timer_get_time() - g_last_us >
+                                          (KeyboardIsOpen() ? kTypingCloseUs : kIdleCloseUs);
     }
     if (expired)
         CloseAll();

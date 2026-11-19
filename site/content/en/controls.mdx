@@ -29,6 +29,8 @@ import { Shots } from '@/components/Characters'
 | Resting | Tap | The character giggles |
 | Resting | Double-tap | Start talking |
 | Resting | Hold | Open the menu |
+| Resting | Swipe down from the top | Quick settings: volume, brightness, Wi-Fi, quiet nights |
+| Resting | Swipe up from the bottom | The app list |
 | Speaking | Tap | Interrupt (keeps listening) |
 | Talking | Double tap | End the conversation |
 | Playing music | Double-tap | Stop the music |
@@ -41,7 +43,9 @@ An arc on the rim shows where you are, the current item sits in a pill and its n
 above and below.
 
 **Settings** has volume and brightness sliders, the language, toggles for night mode, presence,
-morning greeting, quiet nights and greeting people, device info, Wi-Fi setup and restart.
+morning greeting, quiet nights and greeting people, device info, Wi-Fi and restart.
+
+**Wi-Fi** lists the networks around you. Pick one and type its password on the round keyboard: tap the keys (slide to the right key if you miss), or rotate the wheel to move the highlight and press to type. Tap the text to show the password, hold to cancel. The watch saves the network and restarts to join it. *Set up by phone* opens the `Bap-XXXX` hotspot as before.
 **Power off** asks for confirmation.
 
 <Shots items={[['menu', 'Main menu'], ['menu-settings', 'Settings menu'], ['menu-characters', 'Characters']]} />

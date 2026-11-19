@@ -652,7 +652,7 @@ void StartWebServer() {
         return;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.stack_size = 6144;  // peak use ~2.7 KB (see /api/perf stack_free_min)
-    config.max_uri_handlers = 24;
+    config.max_uri_handlers = 28;
     config.recv_wait_timeout = 15;
     config.lru_purge_enable = true;
     config.max_open_sockets = 4;  // the browser reuses connections; leave sockets for Gemini/music

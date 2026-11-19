@@ -22,6 +22,8 @@ void OnWheelDoubleClick();
 void WheelTick();
 enum class TouchEvent { kDown, kMove, kUp };
 void OnTouch(TouchEvent event, int x, int y);
+void NotePanelDraw();   // counts pictures sent to the panel (GET /api/perf: panel_draws)
+void StartCrashLog();   // keeps the end of the log across a restart (GET /api/lastlog)
 // Camera person detection (Himax, on device). Present: called for every frame with a person.
 // Arrived: once per visit; returns true when Gemini should also greet out loud.
 void OnPersonPresent();

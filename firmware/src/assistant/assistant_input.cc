@@ -17,6 +17,7 @@
 
 #include "application.h"
 #include "assets/lang_config.h"
+#include "assistant_keyboard.h"
 #include "assistant.h"
 #include "assistant_config.h"
 #include "assistant_menu.h"
@@ -182,9 +183,16 @@ void OnTouch(TouchEvent event, int x, int y) {
     // the rim still count.
     constexpr int kCenter = 206, kRimRadius = 165;
     constexpr int kSwipe = 60, kSlop = 25;
+    constexpr int kEdgeSwipe = 90, kEdgeZone = 110;
     auto& app = Application::GetInstance();
     const int64_t now = esp_timer_get_time();
     Gesture& t = g_touch;
+    if (KeyboardIsOpen()) {
+        NoteActivity();
+        MenuNoteTyping();
+        KeyboardTouch(event, x, y);  // never logged: these positions would spell the password
+        return;
+    }
     if (event == TouchEvent::kDown) {
         t.down_us = now;
         t.x0 = t.x = x;
@@ -228,7 +236,6 @@ void OnTouch(TouchEvent event, int x, int y) {
     // kUp
     if (t.held)
         return;
-    ESP_LOGI("Touch", "up at %d,%d (moved %d,%d)", x, y, dx, dy);
     const bool vertical = abs(dy) > kSwipe && abs(dy) > abs(dx);
     const bool sideways = abs(dx) > kSwipe && abs(dx) > abs(dy);
     if (t.dragging) {
@@ -251,6 +258,14 @@ void OnTouch(TouchEvent event, int x, int y) {
     }
     switch (app.GetDeviceState()) {
         case kDeviceStateIdle:
+            // Long swipes from the top or bottom edge; a hand holding the watch does not make these.
+            if (abs(dy) >= kEdgeSwipe && abs(dy) > abs(dx) * 2) {
+                if (dy > 0 && t.y0 < kEdgeZone)
+                    MenuOpenQuick();
+                else if (dy < 0 && t.y0 > 412 - kEdgeZone)
+                    MenuOpenApps();
+                break;
+            }
             if (still) {
                 if (now - t.last_tap_us < kDoubleTapUs) {
                     t.last_tap_us = 0;

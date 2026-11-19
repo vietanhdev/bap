@@ -64,7 +64,9 @@ how you replace a lost key. Back the key up.
 | --- | --- |
 | `GET /api/config`, `POST /api/config` | Read (keys masked) and save settings |
 | `GET /api/status` | State, now playing, uptime, log, alarms, version |
-| `GET /api/perf` | Per-task CPU and stack headroom, heap, uptime, RSSI |
+| `GET /api/perf` | Per-task CPU and stack headroom, heap, uptime, RSSI, pictures sent to the screen |
+| `GET /api/log` | The newest 2 KB of the device log |
+| `GET /api/lastlog` | The end of the log from before the last restart (after a crash or watchdog reset) |
 | `POST /api/say` | Send text as if spoken |
 | `POST /api/action` | Device actions (talk, stop, wheel events, Wi-Fi setup, reboot) |
 | `POST /api/tool` | Call any tool directly |
